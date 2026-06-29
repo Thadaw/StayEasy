@@ -24,8 +24,8 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
     yield
     # shutdown
     await engine.dispose()
@@ -47,12 +47,16 @@ app.include_router(offer_router)
 app.include_router(image_router)
 
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+ALLOWED_ORIGINS = ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://localhost:5173",
+    "http://localhost:5176",
+]
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
