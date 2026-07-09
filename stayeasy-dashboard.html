@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StayEasy - Hotel Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="stayeasy-dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-name">StayEasy</span>
+                        <span class="logo-tagline">Restaurant POS</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- MAIN Section -->
+                <div class="nav-section">
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="dashboard">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-th-large"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="orders">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-receipt"></i>
+                                <span>Orders</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="tables">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-chair"></i>
+                                <span>Tables</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="menuitems">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-hamburger"></i>
+                                <span>Menu Items</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="categories">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-layer-group"></i>
+                                <span>Categories</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="kitchendisplay">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-desktop"></i>
+                                <span>Kitchen Display</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="receipts">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>Receipts</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="payments">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-dollar-sign"></i>
+                                <span>Payments</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="reports">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="customers">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Customers</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="staff">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-user-tie"></i>
+                                <span>Staff</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- MANAGEMENT Section -->
+                <div class="nav-section">
+                    <span class="nav-section-title">MANAGEMENT</span>
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="reservations">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Reservations</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="suppliers">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-truck"></i>
+                                <span>Suppliers</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- SETTINGS Section -->
+                <div class="nav-section">
+                    <span class="nav-section-title">SETTINGS</span>
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="restaurantsettings">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-cog"></i>
+                                <span>Restaurant Settings</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="taxes">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>Taxes & Policies</span>
+                            </a>
+                        </li>
+                        <li class="nav-item active" data-page="paymentmethods">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Payment Methods</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" data-page="printers">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-print"></i>
+                                <span>Printers</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=7C3AED&color=fff" alt="Admin User">
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">Admin User</span>
+                        <span class="user-role">Super Admin</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <button class="sidebar-toggle" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-section active" id="page-paymentmethods">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Payment Methods</h1>
+                        <div class="breadcrumb">
+                            <span>Settings</span>
+                            <i class="fas fa-chevron-right"></i>
+                            <span>Payment Methods</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <div class="date-picker">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Jun 1 – Jun 30, 2026</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <button class="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge">12</span>
+                        </button>
+                        <div class="header-user">
+                            <img src="https://ui-avatars.com/api/?name=Admin+User&background=7C3AED&color=fff" alt="Admin User">
+                            <div class="header-user-info">
+                                <span class="header-user-name">Admin User</span>
+                                <span class="header-user-role">Super Admin</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Stats Row -->
+                <section class="stats-section">
+                    <div class="stats-grid four-cols">
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Methods</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Active Methods</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <i class="fas fa-wifi"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Offline Methods</span>
+                                <span class="stat-value">2</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Disabled Methods</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Payment Methods Table -->
+                <section class="payment-methods-section">
+                    <div class="section-header">
+                        <div class="section-header-left">
+                            <h2>All Payment Methods</h2>
+                            <p>Manage payment methods accepted in your restaurant.</p>
+                        </div>
+                        <button class="add-method-btn">
+                            <i class="fas fa-plus"></i>
+                            <span>Add Method</span>
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="payment-table">
+                            <thead>
+                                <tr>
+                                    <th>METHOD NAME</th>
+                                    <th>TYPE</th>
+                                    <th>ACCOUNT / DETAILS</th>
+                                    <th>STATUS</th>
+                                    <th>FEES / CHARGES</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-method="cash">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon cash"><i class="fas fa-money-bill-wave"></i></div>
+                                        <span>Cash</span>
+                                    </td>
+                                    <td><span class="type-badge cash">Cash</span></td>
+                                    <td class="details-cell">–</td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>No Charges</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="card" class="selected-row">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon card"><i class="fas fa-credit-card"></i></div>
+                                        <span>Card (Visa / MasterCard)</span>
+                                    </td>
+                                    <td><span class="type-badge card">Card</span></td>
+                                    <td class="details-cell">
+                                        <span>Terminal: TID-1001</span>
+                                        <span>Merchant: 123456789</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>2.00%</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="esewa">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon esewa"><i class="fas fa-wallet"></i></div>
+                                        <span>eSewa</span>
+                                    </td>
+                                    <td><span class="type-badge wallet">Digital Wallet</span></td>
+                                    <td class="details-cell">
+                                        <span>Merchant ID: 9801234567</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>1.50%</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="khalti">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon khalti"><i class="fas fa-mobile-alt"></i></div>
+                                        <span>Khalti</span>
+                                    </td>
+                                    <td><span class="type-badge wallet">Digital Wallet</span></td>
+                                    <td class="details-cell">
+                                        <span>Merchant ID: 9812345678</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>1.50%</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="imepay">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon imepay"><i class="fas fa-money-check"></i></div>
+                                        <span>IME Pay</span>
+                                    </td>
+                                    <td><span class="type-badge wallet">Digital Wallet</span></td>
+                                    <td class="details-cell">
+                                        <span>Merchant ID: 9807654321</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>1.50%</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="banktransfer">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon bank"><i class="fas fa-university"></i></div>
+                                        <span>Bank Transfer</span>
+                                    </td>
+                                    <td><span class="type-badge bank">Bank</span></td>
+                                    <td class="details-cell">
+                                        <span>Nabil Bank</span>
+                                        <span>A/C: 00123456789012</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>No Charges</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="qrpayment">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon qr"><i class="fas fa-qrcode"></i></div>
+                                        <span>QR Payment</span>
+                                    </td>
+                                    <td><span class="type-badge qr">QR</span></td>
+                                    <td class="details-cell">
+                                        <span>Terminal: QR-2001</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>1.00%</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="mealcard">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon mealcard"><i class="fas fa-concierge-bell"></i></div>
+                                        <span>Meal Card</span>
+                                    </td>
+                                    <td><span class="type-badge card">Card</span></td>
+                                    <td class="details-cell">
+                                        <span>Provider: MealCard Pvt. Ltd.</span>
+                                        <span>ID: MC-556677</span>
+                                    </td>
+                                    <td><span class="status-badge offline">Offline</span></td>
+                                    <td>No Charges</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="giftcard">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon giftcard"><i class="fas fa-gift"></i></div>
+                                        <span>Gift Card</span>
+                                    </td>
+                                    <td><span class="type-badge giftcard">Gift Card</span></td>
+                                    <td class="details-cell">
+                                        <span>Provider: StayEasy Gift</span>
+                                        <span>ID: GC-998877</span>
+                                    </td>
+                                    <td><span class="status-badge active">Active</span></td>
+                                    <td>No Charges</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                                <tr data-method="storecredit">
+                                    <td class="method-name-cell">
+                                        <div class="method-icon storecredit"><i class="fas fa-piggy-bank"></i></div>
+                                        <span>Store Credit</span>
+                                    </td>
+                                    <td><span class="type-badge storecredit">Store Credit</span></td>
+                                    <td class="details-cell">
+                                        <span>Internal</span>
+                                    </td>
+                                    <td><span class="status-badge offline">Offline</span></td>
+                                    <td>No Charges</td>
+                                    <td class="actions-cell">
+                                        <button class="action-btn edit"><i class="fas fa-pen"></i></button>
+                                        <button class="action-btn more"><i class="fas fa-ellipsis-v"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-footer">
+                        <span class="showing-info">Showing 1 to 10 of 10 methods</span>
+                    </div>
+                </section>
+
+                <!-- Right Details Panel -->
+                <div class="details-panel" id="detailsPanel">
+                    <div class="details-panel-header">
+                        <h3>Payment Method Details</h3>
+                        <button class="close-panel-btn" id="closePanelBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="details-panel-body">
+                        <div class="method-info">
+                            <div class="method-icon-large card"><i class="fas fa-credit-card"></i></div>
+                            <div class="method-info-text">
+                                <div class="method-title-row">
+                                    <span class="method-title">Card (Visa / MasterCard)</span>
+                                    <span class="status-badge active">Active</span>
+                                </div>
+                                <span class="method-subtitle">Card Payment</span>
+                            </div>
+                        </div>
+
+                        <div class="details-tabs">
+                            <button class="tab-btn active">Overview</button>
+                            <button class="tab-btn">Fees & Charges</button>
+                            <button class="tab-btn">Settings</button>
+                        </div>
+
+                        <div class="details-content">
+                            <div class="detail-row">
+                                <span class="detail-label">Type</span>
+                                <span class="detail-value">Card</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status</span>
+                                <span class="detail-value">Active</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Terminal ID</span>
+                                <span class="detail-value">TID-1001</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Merchant ID</span>
+                                <span class="detail-value">123456789</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Provider</span>
+                                <span class="detail-value">Global Payments</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Settlement Period</span>
+                                <span class="detail-value">T+1 (Next Day)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Currency</span>
+                                <span class="detail-value">NPR</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Minimum Amount</span>
+                                <span class="detail-value">NPR 1.00</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Maximum Amount</span>
+                                <span class="detail-value">NPR 200,000.00</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Created On</span>
+                                <span class="detail-value">Jan 10, 2025, 10:30 AM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Last Updated</span>
+                                <span class="detail-value">May 20, 2026, 02:15 PM</span>
+                            </div>
+                        </div>
+
+                        <div class="about-method">
+                            <h4>About this method</h4>
+                            <p>Accepts Visa, MasterCard and other major credit/debit cards.</p>
+                        </div>
+
+                        <div class="details-actions">
+                            <button class="action-btn-outline edit">
+                                <i class="fas fa-pen"></i>
+                                <span>Edit Method</span>
+                            </button>
+                            <button class="action-btn-outline danger">
+                                <i class="fas fa-trash"></i>
+                                <span>Disable Method</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restaurant POS Pages -->
+            <div class="page-section" id="page-dashboard">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-subtitle">Overview of your restaurant operations</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-th-large"></i>
+                    <h3>Dashboard</h3>
+                    <p>View restaurant analytics and performance metrics</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-orders">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Orders</h1>
+                        <p class="page-subtitle">Manage current and past orders</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <h3>Orders</h3>
+                    <p>Track and manage all restaurant orders</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-tables">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Tables</h1>
+                        <p class="page-subtitle">Table management and layout</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-chair"></i>
+                    <h3>Tables</h3>
+                    <p>Manage restaurant table layout and availability</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-menuitems">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Menu Items</h1>
+                        <p class="page-subtitle">Manage your menu offerings</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-hamburger"></i>
+                    <h3>Menu Items</h3>
+                    <p>Add, edit, and organize your menu items</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-categories">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Categories</h1>
+                        <p class="page-subtitle">Menu category organization</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-layer-group"></i>
+                    <h3>Categories</h3>
+                    <p>Organize menu items into categories</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-kitchendisplay">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Kitchen Display</h1>
+                        <p class="page-subtitle">Kitchen order management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-desktop"></i>
+                    <h3>Kitchen Display</h3>
+                    <p>View and manage kitchen orders in real-time</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-receipts">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Receipts</h1>
+                        <p class="page-subtitle">Receipt generation and management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-file-invoice"></i>
+                    <h3>Receipts</h3>
+                    <p>Generate and manage customer receipts</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-payments">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Payments</h1>
+                        <p class="page-subtitle">Payment processing and history</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-dollar-sign"></i>
+                    <h3>Payments</h3>
+                    <p>View payment history and process transactions</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-reports">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Reports</h1>
+                        <p class="page-subtitle">Analytics and business insights</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Reports</h3>
+                    <p>View sales reports and restaurant analytics</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-customers">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Customers</h1>
+                        <p class="page-subtitle">Customer management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Customers</h3>
+                    <p>Manage customer profiles and order history</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-staff">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Staff</h1>
+                        <p class="page-subtitle">Employee management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-user-tie"></i>
+                    <h3>Staff</h3>
+                    <p>Manage staff profiles and schedules</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-reservations">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Reservations</h1>
+                        <p class="page-subtitle">Table reservations</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-calendar-check"></i>
+                    <h3>Reservations</h3>
+                    <p>Manage table reservations and bookings</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-suppliers">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Suppliers</h1>
+                        <p class="page-subtitle">Supplier management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-truck"></i>
+                    <h3>Suppliers</h3>
+                    <p>Manage supplier relationships and orders</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-restaurantsettings">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Restaurant Settings</h1>
+                        <p class="page-subtitle">Restaurant configuration</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-cog"></i>
+                    <h3>Restaurant Settings</h3>
+                    <p>Configure restaurant details and preferences</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-taxes">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Taxes & Policies</h1>
+                        <p class="page-subtitle">Tax configuration</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <h3>Taxes & Policies</h3>
+                    <p>Configure tax rates and restaurant policies</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-printers">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Printers</h1>
+                        <p class="page-subtitle">Printer configuration</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-print"></i>
+                    <h3>Printers</h3>
+                    <p>Configure and manage receipt printers</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-notifications">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Notifications</h1>
+                        <p class="page-subtitle">System alerts and messages</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-bell"></i>
+                    <h3>Notifications</h3>
+                    <p>View system alerts and manage notification preferences</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-activity">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Activity Logs</h1>
+                        <p class="page-subtitle">Audit trail and history</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <h3>Activity Logs</h3>
+                    <p>Track system activity and user actions</p>
+                </section>
+            </div>
+
+            <div class="page-section" id="page-tickets">
+                <header class="content-header">
+                    <div class="header-left">
+                        <h1 class="page-title">Support Tickets</h1>
+                        <p class="page-subtitle">Customer support management</p>
+                    </div>
+                </header>
+                <section class="empty-state">
+                    <i class="fas fa-headset"></i>
+                    <h3>Support Tickets</h3>
+                    <p>Manage guest support requests and inquiries</p>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="stayeasy-dashboard.js"></script>
+</body>
+</html>
