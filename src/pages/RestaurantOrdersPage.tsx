@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { ChevronRight } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import OrdersTabs from '../components/restaurant/orders/OrdersTabs'

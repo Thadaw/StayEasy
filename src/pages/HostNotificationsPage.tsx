@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Bell, ChevronDown } from 'lucide-react'
+import { Search, Bell } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 

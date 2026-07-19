@@ -7,11 +7,39 @@ interface DateRangePickerDropdownProps {
   onDateChange?: (start: Date, end: Date) => void
 }
 
-const presets = [
-  { label: 'This Month', getRange: () => { const now = new Date(); return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0)] } },
-  { label: 'Last Month', getRange: () => { const now = new Date(); return [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 0)] } },
-  { label: 'Last 7 Days', getRange: () => { const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 7); return [start, end] } },
-  { label: 'Last 30 Days', getRange: () => { const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 30); return [start, end] } },
+const presets: { label: string; getRange: () => [Date, Date] }[] = [
+  {
+    label: 'This Month',
+    getRange: () => {
+      const now = new Date()
+      return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0)] as [Date, Date]
+    },
+  },
+  {
+    label: 'Last Month',
+    getRange: () => {
+      const now = new Date()
+      return [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 0)] as [Date, Date]
+    },
+  },
+  {
+    label: 'Last 7 Days',
+    getRange: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setDate(start.getDate() - 7)
+      return [start, end] as [Date, Date]
+    },
+  },
+  {
+    label: 'Last 30 Days',
+    getRange: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setDate(start.getDate() - 30)
+      return [start, end] as [Date, Date]
+    },
+  },
 ]
 
 function formatDateRange(start: Date | null, end: Date | null): string {

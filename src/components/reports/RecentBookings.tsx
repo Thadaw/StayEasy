@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { RecentBooking } from '../../types/reports'
 
 interface RecentBookingsProps {
@@ -13,6 +14,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 }
 
 export default function RecentBookings({ bookings }: RecentBookingsProps) {
+  const navigate = useNavigate()
   return (
     <div
       style={{
@@ -88,6 +90,7 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
 
       <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6' }}>
         <button
+          onClick={() => navigate('/host/bookings')}
           style={{
             display: 'flex',
             alignItems: 'center',

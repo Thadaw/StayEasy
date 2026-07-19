@@ -1,8 +1,13 @@
-import { Eye, Pencil, MoreVertical } from 'lucide-react'
+import { useState } from 'react'
+import { Eye, Pencil, MoreVertical, RefreshCw, Trash2 } from 'lucide-react'
 import type { StaffMember } from '../../types/staff'
 
 interface StaffTableProps {
   staff: StaffMember[]
+  onViewStaff: (member: StaffMember) => void
+  onEditStaff: (member: StaffMember) => void
+  onDeleteStaff: (member: StaffMember) => void
+  onChangeStatus: (member: StaffMember, newStatus: StaffMember['status']) => void
 }
 
 const roleBadgeColors: Record<string, { bg: string; text: string }> = {
@@ -31,8 +36,11 @@ const avatarColors = [
   '#DC2626', '#7C3AED', '#0891B2', '#4F46E5',
 ]
 
-export default function StaffTable({ staff }: StaffTableProps) {
+export default function StaffTable({ staff, onViewStaff, onEditStaff, onDeleteStaff, onChangeStatus }: StaffTableProps) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: StaffMember } | null>(null)
+
   return (
+    <>
     <div
       style={{
         background: '#fff',
@@ -72,7 +80,10 @@ export default function StaffTable({ staff }: StaffTableProps) {
             return (
               <tr
                 key={member.id}
-                style={{ borderBottom: '1px solid #F3F4F6' }}
+                style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer' }}
+                onClick={() => onViewStaff(member)}
+                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -142,51 +153,31 @@ export default function StaffTable({ staff }: StaffTableProps) {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                     <button
                       title="View"
+                      onClick={(e) => { e.stopPropagation(); onViewStaff(member) }}
                       style={{
-                        width: 32,
-                        height: 32,
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6B7280',
+                        width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280',
                       }}
                     >
                       <Eye size={16} />
                     </button>
                     <button
                       title="Edit"
+                      onClick={(e) => { e.stopPropagation(); onEditStaff(member) }}
                       style={{
-                        width: 32,
-                        height: 32,
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6B7280',
+                        width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280',
                       }}
                     >
                       <Pencil size={16} />
                     </button>
                     <button
                       title="More options"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                        setContextMenu(contextMenu?.member.id === member.id ? null : { x: rect.left - 120, y: rect.bottom + 4, member })
+                      }}
                       style={{
-                        width: 32,
-                        height: 32,
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6B7280',
+                        width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280',
                       }}
                     >
                       <MoreVertical size={16} />
@@ -196,8 +187,50 @@ export default function StaffTable({ staff }: StaffTableProps) {
               </tr>
             )
           })}
+          {staff.length === 0 && (
+            <tr>
+              <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+                No staff members found matching your filters.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
+
+    {contextMenu && (
+      <>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setContextMenu(null)} />
+        <div style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 1000, minWidth: 180, padding: '4px 0' }}>
+          {[
+            { icon: Eye, label: 'View Details', action: () => { onViewStaff(contextMenu.member) } },
+            { icon: Pencil, label: 'Edit Staff', action: () => { onEditStaff(contextMenu.member) } },
+            { icon: RefreshCw, label: 'Change Status', action: () => {
+              const order: StaffMember['status'][] = ['Active', 'On Leave', 'Inactive']
+              const idx = order.indexOf(contextMenu.member.status)
+              const next = order[(idx + 1) % order.length]
+              onChangeStatus(contextMenu.member, next)
+            }},
+            { divider: true },
+            { icon: Trash2, label: 'Delete', action: () => { onDeleteStaff(contextMenu.member) }, danger: true },
+          ].map((item, i) =>
+            'divider' in item ? (
+              <div key={i} style={{ height: 1, background: '#E5E7EB', margin: '4px 0' }} />
+            ) : (
+              <button key={i} onClick={() => { item.action(); setContextMenu(null) }} style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: 'danger' in item && item.danger ? '#DC2626' : '#374151', textAlign: 'left',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <item.icon size={16} />
+                {item.label}
+              </button>
+            )
+          )}
+        </div>
+      </>
+    )}
+    </>
   )
 }

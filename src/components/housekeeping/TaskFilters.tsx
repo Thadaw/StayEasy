@@ -1,15 +1,15 @@
 import { Search, ChevronDown, Plus } from 'lucide-react'
 
-interface StaffFiltersProps {
+interface TaskFiltersProps {
   search: string
   onSearchChange: (value: string) => void
-  department: string
-  onDepartmentChange: (value: string) => void
-  role: string
-  onRoleChange: (value: string) => void
   status: string
   onStatusChange: (value: string) => void
-  onAddStaff: () => void
+  priority: string
+  onPriorityChange: (value: string) => void
+  room: string
+  onRoomChange: (value: string) => void
+  onCreateTask: () => void
 }
 
 const selectStyle: React.CSSProperties = {
@@ -26,7 +26,7 @@ const selectStyle: React.CSSProperties = {
   cursor: 'pointer',
   outline: 'none',
   backgroundImage: 'none',
-  minWidth: 160,
+  minWidth: 140,
 }
 
 const dropdownWrapperStyle: React.CSSProperties = {
@@ -42,17 +42,17 @@ const dropdownIconStyle: React.CSSProperties = {
   color: '#9CA3AF',
 }
 
-export default function StaffFilters({
+export default function TaskFilters({
   search,
   onSearchChange,
-  department,
-  onDepartmentChange,
-  role,
-  onRoleChange,
   status,
   onStatusChange,
-  onAddStaff,
-}: StaffFiltersProps) {
+  priority,
+  onPriorityChange,
+  room,
+  onRoomChange,
+  onCreateTask,
+}: TaskFiltersProps) {
   return (
     <div
       style={{
@@ -66,8 +66,8 @@ export default function StaffFilters({
       <div
         style={{
           position: 'relative',
-          flex: '1 1 280px',
-          maxWidth: 380,
+          flex: '1 1 260px',
+          maxWidth: 320,
         }}
       >
         <Search
@@ -84,7 +84,7 @@ export default function StaffFilters({
           type="text"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="Search by name, email or phone..."
+          placeholder="Search tasks..."
           style={{
             width: '100%',
             padding: '10px 14px 10px 42px',
@@ -100,56 +100,53 @@ export default function StaffFilters({
 
       <div style={dropdownWrapperStyle}>
         <select
-          value={department}
-          onChange={e => onDepartmentChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="">All Departments</option>
-          <option value="Front Office">Front Office</option>
-          <option value="Housekeeping">Housekeeping</option>
-          <option value="Kitchen">Kitchen</option>
-          <option value="Restaurant">Restaurant</option>
-          <option value="Accounts">Accounts</option>
-          <option value="Maintenance">Maintenance</option>
-        </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
-      </div>
-
-      <div style={dropdownWrapperStyle}>
-        <select
-          value={role}
-          onChange={e => onRoleChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="">All Roles</option>
-          <option value="Manager">Manager</option>
-          <option value="Receptionist">Receptionist</option>
-          <option value="Housekeeping Staff">Housekeeping Staff</option>
-          <option value="Housekeeping Supervisor">Housekeeping Supervisor</option>
-          <option value="Chef">Chef</option>
-          <option value="Waiter">Waiter</option>
-          <option value="Cashier">Cashier</option>
-          <option value="Maintenance Staff">Maintenance Staff</option>
-        </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
-      </div>
-
-      <div style={dropdownWrapperStyle}>
-        <select
           value={status}
           onChange={e => onStatusChange(e.target.value)}
           style={selectStyle}
         >
-          <option value="">All Status</option>
-          <option value="Active">Active</option>
-          <option value="On Leave">On Leave</option>
-          <option value="Inactive">Inactive</option>
+          <option value="">Status</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+        <ChevronDown size={16} style={dropdownIconStyle} />
+      </div>
+
+      <div style={dropdownWrapperStyle}>
+        <select
+          value={priority}
+          onChange={e => onPriorityChange(e.target.value)}
+          style={selectStyle}
+        >
+          <option value="">Priority</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        <ChevronDown size={16} style={dropdownIconStyle} />
+      </div>
+
+      <div style={dropdownWrapperStyle}>
+        <select
+          value={room}
+          onChange={e => onRoomChange(e.target.value)}
+          style={selectStyle}
+        >
+          <option value="">Room</option>
+          <option value="Room 101">Room 101</option>
+          <option value="Room 102">Room 102</option>
+          <option value="Room 201">Room 201</option>
+          <option value="Room 205">Room 205</option>
+          <option value="Room 305">Room 305</option>
+          <option value="Room 108">Room 108</option>
+          <option value="Room 402">Room 402</option>
+          <option value="Room 401">Room 401</option>
         </select>
         <ChevronDown size={16} style={dropdownIconStyle} />
       </div>
 
       <button
-        onClick={onAddStaff}
+        onClick={onCreateTask}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -166,7 +163,7 @@ export default function StaffFilters({
         }}
       >
         <Plus size={18} />
-        Add Staff
+        Create Task
       </button>
     </div>
   )

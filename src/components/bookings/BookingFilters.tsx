@@ -7,12 +7,15 @@ interface BookingFiltersProps {
   onStatusChange: (s: string) => void
   roomType: string
   onRoomTypeChange: (t: string) => void
+  dateFilter: string
+  onDateFilterChange: (d: string) => void
+  onNewBooking: () => void
 }
 
 const statuses = ['All', 'Confirmed', 'Pending', 'Cancelled', 'Checked-in', 'Checked-out']
 const roomTypes = ['All Rooms', 'Standard Room', 'Deluxe Room', 'Suite Room', 'Presidential Suite']
 
-export default function BookingFilters({ searchQuery, onSearchChange, activeStatus, onStatusChange, roomType, onRoomTypeChange }: BookingFiltersProps) {
+export default function BookingFilters({ searchQuery, onSearchChange, activeStatus, onStatusChange, roomType, onRoomTypeChange, dateFilter, onDateFilterChange, onNewBooking }: BookingFiltersProps) {
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: 20, marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -62,6 +65,8 @@ export default function BookingFilters({ searchQuery, onSearchChange, activeStat
           <div style={{ position: 'relative' }}>
             <input
               type="date"
+              value={dateFilter}
+              onChange={(e) => onDateFilterChange(e.target.value)}
               style={{
                 padding: '10px 14px',
                 borderRadius: 8,
@@ -76,7 +81,7 @@ export default function BookingFilters({ searchQuery, onSearchChange, activeStat
           </div>
         </div>
 
-        <button style={{
+        <button onClick={onNewBooking} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '10px 20px', borderRadius: 8, border: 'none',
           background: 'var(--primary)', color: '#fff',

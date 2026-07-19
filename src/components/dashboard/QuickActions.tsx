@@ -3,8 +3,8 @@ import { CalendarPlus, UserPlus, BedDouble, Tag, FileText } from 'lucide-react'
 
 const actions = [
   { icon: CalendarPlus, label: 'New Booking', desc: 'Create new reservation', path: '/host/bookings/new', color: 'var(--accent)' },
-  { icon: UserPlus, label: 'Walk-in Guest', desc: 'Add walk-in guest', path: '/host/guests/new', color: '#ede9fe' },
-  { icon: BedDouble, label: 'Add Room', desc: 'Create new room', path: '/host/rooms/new', color: '#dcfce7' },
+  { icon: UserPlus, label: 'Walk-in Guest', desc: 'Add walk-in guest', path: '/host/guests', color: '#ede9fe' },
+  { icon: BedDouble, label: 'Add Room', desc: 'Create new room', path: '/host/rooms', color: '#dcfce7' },
   { icon: Tag, label: 'Create Discount', desc: 'Add new offer', path: '/host/pricing/new', color: '#fef3c7' },
   { icon: FileText, label: 'Generate Report', desc: 'Download report', path: '/host/reports', color: 'var(--accent)' },
 ]

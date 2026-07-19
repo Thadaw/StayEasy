@@ -19,7 +19,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   Inactive: { bg: '#fee2e2', text: '#dc2626' },
 }
 
-export default function PropertyCard({ id, name, location, image, type, units, status, nextInspection, teamCount = 2 }: PropertyCardProps) {
+export default function PropertyCard({ name, location, image, type, units, status, nextInspection, teamCount = 2 }: PropertyCardProps) {
   const navigate = useNavigate()
   return (
     <div style={{

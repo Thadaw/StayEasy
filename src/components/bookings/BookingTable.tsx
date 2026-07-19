@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 
-interface Booking {
+export interface Booking {
   id: string
   guest: string
   email: string
@@ -16,7 +16,7 @@ interface Booking {
   paymentStatus: string
 }
 
-const allBookings: Booking[] = [
+export const allBookings: Booking[] = [
   { id: 'BK-250601', guest: 'John Smith', email: 'john@email.com', roomType: 'Deluxe Room', roomNumber: '301', checkIn: 'Jun 1, 2026', checkOut: 'Jun 4, 2026', nights: 3, status: 'Confirmed', amount: 'NPR 18,000', paymentStatus: 'Paid' },
   { id: 'BK-250602', guest: 'Emily Johnson', email: 'emily@email.com', roomType: 'Suite Room', roomNumber: '502', checkIn: 'Jun 1, 2026', checkOut: 'Jun 3, 2026', nights: 2, status: 'Checked-in', amount: 'NPR 24,000', paymentStatus: 'Paid' },
   { id: 'BK-250603', guest: 'Michael Brown', email: 'michael@email.com', roomType: 'Standard Room', roomNumber: '105', checkIn: 'Jun 1, 2026', checkOut: 'Jun 2, 2026', nights: 1, status: 'Pending', amount: 'NPR 9,000', paymentStatus: 'Pending' },
@@ -34,7 +34,7 @@ const allBookings: Booking[] = [
   { id: 'BK-250615', guest: 'Chris Nakamura', email: 'chris@email.com', roomType: 'Deluxe Room', roomNumber: '305', checkIn: 'Jun 7, 2026', checkOut: 'Jun 10, 2026', nights: 3, status: 'Cancelled', amount: 'NPR 18,000', paymentStatus: 'Refunded' },
 ]
 
-const statusColors: Record<string, { bg: string; text: string }> = {
+export const statusColors: Record<string, { bg: string; text: string }> = {
   Confirmed: { bg: '#dcfce7', text: '#16a34a' },
   Pending: { bg: '#fef3c7', text: '#d97706' },
   Cancelled: { bg: '#fee2e2', text: '#dc2626' },
@@ -52,11 +52,12 @@ interface BookingTableProps {
   searchQuery: string
   activeStatus: string
   roomType: string
+  dateFilter: string
 }
 
 type SortKey = 'id' | 'guest' | 'roomType' | 'checkIn' | 'checkOut' | 'amount' | 'status'
 
-export default function BookingTable({ searchQuery, activeStatus, roomType }: BookingTableProps) {
+export default function BookingTable({ searchQuery, activeStatus, roomType, dateFilter }: BookingTableProps) {
   const navigate = useNavigate()
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [sortAsc, setSortAsc] = useState(true)
@@ -67,7 +68,8 @@ export default function BookingTable({ searchQuery, activeStatus, roomType }: Bo
     const matchesSearch = searchQuery === '' || b.guest.toLowerCase().includes(searchQuery.toLowerCase()) || b.id.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = activeStatus === 'All' || b.status === activeStatus
     const matchesRoom = roomType === 'All Rooms' || b.roomType === roomType
-    return matchesSearch && matchesStatus && matchesRoom
+    const matchesDate = dateFilter === '' || b.checkIn === new Date(dateFilter).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return matchesSearch && matchesStatus && matchesRoom && matchesDate
   })
 
   const sorted = [...filtered].sort((a, b) => {
@@ -128,7 +130,7 @@ export default function BookingTable({ searchQuery, activeStatus, roomType }: Bo
           </thead>
           <tbody>
             {paged.map((b) => (
-              <tr key={b.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <tr key={b.id} onClick={() => navigate(`/host/bookings/${b.id}`)} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <td style={{ padding: '12px 14px', color: 'var(--primary)', fontWeight: 600 }}>{b.id}</td>
                 <td style={{ padding: '12px 14px' }}>
                   <div style={{ fontWeight: 500 }}>{b.guest}</div>

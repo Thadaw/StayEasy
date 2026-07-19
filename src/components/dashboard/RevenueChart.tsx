@@ -30,7 +30,7 @@ export default function RevenueChart() {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="#ddd" />
           <YAxis tick={{ fontSize: 11 }} stroke="#ddd" tickFormatter={(v) => `${v/1000}K`} />
-          <Tooltip formatter={(v: number) => `NPR ${v.toLocaleString()}`} />
+          <Tooltip formatter={(value: string | number | readonly (string | number)[] | undefined) => `NPR ${Number(value ?? 0).toLocaleString()}`} />
           <Line type="monotone" dataKey="thisMonth" stroke="var(--primary)" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="lastMonth" stroke="#ddd" strokeWidth={2} strokeDasharray="5 5" dot={false} />
         </LineChart>

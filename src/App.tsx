@@ -8,6 +8,7 @@ import HostPortalPageNew from './pages/HostPortalPageNew'
 import HostProfilePage from './pages/HostProfilePage'
 import DashboardPage from './pages/DashboardPage'
 import BookingsPage from './pages/BookingsPage'
+import BookingDetailPage from './pages/BookingDetailPage'
 import RoomsPage from './pages/RoomsPage'
 import RestaurantPosPage from './pages/RestaurantPosPage'
 import RestaurantOrdersPage from './pages/RestaurantOrdersPage'
@@ -25,6 +26,7 @@ import TaxesPage from './pages/TaxesPage'
 import PaymentMethodsPage from './pages/PaymentMethodsPage'
 import IntegrationsPage from './pages/IntegrationsPage'
 import HostNotificationsPage from './pages/HostNotificationsPage'
+import ActivityLogsPage from './pages/ActivityLogsPage'
 import ComingSoon from './pages/ComingSoon'
 import NotificationsPage from './pages/NotificationsPage'
 function App() {
@@ -44,18 +46,23 @@ function App() {
         <Route path="/host/my-properties" element={<DashboardPage />} />
         <Route path="/host/guests" element={<GuestsPage />} />
         <Route path="/host/bookings" element={<BookingsPage />} />
+        <Route path="/host/bookings/:id" element={<BookingDetailPage />} />
         <Route path="/host/rooms" element={<RoomsPage />} />
         <Route path="/host/restaurant" element={<RestaurantPosPage />} />
         <Route path="/host/restaurant/orders" element={<RestaurantOrdersPage />} />
         <Route path="/host/staff" element={<StaffPage />} />
         <Route path="/host/housekeeping" element={<HousekeepingPage />} />
         <Route path="/host/pricing" element={<PricingPage />} />
+        <Route path="/host/pricing/seasonal" element={<PricingPage />} />
+        <Route path="/host/pricing/discounts" element={<PricingPage />} />
+        <Route path="/host/pricing/packages" element={<PricingPage />} />
         <Route path="/host/reports" element={<ReportsPage />} />
         <Route path="/host/settings" element={<SettingsPage />} />
         <Route path="/host/taxes" element={<TaxesPage />} />
         <Route path="/host/payments" element={<PaymentMethodsPage />} />
         <Route path="/host/integrations" element={<IntegrationsPage />} />
         <Route path="/host/notifications" element={<HostNotificationsPage />} />
+        <Route path="/host/activity" element={<ActivityLogsPage />} />
         <Route path="/host/my-properties/dashboard" element={<PropertyDashboardPage />} />
         <Route path="/country/:code" element={<CountryPage />} />
         <Route path="/hotel/:id" element={<HotelDetailPage />} />

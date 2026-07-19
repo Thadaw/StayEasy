@@ -1,38 +1,132 @@
-export interface RoomPricing {
+// ===== Overview Page Types =====
+
+export interface PricingOverviewStat {
   id: number
-  roomType: string
-  bedDescription: string
-  occupancy: string
-  baseRate: number
-  weekendRate: number
-  extraPersonRate: number
-  status: 'Active' | 'Inactive'
-  image?: string
+  label: string
+  value: string | number
+  subtitle: string
+  icon: string
+  iconBg: string
+  iconColor: string
+  linkText: string
 }
 
-export interface SeasonalPricing {
+export interface PricingFeatureCard {
+  id: number
+  title: string
+  description: string
+  icon: string
+  iconBg: string
+  iconColor: string
+  buttonColor: string
+  viewKey: string
+}
+
+export interface PricingActivity {
+  id: number
+  date: string
+  time: string
+  module: string
+  moduleColor: { bg: string; text: string }
+  action: string
+  user: string
+  status: string
+}
+
+export interface UpcomingPromotion {
+  id: number
+  name: string
+  dateRange: string
+  description: string
+  status: 'Upcoming' | 'Active' | 'Expired'
+  iconBg: string
+  iconColor: string
+  icon: string
+}
+
+// ===== Seasonal Pricing Types =====
+
+export interface SeasonTimeline {
+  id: number
+  name: string
+  color: string
+  startDate: string
+  endDate: string
+  label: string
+}
+
+export interface SeasonalPricingEntry {
   id: number
   seasonName: string
-  emoji: string
+  seasonColor: string
+  roomType: string
   dateRange: string
-  appliesTo: string
-  rateAdjustment: string
-  status: 'Active' | 'Scheduled' | 'Expired'
+  basePrice: number
+  seasonalPrice: number
+  change: number
+  status: 'Active' | 'Upcoming' | 'Expired'
 }
 
-export interface Discount {
+// ===== Discount Types =====
+
+export interface DiscountOffer {
   id: number
-  discountName: string
+  name: string
+  description: string
+  code: string
   type: string
-  value: string
-  appliesTo: string
-  validUntil: string
-  status: 'Active' | 'Scheduled' | 'Expired'
+  applicableTo: string
+  discount: string
+  validity: string
+  status: 'Active' | 'Upcoming' | 'Expired'
+  usage: number
+  iconBg: string
+  iconColor: string
+  icon: string
 }
 
-export interface PricingStats {
-  activeDiscounts: number
-  seasonalPrices: number
-  bestRate: number
-  revenueImpact: number
+export interface OfferDetail {
+  id: number
+  name: string
+  status: 'Active' | 'Upcoming' | 'Expired'
+  code: string
+  type: string
+  discount: string
+  applicableTo: string
+  minimumStay: string
+  maximumDiscount: string
+  validityPeriod: string
+  usageLimit: string
+  used: string
+  description: string
+}
+
+// ===== Package Types =====
+
+export interface Package {
+  id: number
+  name: string
+  description: string
+  type: string
+  typeColor: string
+  applicableTo: string
+  price: number
+  validity: string
+  status: 'Active' | 'Upcoming' | 'Expired'
+  bookings: number
+  image: string
+}
+
+export interface PackageDetail {
+  id: number
+  name: string
+  status: 'Active' | 'Upcoming' | 'Expired'
+  type: string
+  applicableTo: string
+  price: number
+  validity: string
+  minimumStay: string
+  inclusions: string[]
+  description: string
+  image: string
 }

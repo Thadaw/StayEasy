@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, ArrowUpDown, Wifi, Monitor, Snowflake, MoreVertical, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowUpDown, Wifi, Monitor, Snowflake, MoreVertical, Pencil, Trash2, RefreshCw, Eye } from 'lucide-react'
 
-interface Room {
+export interface Room {
   number: string
   type: string
   bedInfo: string
@@ -13,7 +13,7 @@ interface Room {
   image: string
 }
 
-const allRooms: Room[] = [
+export const allRooms: Room[] = [
   { number: '101', type: 'Deluxe Room', bedInfo: '1 King Bed', floor: '1st Floor', status: 'Occupied', capacity: 2, price: 'NPR 8,000', features: ['wifi', 'tv', 'ac'], image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=200&h=140&fit=crop' },
   { number: '102', type: 'Suite Room', bedInfo: '1 King Bed', floor: '1st Floor', status: 'Available', capacity: 2, price: 'NPR 12,000', features: ['wifi', 'tv', 'ac'], image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=200&h=140&fit=crop' },
   { number: '103', type: 'Standard Room', bedInfo: '2 Single Beds', floor: '1st Floor', status: 'Cleaning', capacity: 2, price: 'NPR 6,000', features: ['wifi', 'tv', 'ac'], image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=200&h=140&fit=crop' },
@@ -31,7 +31,7 @@ const allRooms: Room[] = [
   { number: '402', type: 'Deluxe Room', bedInfo: '1 King Bed', floor: '3rd Floor', status: 'Available', capacity: 2, price: 'NPR 8,000', features: ['wifi', 'tv', 'ac'], image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=200&h=140&fit=crop' },
 ]
 
-const statusColors: Record<string, { bg: string; text: string }> = {
+export const statusColors: Record<string, { bg: string; text: string }> = {
   Occupied: { bg: '#dcfce7', text: '#16a34a' },
   Available: { bg: '#dcfce7', text: '#16a34a' },
   Cleaning: { bg: '#fff7ed', text: '#ea580c' },
@@ -46,15 +46,19 @@ interface RoomTableProps {
   roomType: string
   status: string
   floor: string
+  onEditRoom: (room: Room) => void
+  onDeleteRoom: (room: Room) => void
+  onChangeStatus: (room: Room, newStatus: string) => void
 }
 
 type SortKey = 'number' | 'type' | 'floor' | 'status' | 'capacity' | 'price'
 
-export default function RoomTable({ searchQuery, roomType, status, floor }: RoomTableProps) {
+export default function RoomTable({ searchQuery, roomType, status, floor, onEditRoom, onDeleteRoom, onChangeStatus }: RoomTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('number')
   const [sortAsc, setSortAsc] = useState(true)
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; room: Room } | null>(null)
 
   const filtered = allRooms.filter((r) => {
     const matchesSearch = !searchQuery || r.number.includes(searchQuery) || r.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -90,6 +94,7 @@ export default function RoomTable({ searchQuery, roomType, status, floor }: Room
   ]
 
   return (
+    <>
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -159,10 +164,14 @@ export default function RoomTable({ searchQuery, roomType, status, floor }: Room
                 </td>
                 <td style={{ padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <button style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={(e) => { e.stopPropagation(); onEditRoom(r) }} style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Pencil size={14} color="var(--muted-foreground)" />
                     </button>
-                    <button style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={(e) => {
+                      e.stopPropagation()
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setContextMenu({ x: rect.right, y: rect.bottom, room: r })
+                    }} style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <MoreVertical size={14} color="var(--muted-foreground)" />
                     </button>
                   </div>
@@ -250,5 +259,48 @@ export default function RoomTable({ searchQuery, roomType, status, floor }: Room
         </div>
       </div>
     </div>
+
+      {contextMenu && (
+        <>
+          <div onClick={() => setContextMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+          <div style={{
+            position: 'fixed', left: contextMenu.x, top: contextMenu.y, zIndex: 1000,
+            background: '#fff', borderRadius: 10, border: '1px solid var(--border)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', padding: 6, minWidth: 180,
+          }}>
+            {[
+              { icon: Eye, label: 'View Details', action: () => { onEditRoom(contextMenu.room); setContextMenu(null) } },
+              { icon: Pencil, label: 'Edit Room', action: () => { onEditRoom(contextMenu.room); setContextMenu(null) } },
+              { icon: RefreshCw, label: 'Change Status', action: () => {
+                const order = ['Available', 'Occupied', 'Cleaning', 'Maintenance', 'Out of Order']
+                const idx = order.indexOf(contextMenu.room.status)
+                const next = order[(idx + 1) % order.length]
+                onChangeStatus(contextMenu.room, next)
+                setContextMenu(null)
+              }},
+              { divider: true },
+              { icon: Trash2, label: 'Delete Room', danger: true, action: () => { onDeleteRoom(contextMenu.room); setContextMenu(null) } },
+            ].map((item, i) =>
+              item.divider ? (
+                <div key={i} style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+              ) : (
+                <button key={i} onClick={item.action} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px',
+                  borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13,
+                  color: (item as any).danger ? '#dc2626' : 'var(--foreground)',
+                  textAlign: 'left',
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                >
+                  <item.icon size={14} />
+                  {item.label}
+                </button>
+              )
+            )}
+          </div>
+        </>
+      )}
+    </>
   )
 }

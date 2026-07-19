@@ -3,6 +3,8 @@ import type { HousekeepingRoom } from '../../types/housekeeping'
 
 interface HousekeepingTableProps {
   rooms: HousekeepingRoom[]
+  onViewRoom?: (room: HousekeepingRoom) => void
+  onMoreActions?: (room: HousekeepingRoom, action: string) => void
 }
 
 const statusBadgeColors: Record<string, { bg: string; text: string }> = {
@@ -28,7 +30,7 @@ const roomThumbnails = [
   'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=80&h=60&fit=crop',
 ]
 
-export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
+export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: HousekeepingTableProps) {
   return (
     <div
       style={{
@@ -62,7 +64,7 @@ export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
         </thead>
         <tbody>
           {rooms.map((room, idx) => {
-            const statusColors = statusBadgeColors[room.status] || { bg: '#F3F4F6', text: '#374151' }
+            const colors = statusBadgeColors[room.status] || { bg: '#F3F4F6', text: '#374151' }
             const thumb = roomThumbnails[idx % roomThumbnails.length]
 
             return (
@@ -107,8 +109,8 @@ export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
                       borderRadius: 6,
                       fontSize: 12,
                       fontWeight: 600,
-                      background: statusColors.bg,
-                      color: statusColors.text,
+                      background: colors.bg,
+                      color: colors.text,
                       whiteSpace: 'nowrap',
                     }}
                   >
@@ -151,6 +153,7 @@ export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                     <button
                       title="View"
+                      onClick={() => onViewRoom?.(room)}
                       style={{
                         width: 32,
                         height: 32,
@@ -168,6 +171,7 @@ export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
                     </button>
                     <button
                       title="More options"
+                      onClick={() => onMoreActions?.(room, 'menu')}
                       style={{
                         width: 32,
                         height: 32,
@@ -190,6 +194,11 @@ export default function HousekeepingTable({ rooms }: HousekeepingTableProps) {
           })}
         </tbody>
       </table>
+      {rooms.length === 0 && (
+        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+          No rooms found matching your filters.
+        </div>
+      )}
     </div>
   )
 }

@@ -42,7 +42,7 @@ export default function SalesOverviewChart() {
             tickFormatter={(v) => `${v / 1000}K`}
           />
           <Tooltip
-            formatter={(value: number) => [`NPR ${value.toLocaleString()}`, 'Sales']}
+            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`NPR ${Number(value ?? 0).toLocaleString()}`, 'Sales']}
             contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}
           />
           <Area

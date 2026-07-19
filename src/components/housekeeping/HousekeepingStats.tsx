@@ -1,11 +1,13 @@
 import { BedDouble, Sparkles, Droplets, Loader, Ban } from 'lucide-react'
-import type { HousekeepingStats as HousekeepingStatsType } from '../../types/housekeeping'
+import type { RoomStats } from '../../types/housekeeping'
 
 interface HousekeepingStatsProps {
-  stats: HousekeepingStatsType
+  stats: RoomStats
+  activeFilter: string
+  onFilterChange: (status: string) => void
 }
 
-const statCards = (stats: HousekeepingStatsType) => [
+const statCards = (stats: RoomStats) => [
   {
     label: 'Total Rooms',
     value: stats.total,
@@ -13,6 +15,7 @@ const statCards = (stats: HousekeepingStatsType) => [
     icon: BedDouble,
     bg: '#DBEAFE',
     color: '#2563EB',
+    filterValue: '',
   },
   {
     label: 'Clean Rooms',
@@ -21,6 +24,7 @@ const statCards = (stats: HousekeepingStatsType) => [
     icon: Sparkles,
     bg: '#DCFCE7',
     color: '#16A34A',
+    filterValue: 'Clean',
   },
   {
     label: 'Dirty Rooms',
@@ -29,6 +33,7 @@ const statCards = (stats: HousekeepingStatsType) => [
     icon: Droplets,
     bg: '#FEF3C7',
     color: '#D97706',
+    filterValue: 'Dirty',
   },
   {
     label: 'In Progress',
@@ -37,6 +42,7 @@ const statCards = (stats: HousekeepingStatsType) => [
     icon: Loader,
     bg: '#F3E8FF',
     color: '#7C3AED',
+    filterValue: 'In Progress',
   },
   {
     label: 'Out of Service',
@@ -45,48 +51,58 @@ const statCards = (stats: HousekeepingStatsType) => [
     icon: Ban,
     bg: '#FEE2E2',
     color: '#DC2626',
+    filterValue: 'Out of Service',
   },
 ]
 
-export default function HousekeepingStats({ stats }: HousekeepingStatsProps) {
+export default function HousekeepingStats({ stats, activeFilter, onFilterChange }: HousekeepingStatsProps) {
   const cards = statCards(stats)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
-      {cards.map(card => (
-        <div
-          key={card.label}
-          style={{
-            background: '#fff',
-            borderRadius: 12,
-            padding: '20px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            border: '1px solid #E5E7EB',
-          }}
-        >
+      {cards.map(card => {
+        const isActive = activeFilter === card.filterValue
+        return (
           <div
+            key={card.label}
+            onClick={() => onFilterChange(card.filterValue)}
             style={{
-              width: 48,
-              height: 48,
+              background: '#fff',
               borderRadius: 12,
-              background: card.bg,
+              padding: '20px 16px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
+              gap: 14,
+              border: isActive ? '2px solid #7C3AED' : '1px solid #E5E7EB',
+              cursor: 'pointer',
+              transition: 'border 0.15s, box-shadow 0.15s',
+              boxShadow: isActive ? '0 0 0 1px #7C3AED' : 'none',
             }}
+            onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C4B5FD' }}
+            onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = 'none' } }}
           >
-            <card.icon size={22} color={card.color} />
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: card.bg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <card.icon size={22} color={card.color} />
+            </div>
+            <div>
+              <p style={{ fontSize: 13, color: '#6B7280', margin: 0, fontWeight: 500 }}>{card.label}</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#111827', margin: '2px 0 0', lineHeight: 1.1 }}>{card.value}</p>
+              <p style={{ fontSize: 12, color: '#9CA3AF', margin: '2px 0 0' }}>{card.subtitle}</p>
+            </div>
           </div>
-          <div>
-            <p style={{ fontSize: 13, color: '#6B7280', margin: 0, fontWeight: 500 }}>{card.label}</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#111827', margin: '2px 0 0', lineHeight: 1.1 }}>{card.value}</p>
-            <p style={{ fontSize: 12, color: '#9CA3AF', margin: '2px 0 0' }}>{card.subtitle}</p>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

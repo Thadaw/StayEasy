@@ -75,7 +75,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
               fontSize: 12,
             }}
-            formatter={(value: number) => [`NPR ${value.toLocaleString()}`, '']}
+            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`NPR ${Number(value ?? 0).toLocaleString()}`, '']}
           />
           <Line
             type="monotone"

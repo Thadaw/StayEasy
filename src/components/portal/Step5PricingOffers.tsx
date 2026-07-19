@@ -34,8 +34,8 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
     onOffersChange(offers.map(o => o.id === id ? { ...o, enabled: !o.enabled } : o))
   }
 
-  const updateOfferDates = (id: string, startDate: Date | null, endDate: Date | null) => {
-    onOffersChange(offers.map(o => o.id === id ? { ...o, startDate, endDate } : o))
+  const updateOfferDates = (id: string, startDate: Date | null | undefined, endDate: Date | null | undefined) => {
+    onOffersChange(offers.map(o => o.id === id ? { ...o, startDate: startDate ?? null, endDate: endDate ?? null } : o))
   }
 
   const saveOfferDates = () => {
@@ -140,7 +140,7 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
                       <label className="form-label small">FROM</label>
                       <DatePicker
                         selected={offer.startDate}
-                        onChange={(date: Date | null) => updateOfferDates(offer.id, date, offer.endDate)}
+                        onChange={(date: Date | null) => updateOfferDates(offer.id, date, offer.endDate ?? null)}
                         selectsStart
                         startDate={offer.startDate}
                         endDate={offer.endDate}
@@ -152,11 +152,11 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
                       <label className="form-label small">TO</label>
                       <DatePicker
                         selected={offer.endDate}
-                        onChange={(date: Date | null) => updateOfferDates(offer.id, offer.startDate, date)}
+                        onChange={(date: Date | null) => updateOfferDates(offer.id, offer.startDate ?? null, date)}
                         selectsEnd
                         startDate={offer.startDate}
                         endDate={offer.endDate}
-                        minDate={offer.startDate}
+                        minDate={offer.startDate ?? undefined}
                         placeholderText="Pick end date"
                         className="form-input date-input"
                       />
@@ -312,7 +312,7 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
                         selectsEnd
                         startDate={customOffer.startDate}
                         endDate={customOffer.endDate}
-                        minDate={customOffer.startDate}
+                        minDate={customOffer.startDate ?? undefined}
                         placeholderText="Pick end date"
                         className="form-input date-input"
                       />

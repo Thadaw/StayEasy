@@ -10,13 +10,14 @@ interface RoomFiltersProps {
   floor: string
   onFloorChange: (f: string) => void
   onClear: () => void
+  onAddRoom: () => void
 }
 
 const roomTypes = ['All Types', 'Standard Room', 'Deluxe Room', 'Suite Room', 'Family Room', 'Presidential Suite']
 const statuses = ['All Status', 'Available', 'Occupied', 'Cleaning', 'Maintenance', 'Out of Order']
 const floors = ['All Floors', '1st Floor', '2nd Floor', '3rd Floor']
 
-export default function RoomFilters({ searchQuery, onSearchChange, roomType, onRoomTypeChange, status, onStatusChange, floor, onFloorChange, onClear }: RoomFiltersProps) {
+export default function RoomFilters({ searchQuery, onSearchChange, roomType, onRoomTypeChange, status, onStatusChange, floor, onFloorChange, onClear, onAddRoom }: RoomFiltersProps) {
   const hasFilters = searchQuery || roomType !== 'All Types' || status !== 'All Status' || floor !== 'All Floors'
 
   return (
@@ -89,7 +90,7 @@ export default function RoomFilters({ searchQuery, onSearchChange, roomType, onR
 
         <div style={{ flex: 1 }} />
 
-        <button style={{
+        <button onClick={onAddRoom} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '10px 20px', borderRadius: 8, border: 'none',
           background: 'var(--primary)', color: '#fff',

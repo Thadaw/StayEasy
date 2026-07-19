@@ -1,4 +1,5 @@
-import { Search, ChevronDown, Filter, Plus, Calendar } from 'lucide-react'
+import { useState } from 'react'
+import { Search, ChevronDown, Filter, Plus, Calendar, X } from 'lucide-react'
 
 interface HousekeepingFiltersProps {
   search: string
@@ -12,6 +13,10 @@ interface HousekeepingFiltersProps {
   date: string
   onDateChange: (value: string) => void
   onAddTask: () => void
+  assignedStaff?: string
+  onAssignedStaffChange?: (value: string) => void
+  cleaningStatus?: string
+  onCleaningStatusChange?: (value: string) => void
 }
 
 const selectStyle: React.CSSProperties = {
@@ -56,14 +61,22 @@ export default function HousekeepingFilters({
   date,
   onDateChange,
   onAddTask,
+  assignedStaff,
+  onAssignedStaffChange,
+  cleaningStatus,
+  onCleaningStatusChange,
 }: HousekeepingFiltersProps) {
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
+  const staffOptions = ['Sunita Shrestha', 'Kiran Gurung', 'Anita Lama', 'Bikash Magar', 'Pooja Adhikari']
+  const cleaningStatusOptions = ['Scheduled', 'Completed', 'Missed', 'Rescheduled']
+
   return (
+    <div style={{ marginBottom: 20 }}>
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        marginBottom: 20,
         flexWrap: 'wrap',
       }}
     >
@@ -175,22 +188,23 @@ export default function HousekeepingFilters({
       </div>
 
       <button
+        onClick={() => setShowMoreFilters(!showMoreFilters)}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
           padding: '10px 16px',
-          border: '1px solid #E5E7EB',
+          border: showMoreFilters ? '1px solid #7C3AED' : '1px solid #E5E7EB',
           borderRadius: 8,
-          background: '#fff',
+          background: showMoreFilters ? '#F5F3FF' : '#fff',
           fontSize: 14,
           fontWeight: 500,
-          color: '#374151',
+          color: showMoreFilters ? '#7C3AED' : '#374151',
           cursor: 'pointer',
         }}
       >
-        <Filter size={16} />
-        More Filters
+        {showMoreFilters ? <X size={16} /> : <Filter size={16} />}
+        {showMoreFilters ? 'Less Filters' : 'More Filters'}
       </button>
 
       <button
@@ -213,6 +227,73 @@ export default function HousekeepingFilters({
         <Plus size={18} />
         Add Task
       </button>
+    </div>
+
+    {showMoreFilters && (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '16px',
+          background: '#F9FAFB',
+          borderRadius: 8,
+          border: '1px solid #E5E7EB',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>More Filters:</span>
+        
+        <div style={dropdownWrapperStyle}>
+          <select
+            value={assignedStaff || ''}
+            onChange={e => onAssignedStaffChange?.(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">All Staff</option>
+            {staffOptions.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} style={dropdownIconStyle} />
+        </div>
+
+        <div style={dropdownWrapperStyle}>
+          <select
+            value={cleaningStatus || ''}
+            onChange={e => onCleaningStatusChange?.(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">All Cleaning Status</option>
+            {cleaningStatusOptions.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} style={dropdownIconStyle} />
+        </div>
+
+        {(assignedStaff || cleaningStatus) && (
+          <button
+            onClick={() => {
+              onAssignedStaffChange?.('')
+              onCleaningStatusChange?.('')
+            }}
+            style={{
+              padding: '8px 14px',
+              border: '1px solid #E5E7EB',
+              borderRadius: 8,
+              background: '#fff',
+              fontSize: 13,
+              fontWeight: 500,
+              color: '#6B7280',
+              cursor: 'pointer',
+            }}
+          >
+            Clear All
+          </button>
+        )}
+      </div>
+    )}
     </div>
   )
 }
