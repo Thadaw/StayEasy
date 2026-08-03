@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import StaffStats from '../components/staff/StaffStats'
@@ -30,14 +31,15 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   Inactive: { bg: '#FEE2E2', text: '#991B1B' },
 }
 
-const avatarColors = ['#7C3AED', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2', '#4F46E5', '#7C3AED']
+const avatarColors = ['var(--primary)', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2', '#4F46E5', 'var(--primary)']
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
 }
 
 export default function StaffPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [search, setSearch] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
@@ -116,7 +118,7 @@ export default function StaffPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Staff" subtitle="Manage your property staff and their roles" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
@@ -188,7 +190,7 @@ export default function StaffPage() {
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-              <button onClick={() => { setViewingStaff(null); openEditModal(viewingStaff) }} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Edit Staff</button>
+              <button onClick={() => { setViewingStaff(null); openEditModal(viewingStaff) }} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Edit Staff</button>
             </div>
           </div>
         </div>
@@ -243,7 +245,7 @@ export default function StaffPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{editingStaff ? 'Save Changes' : 'Add Staff'}</button>
+              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{editingStaff ? 'Save Changes' : 'Add Staff'}</button>
             </div>
           </div>
         </div>

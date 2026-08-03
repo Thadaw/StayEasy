@@ -66,7 +66,7 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
           </div>
           <button style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
-            border: 'none', borderRadius: 8, background: '#7C3AED',
+            border: 'none', borderRadius: 8, background: 'var(--primary)',
             fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer',
           }}>
             + Create New Offer
@@ -77,7 +77,7 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Offers', value: 15, subtitle: 'All created offers', bg: '#F3E8FF', color: '#7C3AED' },
+          { label: 'Total Offers', value: 15, subtitle: 'All created offers', bg: '#F3E8FF', color: 'var(--primary)' },
           { label: 'Active Offers', value: 7, subtitle: 'Currently running', bg: '#D1FAE5', color: '#059669' },
           { label: 'Upcoming Offers', value: 3, subtitle: 'Starting soon', bg: '#FEF3C7', color: '#D97706' },
           { label: 'Total Usage', value: '1,248', subtitle: 'Times used', bg: '#FCE7F3', color: '#DB2777' },
@@ -154,9 +154,9 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
               style={{
                 padding: '12px 16px', border: 'none', background: 'transparent',
                 fontSize: 14, fontWeight: 500,
-                color: activeTab === tab ? '#7C3AED' : '#6B7280',
+                color: activeTab === tab ? 'var(--primary)' : '#6B7280',
                 cursor: 'pointer',
-                borderBottom: activeTab === tab ? '2px solid #7C3AED' : '2px solid transparent',
+                borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
                 marginBottom: -1,
               }}
             >
@@ -257,7 +257,7 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
               <ChevronLeft size={14} />
             </button>
             {[1, 2].map(page => (
-              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === currentPage ? '1px solid #7C3AED' : '1px solid #E5E7EB', borderRadius: 6, background: page === currentPage ? '#7C3AED' : '#fff', color: page === currentPage ? '#fff' : '#374151', fontWeight: page === currentPage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB', borderRadius: 6, background: page === currentPage ? 'var(--primary)' : '#fff', color: page === currentPage ? '#fff' : '#374151', fontWeight: page === currentPage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {page}
               </button>
             ))}

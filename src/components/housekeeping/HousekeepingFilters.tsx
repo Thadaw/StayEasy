@@ -194,12 +194,12 @@ export default function HousekeepingFilters({
           alignItems: 'center',
           gap: 6,
           padding: '10px 16px',
-          border: showMoreFilters ? '1px solid #7C3AED' : '1px solid #E5E7EB',
+          border: showMoreFilters ? '1px solid var(--primary)' : '1px solid #E5E7EB',
           borderRadius: 8,
           background: showMoreFilters ? '#F5F3FF' : '#fff',
           fontSize: 14,
           fontWeight: 500,
-          color: showMoreFilters ? '#7C3AED' : '#374151',
+          color: showMoreFilters ? 'var(--primary)' : '#374151',
           cursor: 'pointer',
         }}
       >
@@ -216,7 +216,7 @@ export default function HousekeepingFilters({
           padding: '10px 20px',
           border: 'none',
           borderRadius: 8,
-          background: '#7C3AED',
+          background: 'var(--primary)',
           fontSize: 14,
           fontWeight: 600,
           color: '#fff',

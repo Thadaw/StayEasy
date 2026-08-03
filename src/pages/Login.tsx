@@ -57,7 +57,7 @@ export default function Login() {
       params.append('grant_type', 'password')
       params.append('username', email)
       params.append('password', password)
-      const res = await api.post('/auth/users/login', params, {
+      const res = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       localStorage.setItem('token', res.data.access_token)

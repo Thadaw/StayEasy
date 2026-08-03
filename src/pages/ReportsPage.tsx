@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import ReportTabs from '../components/reports/ReportTabs'
@@ -26,7 +27,7 @@ const REVENUE_DATA: RevenueDataPoint[] = Array.from({ length: 30 }, (_, i) => ({
 }))
 
 const DEPARTMENT_DATA: DepartmentRevenue[] = [
-  { name: 'Rooms', percentage: 68.6, amount: 856000, color: '#7C3AED' },
+  { name: 'Rooms', percentage: 68.6, amount: 856000, color: 'var(--primary)' },
   { name: 'Restaurant (F&B)', percentage: 25.0, amount: 312000, color: '#2563EB' },
   { name: 'Other Services', percentage: 6.4, amount: 80000, color: '#16A34A' },
 ]
@@ -65,7 +66,8 @@ const REVENUE_SUMMARY: RevenueSummaryItem[] = [
 ]
 
 export default function ReportsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [activeTab, setActiveTab] = useState('Overview')
   const [dateRange, setDateRange] = useState('Jun 1 – Jun 30, 2026')
   const [property, setProperty] = useState('All Properties')
@@ -73,7 +75,7 @@ export default function ReportsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Reports" subtitle="Analyze performance and track key metrics" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>

@@ -49,7 +49,7 @@ export default function LogoBranding({ data, onChange }: LogoBrandingProps) {
           }}
         >
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 28, color: '#7C3AED' }}>🪷</div>
+            <div style={{ fontSize: 28, color: 'var(--primary)' }}>🪷</div>
             <p style={{ fontSize: 8, color: '#6B7280', margin: '2px 0 0', fontWeight: 600 }}>Hotel Blue Pearl</p>
           </div>
         </div>

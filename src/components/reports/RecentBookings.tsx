@@ -56,7 +56,7 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
             const sc = statusColors[booking.status] || { bg: '#F3F4F6', text: '#374151' }
             return (
               <tr key={booking.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>
+                <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
                   {booking.bookingId}
                 </td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: '#111827' }}>
@@ -97,7 +97,7 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
             gap: 6,
             background: 'none',
             border: 'none',
-            color: '#7C3AED',
+            color: 'var(--primary)',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',

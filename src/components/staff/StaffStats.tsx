@@ -12,7 +12,7 @@ const statCards = (stats: StaffStatsType) => [
     subtitle: 'All Employees',
     icon: Users,
     bg: '#F3E8FF',
-    color: '#7C3AED',
+    color: 'var(--primary)',
   },
   {
     label: 'Active Staff',

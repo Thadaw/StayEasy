@@ -44,7 +44,7 @@ const statCards = (stats: ReportStatsType) => [
     growth: stats.adrGrowth,
     icon: '💰',
     bg: '#F3E8FF',
-    color: '#7C3AED',
+    color: 'var(--primary)',
   },
   {
     label: 'Occupancy Rate',

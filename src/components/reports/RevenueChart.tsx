@@ -23,7 +23,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
         <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0 }}>Revenue Overview</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 12, height: 3, borderRadius: 2, background: '#7C3AED' }} />
+            <div style={{ width: 12, height: 3, borderRadius: 2, background: 'var(--primary)' }} />
             <span style={{ fontSize: 12, color: '#6B7280' }}>Total Revenue</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -80,7 +80,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
           <Line
             type="monotone"
             dataKey="totalRevenue"
-            stroke="#7C3AED"
+            stroke="var(--primary)"
             strokeWidth={2}
             dot={false}
             name="Total Revenue"

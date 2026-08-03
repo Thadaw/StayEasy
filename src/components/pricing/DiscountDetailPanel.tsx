@@ -36,7 +36,7 @@ export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPa
     }}>
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0, borderLeft: '3px solid #7C3AED', paddingLeft: 10 }}>Offer Details</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0, borderLeft: '3px solid var(--primary)', paddingLeft: 10 }}>Offer Details</h3>
         <button onClick={onClose} style={{
           width: 32, height: 32, borderRadius: 6, border: '1px solid #E5E7EB',
           background: '#fff', cursor: 'pointer', display: 'flex',
@@ -80,7 +80,7 @@ export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPa
               </span>
               <span style={{
                 fontSize: 13, fontWeight: d.highlight ? 600 : 500,
-                color: d.highlight ? '#059669' : d.mono ? '#7C3AED' : '#111827',
+                color: d.highlight ? '#059669' : d.mono ? 'var(--primary)' : '#111827',
                 fontFamily: d.mono ? 'monospace' : 'inherit',
               }}>
                 {d.value}
@@ -103,8 +103,8 @@ export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPa
       <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 10 }}>
         <button style={{
           flex: 1, padding: '10px 16px', borderRadius: 8,
-          border: '1px solid #7C3AED', background: '#fff',
-          color: '#7C3AED', fontSize: 13, fontWeight: 600,
+          border: '1px solid var(--primary)', background: '#fff',
+          color: 'var(--primary)', fontSize: 13, fontWeight: 600,
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
           ✏️ Edit Offer

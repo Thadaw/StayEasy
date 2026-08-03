@@ -51,7 +51,7 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
               <button
                 type="button"
                 className="counter-btn"
-                onClick={() => onChange({ floors: Math.max(1, data.floors - 1) })}
+                onClick={() => onChange({ floors: Math.max(0, data.floors - 1) })}
               >
                 -
               </button>
@@ -59,7 +59,7 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
               <button
                 type="button"
                 className="counter-btn"
-                onClick={() => onChange({ floors: data.floors + 1 })}
+                onClick={() => onChange({ floors: Math.min(100, data.floors + 1) })}
               >
                 +
               </button>

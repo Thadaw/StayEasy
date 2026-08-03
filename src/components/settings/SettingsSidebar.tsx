@@ -1,7 +1,6 @@
 import {
-  Building2, Settings, Calendar, BedDouble, UtensilsCrossed,
-  Sparkles, Bell, CreditCard, Receipt, Shield, Mail,
-  FileText, Upload, Lock, Activity
+  Building2, Settings, Calendar, BedDouble,
+  Receipt, Wifi
 } from 'lucide-react'
 
 interface SettingsSidebarProps {
@@ -14,17 +13,8 @@ const menuItems = [
   { id: 'general', label: 'General Settings', icon: Settings },
   { id: 'booking', label: 'Booking Settings', icon: Calendar },
   { id: 'room', label: 'Room & Rate Settings', icon: BedDouble },
-  { id: 'restaurant', label: 'Restaurant Settings', icon: UtensilsCrossed },
-  { id: 'housekeeping', label: 'Housekeeping Settings', icon: Sparkles },
-  { id: 'notification', label: 'Notification Settings', icon: Bell },
-  { id: 'payment', label: 'Payment Settings', icon: CreditCard },
-  { id: 'taxes', label: 'Taxes', icon: Receipt },
-  { id: 'policies', label: 'Policies', icon: Shield },
-  { id: 'email', label: 'Email Templates', icon: Mail },
-  { id: 'document', label: 'Document Templates', icon: FileText },
-  { id: 'backup', label: 'Backup & Restore', icon: Upload },
-  { id: 'security', label: 'Security', icon: Lock },
-  { id: 'activity', label: 'Activity Logs', icon: Activity },
+  { id: 'taxes', label: 'Taxes & Policies', icon: Receipt },
+  { id: 'amenities', label: 'Amenities', icon: Wifi },
 ]
 
 export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
@@ -54,12 +44,12 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
               padding: '11px 20px',
               border: 'none',
               background: isActive ? '#F5F3FF' : 'transparent',
-              color: isActive ? '#7C3AED' : '#374151',
+              color: isActive ? 'var(--primary)' : '#374151',
               fontSize: 14,
               fontWeight: isActive ? 600 : 400,
               cursor: 'pointer',
               textAlign: 'left',
-              borderLeft: isActive ? '3px solid #7C3AED' : '3px solid transparent',
+              borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
             }}
           >
             <item.icon size={18} />

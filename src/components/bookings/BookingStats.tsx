@@ -1,14 +1,31 @@
 import { Wallet, CalendarCheck, Clock, XCircle, TrendingUp } from 'lucide-react'
+import type { Booking } from './BookingTable'
 
-const stats = [
-  { icon: CalendarCheck, label: 'Total Bookings', value: '245', change: '15.7% vs May 1 – May 31', positive: true },
-  { icon: Wallet, label: 'Confirmed', value: '198', change: '81% of total', positive: true },
-  { icon: Clock, label: 'Pending', value: '32', change: '13% of total', positive: false },
-  { icon: XCircle, label: 'Cancelled', value: '15', change: '6% of total', positive: false },
-  { icon: TrendingUp, label: 'Total Revenue', value: 'NPR 4,53,750', change: '18.6% vs May 1 – May 31', positive: true },
-]
+const ACTIVE_STATUSES = ['Confirmed', 'Checked-in', 'Checked-out']
 
-export default function BookingStats() {
+interface BookingStatsProps {
+  bookings: Booking[]
+}
+
+export default function BookingStats({ bookings }: BookingStatsProps) {
+  const total = bookings.length
+  const confirmed = bookings.filter((b) => ACTIVE_STATUSES.includes(b.status)).length
+  const pending = bookings.filter((b) => b.status === 'Pending').length
+  const cancelled = bookings.filter((b) => b.status === 'Cancelled').length
+  const revenue = bookings
+    .filter((b) => b.status !== 'Cancelled')
+    .reduce((sum, b) => sum + (parseInt(b.amount.replace(/\D/g, ''), 10) || 0), 0)
+
+  const pct = (n: number) => (total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`)
+
+  const stats = [
+    { icon: CalendarCheck, label: 'Total Bookings', value: String(total), change: `${total} on record`, positive: true },
+    { icon: Wallet, label: 'Confirmed', value: String(confirmed), change: `${pct(confirmed)} of total`, positive: true },
+    { icon: Clock, label: 'Pending', value: String(pending), change: `${pct(pending)} of total`, positive: false },
+    { icon: XCircle, label: 'Cancelled', value: String(cancelled), change: `${pct(cancelled)} of total`, positive: false },
+    { icon: TrendingUp, label: 'Total Revenue', value: `NPR ${revenue.toLocaleString()}`, change: 'non-cancelled bookings', positive: true },
+  ]
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 20 }}>
       {stats.map((s) => (

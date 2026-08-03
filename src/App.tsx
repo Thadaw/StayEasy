@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route } from 'react-router-dom'
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -27,6 +27,7 @@ import PaymentMethodsPage from './pages/PaymentMethodsPage'
 import IntegrationsPage from './pages/IntegrationsPage'
 import HostNotificationsPage from './pages/HostNotificationsPage'
 import ActivityLogsPage from './pages/ActivityLogsPage'
+import SupportPage from './pages/SupportPage'
 import ComingSoon from './pages/ComingSoon'
 import NotificationsPage from './pages/NotificationsPage'
 function App() {
@@ -63,7 +64,9 @@ function App() {
         <Route path="/host/integrations" element={<IntegrationsPage />} />
         <Route path="/host/notifications" element={<HostNotificationsPage />} />
         <Route path="/host/activity" element={<ActivityLogsPage />} />
-        <Route path="/host/my-properties/dashboard" element={<PropertyDashboardPage />} />
+        <Route path="/host/support" element={<SupportPage />} />
+        <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
+        <Route path="/host/my-properties/dashboard/:propertyId" element={<PropertyDashboardPage />} />
         <Route path="/country/:code" element={<CountryPage />} />
         <Route path="/hotel/:id" element={<HotelDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />

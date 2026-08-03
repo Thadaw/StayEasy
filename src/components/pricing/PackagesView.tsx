@@ -87,7 +87,7 @@ export default function PackagesView({ packages, packageDetails }: PackagesViewP
           </div>
           <button style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
-            border: 'none', borderRadius: 8, background: '#7C3AED',
+            border: 'none', borderRadius: 8, background: 'var(--primary)',
             fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer',
           }}>
             + Create New Package
@@ -98,7 +98,7 @@ export default function PackagesView({ packages, packageDetails }: PackagesViewP
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Packages', value: 12, subtitle: 'All created packages', bg: '#F3E8FF', color: '#7C3AED' },
+          { label: 'Total Packages', value: 12, subtitle: 'All created packages', bg: '#F3E8FF', color: 'var(--primary)' },
           { label: 'Active Packages', value: 6, subtitle: 'Currently running', bg: '#D1FAE5', color: '#059669' },
           { label: 'Upcoming Packages', value: 3, subtitle: 'Starting soon', bg: '#FEF3C7', color: '#D97706' },
           { label: 'Total Bookings', value: 248, subtitle: 'From packages', bg: '#FCE7F3', color: '#DB2777' },
@@ -176,9 +176,9 @@ export default function PackagesView({ packages, packageDetails }: PackagesViewP
             style={{
               padding: '12px 16px', border: 'none', background: 'transparent',
               fontSize: 14, fontWeight: 500,
-              color: activeTab === tab ? '#7C3AED' : '#6B7280',
+              color: activeTab === tab ? 'var(--primary)' : '#6B7280',
               cursor: 'pointer',
-              borderBottom: activeTab === tab ? '2px solid #7C3AED' : '2px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
               marginBottom: -1,
             }}
           >
@@ -270,7 +270,7 @@ export default function PackagesView({ packages, packageDetails }: PackagesViewP
               <ChevronLeft size={14} />
             </button>
             {[1, 2].map(page => (
-              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === currentPage ? '1px solid #7C3AED' : '1px solid #E5E7EB', borderRadius: 6, background: page === currentPage ? '#7C3AED' : '#fff', color: page === currentPage ? '#fff' : '#374151', fontWeight: page === currentPage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB', borderRadius: 6, background: page === currentPage ? 'var(--primary)' : '#fff', color: page === currentPage ? '#fff' : '#374151', fontWeight: page === currentPage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {page}
               </button>
             ))}

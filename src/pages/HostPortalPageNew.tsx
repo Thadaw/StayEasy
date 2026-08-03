@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import PortalHeader from '../components/portal/PortalHeader'
 import ProgressBar from '../components/portal/ProgressBar'
@@ -7,15 +6,47 @@ import PropertyTypeSelector from '../components/portal/PropertyTypeSelector'
 import Step1PropertyDetails from '../components/portal/Step1PropertyDetails'
 import Step2Location from '../components/portal/Step2Location'
 import Step3PhotosAmenities from '../components/portal/Step3PhotosAmenities'
+import Step4Localization from '../components/portal/Step4Localization'
+import type { LocalizationData } from '../components/portal/Step4Localization'
+import Step5BrandingVisuals from '../components/portal/Step5BrandingVisuals'
+import type { BrandData } from '../components/portal/Step5BrandingVisuals'
 import Step4RoomSetup, { Room } from '../components/portal/Step4RoomSetup'
 import Step5PricingOffers from '../components/portal/Step5PricingOffers'
 import Step6Review from '../components/portal/Step6Review'
 import NavigationButtons from '../components/portal/NavigationButtons'
-import * as pmsApi from '../services/pmsApi'
-import type { AmenityOption } from '../types/pms'
+import {
+  createGeneralInfo,
+  createLocation,
+  createPhotosAmenities,
+  createLocalization,
+  createBrandVisual,
+  uploadPropertyImage,
+  uploadRoomImages,
+  createRooms,
+  createRoomType,
+  createBedType,
+  getRoomTypes,
+  getBedTypes,
+  createSpecialOffers,
+  updatePropertyActivation,
+  getAmenities as fetchAmenitiesApi,
+  getTenant,
+  createTenant,
+} from '../services/pmsApi'
+import type {
+  GeneralInfoPayload,
+  LocationPayload,
+  PhotosAmenitiesPayload,
+  PhotosAmenityCustom,
+  AmenityOption,
+  LocalizationPayload,
+  BrandVisualPayload,
+  RoomBase,
+  SpecialOfferPayload,
+} from '../types/pms'
 import '../styles/portal.css'
 
-type WizardStep = 'type' | 'property' | 'location' | 'photos' | 'rooms' | 'pricing' | 'review'
+type WizardStep = 'type' | 'property' | 'location' | 'photos' | 'localization' | 'branding' | 'rooms' | 'pricing' | 'review'
 
 interface PropertyData {
   type: string
@@ -34,7 +65,8 @@ interface LocationData {
   city: string
   zip: string
   street: string
-  mapLink: string
+  latitude: number | null
+  longitude: number | null
 }
 
 interface Offer {
@@ -44,16 +76,17 @@ interface Offer {
   badgeColor: string
   badgeText: string
   desc: string
+  discountPercentage: number
   enabled: boolean
   startDate?: Date | null
   endDate?: Date | null
 }
 
 const DEFAULT_OFFERS: Offer[] = [
-  { id: 'early', label: 'Early Bird Discount', badge: '10% OFF', badgeColor: '#dcfce7', badgeText: '#16a34a', desc: '10% off for bookings made 30+ days in advance', enabled: false, startDate: null, endDate: null },
-  { id: 'last', label: 'Last-Minute Deal', badge: '15% OFF', badgeColor: '#fee2e2', badgeText: '#dc2626', desc: '15% off for bookings made within 48 hours of check-in', enabled: false, startDate: null, endDate: null },
-  { id: 'long', label: 'Long Stay Discount', badge: '20% OFF', badgeColor: '#dbeafe', badgeText: '#2563eb', desc: '20% off for stays of 7 nights or more', enabled: false, startDate: null, endDate: null },
-  { id: 'free', label: 'Free Cancellation', badge: 'Free', badgeColor: '#f3e8ff', badgeText: '#9333ea', desc: 'Full refund if cancelled 48+ hours before check-in', enabled: false, startDate: null, endDate: null },
+  { id: 'early', label: 'Early Bird Discount', badge: '10% OFF', badgeColor: '#dcfce7', badgeText: '#16a34a', desc: '10% off for bookings made 30+ days in advance', discountPercentage: 10, enabled: false, startDate: null, endDate: null },
+  { id: 'last', label: 'Last-Minute Deal', badge: '15% OFF', badgeColor: '#fee2e2', badgeText: '#dc2626', desc: '15% off for bookings made within 48 hours of check-in', discountPercentage: 15, enabled: false, startDate: null, endDate: null },
+  { id: 'long', label: 'Long Stay Discount', badge: '20% OFF', badgeColor: '#dbeafe', badgeText: '#2563eb', desc: '20% off for stays of 7 nights or more', discountPercentage: 20, enabled: false, startDate: null, endDate: null },
+  { id: 'free', label: 'Free Cancellation', badge: 'Free', badgeColor: '#f3e8ff', badgeText: '#9333ea', desc: 'Full refund if cancelled 48+ hours before check-in', discountPercentage: 0, enabled: false, startDate: null, endDate: null },
 ]
 
 const createDefaultRoom = (id: number): Room => ({
@@ -67,36 +100,24 @@ const createDefaultRoom = (id: number): Room => ({
   petsAllowed: false,
   minRate: '0.00',
   cancellationPolicy: 'moderate',
+  customPolicyTitle: '',
+  customPolicyDescription: '',
+  savedCustomPolicies: [],
   amenities: ['High-speed WiFi', 'Air Conditioning'],
   expanded: true,
   photos: [],
+  coverPhotoIndex: 0,
 })
 
-const FALLBACK_AMENITIES: AmenityOption[] = [
-  { id: 'wifi', name: 'High-speed WiFi', icon: '📶' },
-  { id: 'ac', name: 'Air Conditioning', icon: '❄️' },
-  { id: 'washer', name: 'In-unit Washer/Dryer', icon: '👕' },
-  { id: 'pool', name: 'Private Pool', icon: '🏊' },
-  { id: 'gym', name: 'Gym / Fitness Center', icon: '💪' },
-  { id: 'parking', name: 'Free Parking', icon: '🅿️' },
-  { id: 'smoke', name: 'Smoke Alarms', icon: '🔥' },
-  { id: 'fire', name: 'Fire Extinguisher', icon: '🧯' },
-  { id: 'camera', name: 'Security Cameras', icon: '📷' },
-  { id: 'kitchen', name: 'Kitchen', icon: '🍳' },
-  { id: 'tv', name: 'Smart TV', icon: '📺' },
-  { id: 'balcony', name: 'Balcony', icon: '🌅' },
-]
-
 export default function HostPortalPageNew() {
-  const navigate = useNavigate()
-  useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('type')
   const [propertyData, setPropertyData] = useState<PropertyData>({
     type: '',
     name: '',
     totalRooms: 0,
-    floors: 1,
+    floors: 0,
     yearBuilt: 0,
     description: '',
     phone: '',
@@ -108,51 +129,148 @@ export default function HostPortalPageNew() {
     city: '',
     zip: '',
     street: '',
-    mapLink: '',
+    latitude: null,
+    longitude: null,
   })
   const [photos, setPhotos] = useState<File[]>([])
-  const [amenities, setAmenities] = useState<string[]>([])
+  const [coverIndex, setCoverIndex] = useState(0)
+  const [systemAmenityIds, setSystemAmenityIds] = useState<string[]>([])
+  const [customAmenities, setCustomAmenities] = useState<PhotosAmenityCustom[]>([])
+  const [availableAmenities, setAvailableAmenities] = useState<AmenityOption[]>([])
   const [rooms, setRooms] = useState<Room[]>([createDefaultRoom(1)])
   const [offers, setOffers] = useState<Offer[]>(DEFAULT_OFFERS)
   const [starRating, setStarRating] = useState(0)
 
-  // API state
-  const [propertyId, setPropertyId] = useState<number | null>(null)
+  const [localizationData, setLocalizationData] = useState<LocalizationData>({
+    currency: 'USD',
+    timezone: 'UTC',
+    language: 'English (US)',
+    checkInTime: '3:00 PM',
+    checkOutTime: '11:00 AM',
+    earlyCheckInGrace: 0,
+    lateCheckOutGrace: 0,
+    allowAlwaysCheckIn: true,
+  })
+
+  const [brandData, setBrandData] = useState<BrandData>({
+    logo: null,
+    brandColor: '#2E86AB',
+    isWcagPassing: true,
+  })
+
+  const [propertyId, setPropertyId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [apiAmenities, setApiAmenities] = useState<AmenityOption[]>(FALLBACK_AMENITIES)
+  const hasRestoredRef = useRef(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Fetch amenities on mount
+  const draftKey = `stayEasyDraft_${user?.id || user?.email || 'anon'}`
+
   useEffect(() => {
-    const fetchAmenities = async () => {
-      try {
-        const data = await pmsApi.getAmenities()
-        if (Array.isArray(data) && data.length > 0) {
-          setApiAmenities(data)
-        }
-      } catch {
-        // Fallback to hardcoded amenities if API fails
-        setApiAmenities(FALLBACK_AMENITIES)
-      }
-    }
-    fetchAmenities()
+    try { localStorage.removeItem('stayEasyDraft') } catch {}
   }, [])
 
-  const stepOrder: WizardStep[] = ['type', 'property', 'location', 'photos', 'rooms', 'pricing', 'review']
+  useEffect(() => {
+    if (hasRestoredRef.current) return
+    if (!user) return
+    const raw = localStorage.getItem(draftKey)
+    if (raw) {
+      try {
+        const draft = JSON.parse(raw)
+        // Don't restore currentStep from draft — always start at step 1
+        // but pre-fill the form data so nothing is lost
+        if (draft.propertyData) setPropertyData(draft.propertyData)
+        if (draft.locationData) setLocationData(draft.locationData)
+        if (draft.coverIndex !== undefined) setCoverIndex(draft.coverIndex)
+        if (draft.systemAmenityIds) setSystemAmenityIds(draft.systemAmenityIds)
+        if (draft.customAmenities) setCustomAmenities(draft.customAmenities)
+        if (draft.starRating !== undefined) setStarRating(draft.starRating)
+        if (draft.localizationData) setLocalizationData(draft.localizationData)
+        if (draft.rooms) setRooms(draft.rooms.map((r: any) => ({
+          ...r,
+          photos: [],
+          customPolicyTitle: r.customPolicyTitle ?? '',
+          customPolicyDescription: r.customPolicyDescription ?? '',
+          savedCustomPolicies: r.savedCustomPolicies ?? [],
+        })))
+        if (draft.offers) {
+          setOffers(draft.offers.map((o: any) => ({
+            ...o,
+            discountPercentage: o.discountPercentage ?? 0,
+            startDate: o.startDate ? new Date(o.startDate) : null,
+            endDate: o.endDate ? new Date(o.endDate) : null,
+          })))
+        }
+        if (draft.brandData) setBrandData({ ...draft.brandData, logo: null })
+        if (draft.propertyId !== undefined) setPropertyId(draft.propertyId)
+      } catch {}
+    }
+    hasRestoredRef.current = true
+  }, [draftKey, user])
+
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      const draft = {
+        currentStep,
+        propertyData,
+        locationData,
+        coverIndex,
+        systemAmenityIds,
+        customAmenities,
+        starRating,
+        localizationData,
+        rooms: rooms.map(r => ({ ...r, photos: [] })),
+        offers: offers.map(o => ({
+          ...o,
+          startDate: o.startDate instanceof Date ? o.startDate.toISOString() : o.startDate,
+          endDate: o.endDate instanceof Date ? o.endDate.toISOString() : o.endDate,
+        })),
+        brandData: { ...brandData, logo: null },
+        propertyId,
+      }
+      localStorage.setItem(draftKey, JSON.stringify(draft))
+    }, 500)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [currentStep, propertyData, locationData, coverIndex, systemAmenityIds, customAmenities, starRating, localizationData, rooms, offers, brandData, propertyId])
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(draftKey)
+  }, [draftKey])
+
+  useEffect(() => {
+    fetchAmenitiesApi().then(setAvailableAmenities).catch(() => {})
+  }, [])
+
+  const stepOrder: WizardStep[] = ['type', 'property', 'location', 'photos', 'localization', 'branding', 'rooms', 'pricing', 'review']
 
   const getStepIndex = (step: WizardStep): number => stepOrder.indexOf(step)
 
+  const getSectionNumber = (): number => {
+    switch (currentStep) {
+      case 'property': case 'location': case 'photos': case 'localization': case 'branding':
+        return 1
+      case 'rooms':
+        return 2
+      case 'pricing': case 'review':
+        return 3
+      default:
+        return 0
+    }
+  }
+
   const getProgressPercentage = (): number => {
-    const idx = getStepIndex(currentStep)
-    const total = stepOrder.length - 1
-    return Math.round((idx / total) * 100)
+    const section = getSectionNumber()
+    if (section === 0) return 0
+    return Math.round(((section - 1) / 2) * 100)
   }
 
   const getStepNumber = (): { current: number; total: number } => {
-    const mainSteps: WizardStep[] = ['property', 'location', 'photos', 'rooms', 'pricing', 'review']
-    const idx = mainSteps.indexOf(currentStep)
-    if (idx === -1) return { current: 0, total: 5 }
-    return { current: idx + 1, total: 5 }
+    const section = getSectionNumber()
+    return { current: section, total: 3 }
   }
 
   const getStepTitle = (): string => {
@@ -161,6 +279,8 @@ export default function HostPortalPageNew() {
       property: 'Property Details',
       location: 'Location Details',
       photos: 'Photos & Amenities',
+      localization: 'Property Localization',
+      branding: 'Branding & Visuals',
       rooms: 'Room Setup',
       pricing: 'Pricing & Offers',
       review: 'Final Review & Launch',
@@ -178,221 +298,288 @@ export default function HostPortalPageNew() {
     return idx > 0 ? stepOrder[idx - 1] : null
   }
 
-  // ─── Save helpers ─────
-
-  const showError = (err: unknown) => {
-    if (err && typeof err === 'object' && 'response' in err) {
-      const axiosErr = err as { response?: { status?: number; data?: unknown } }
-      const status = axiosErr.response?.status
-      const data = axiosErr.response?.data
-
-      console.error('Save error:', status, data)
-
-      const extractMsg = (obj: unknown): string | null => {
-        if (typeof obj === 'string') return obj
-        if (Array.isArray(obj) && obj.length > 0) return extractMsg(obj[0])
-        if (obj && typeof obj === 'object') {
-          for (const key of ['detail', 'message', 'error', 'non_field_errors', 'name', 'errors']) {
-            if (key in obj) {
-              const found = extractMsg((obj as Record<string, unknown>)[key])
-              if (found) return found
-            }
-          }
-          const vals = Object.values(obj as Record<string, unknown>)
-          for (const v of vals) {
-            const found = extractMsg(v)
-            if (found) return found
-          }
-        }
-        return null
-      }
-
-      const serverMsg = extractMsg(data)
-      setSaveError(serverMsg || 'An error occurred')
-    } else {
-      setSaveError('An unexpected error occurred')
-    }
-    setTimeout(() => setSaveError(null), 5000)
-  }
-
-  const buildPropertyPayload = () => ({
-    name: propertyData.name,
-    property_type: propertyData.type,
-    total_rooms: propertyData.totalRooms,
-    no_of_floors: propertyData.floors,
-    year_built: propertyData.yearBuilt,
-    description: propertyData.description,
-    phone: propertyData.phone,
-    email: propertyData.email,
-    country: locationData.country,
-    state: locationData.state,
-    city: locationData.city,
-    zip_code: locationData.zip,
-      address: locationData.street,
-    map_link: locationData.mapLink,
-    star_rating: starRating,
-    check_in_from: '15:00',
-    check_in_to: '22:00',
-    check_out_from: '08:00',
-    check_out_to: '11:00',
-    amenities,
-    is_active: false,
-  })
-
-  const savePropertyBasic = async (): Promise<number> => {
-    if (propertyId) {
-      await pmsApi.updateProperty(propertyId, {
-        name: propertyData.name,
-        property_type: propertyData.type,
-        total_rooms: propertyData.totalRooms,
-        no_of_floors: propertyData.floors,
-        year_built: propertyData.yearBuilt,
-        description: propertyData.description,
-        phone: propertyData.phone,
-        email: propertyData.email,
-      })
-      return propertyId
-    } else {
-      const result = await pmsApi.createProperty({
-        name: propertyData.name,
-        property_type: propertyData.type,
-        total_rooms: propertyData.totalRooms,
-        no_of_floors: propertyData.floors,
-        year_built: propertyData.yearBuilt,
-        description: propertyData.description,
-        phone: propertyData.phone,
-        email: propertyData.email,
-      })
-      setPropertyId(result.id)
-      return result.id
-    }
-  }
-
-  const saveLocation = async () => {
-    if (!propertyId) return
-    await pmsApi.updateProperty(propertyId, {
-      country: locationData.country,
-      state: locationData.state,
-      city: locationData.city,
-      zip_code: locationData.zip,
-    address: locationData.street,
-      map_link: locationData.mapLink,
-    })
-  }
-
-  const savePhotosAndAmenities = async () => {
-    if (!propertyId) return
-    await pmsApi.updateProperty(propertyId, {
-      amenities,
-      star_rating: starRating,
-      check_in_from: '15:00',
-      check_in_to: '22:00',
-      check_out_from: '08:00',
-      check_out_to: '11:00',
-    })
-    // Upload property images
-    if (photos.length > 0) {
-      const formData = new FormData()
-      photos.forEach(p => formData.append('images', p))
-      await pmsApi.uploadPropertyImages(formData)
-    }
-  }
-
-  const saveRooms = async () => {
-    if (!propertyId) return
-    // Delete existing rooms then recreate
-    try {
-      const existingRooms = await pmsApi.getRooms(propertyId)
-      for (const r of existingRooms) {
-        await pmsApi.deleteRoom(propertyId, r.id)
-      }
-    } catch {
-      // No existing rooms or error fetching
-    }
-
-    for (const room of rooms) {
-      const roomResult = await pmsApi.createRoom(propertyId, {
-        floor: room.floor,
-        name: room.name,
-        room_type: room.type,
-        bed_type: room.bedType,
-        max_adults: room.maxAdults,
-        max_children: room.maxChildren,
-        pets_allowed: room.petsAllowed,
-        min_rate: room.minRate,
-        cancellation_policy: room.cancellationPolicy,
-        amenities: room.amenities,
-      })
-      // Upload room images
-      if (room.photos.length > 0) {
-        const formData = new FormData()
-        room.photos.forEach(p => formData.append('images', p))
-        await pmsApi.uploadRoomImages(roomResult.id, formData)
-      }
-    }
-  }
-
-  const saveOffers = async () => {
-    if (!propertyId) return
-    // Delete existing offers
-    try {
-      const existingOffers = await pmsApi.getSpecialOffers(propertyId)
-      for (const o of existingOffers) {
-        await pmsApi.deleteSpecialOffer(propertyId, o.id)
-      }
-    } catch {
-      // No existing offers or error
-    }
-
-    const enabledOffers = offers.filter(o => o.enabled)
-    if (enabledOffers.length > 0) {
-      const payload = enabledOffers.map(o => ({
-        title: o.label,
-        description: o.desc,
-        badge: o.badge,
-        start_date: o.startDate ? o.startDate.toISOString() : null,
-        end_date: o.endDate ? o.endDate.toISOString() : null,
-        is_active: true,
-      }))
-      await pmsApi.createSpecialOffers(propertyId, payload)
-    }
-  }
-
-  // ─── Step transition with auto-save ─────────────────────────
-
-  const handleNext = useCallback(async () => {
-    const next = getNextStep()
-    if (!next) return
-
-    setIsSaving(true)
+  const saveCurrentStep = useCallback(async (): Promise<boolean> => {
     setSaveError(null)
     try {
       switch (currentStep) {
-        case 'property':
-          await savePropertyBasic()
-          break
-        case 'location':
-          await saveLocation()
-          break
-        case 'photos':
-          await savePhotosAndAmenities()
-          break
-        case 'rooms':
-          await saveRooms()
-          break
-        case 'pricing':
-          await saveOffers()
-          break
+        case 'type':
+          return true
+
+        case 'property': {
+          try {
+            await getTenant()
+          } catch {
+            await createTenant(propertyData.name || 'My Property')
+          }
+          const payload: GeneralInfoPayload = {
+            name: propertyData.name,
+            type: propertyData.type,
+            total_rooms: propertyData.totalRooms,
+            number_of_floors: propertyData.floors,
+            year_built: propertyData.yearBuilt,
+            description: propertyData.description,
+            phone_number: propertyData.phone,
+            email: propertyData.email,
+          }
+          const result = await createGeneralInfo(payload)
+          setPropertyId(result.id)
+          return true
+        }
+
+        case 'location': {
+          if (propertyId === null) return false
+          const requiredFields: [string, string][] = [
+            ['Country', locationData.country],
+            ['State/Province', locationData.state],
+            ['City', locationData.city],
+            ['ZIP/Postal Code', locationData.zip],
+            ['Street Address', locationData.street],
+          ]
+          const missing = requiredFields.find(([, v]) => v.trim().length < 2)
+          if (missing) {
+            setSaveError(`${missing[0]} must be at least 2 characters before continuing.`)
+            return false
+          }
+          const payload: LocationPayload = {
+            country: locationData.country,
+            state: locationData.state,
+            city: locationData.city,
+            zip_code: locationData.zip,
+            address: locationData.street,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+          }
+          await createLocation(propertyId, payload)
+          return true
+        }
+
+        case 'photos': {
+          if (propertyId === null) return false
+
+          let coverUrl = ''
+          let galleryUrls: string[] = []
+
+          if (photos.length > 0) {
+            const orderedPhotos = coverIndex < photos.length
+              ? [photos[coverIndex], ...photos.filter((_, i) => i !== coverIndex)]
+              : photos
+            const formData = new FormData()
+            orderedPhotos.forEach(p => formData.append('files', p))
+            const uploadedUrls = await uploadPropertyImage(propertyId, formData)
+
+            if (uploadedUrls.length > 0) {
+              coverUrl = uploadedUrls[0]
+              galleryUrls = uploadedUrls.slice(1)
+            }
+          }
+
+          const payload: PhotosAmenitiesPayload = {
+            photos: {
+              cover: coverUrl,
+              gallery: galleryUrls,
+            },
+            amenities: {
+              system_amenity_ids: systemAmenityIds,
+              custom_amenities: customAmenities,
+            },
+            star_rating: starRating,
+          }
+          await createPhotosAmenities(propertyId, payload)
+          return true
+        }
+
+        case 'localization': {
+          if (propertyId === null) return false
+
+          let checkInTime: string | null = null
+          let checkOutTime: string | null = null
+
+          if (!localizationData.allowAlwaysCheckIn) {
+            checkInTime = localizationData.checkInTime.trim()
+            checkOutTime = localizationData.checkOutTime.trim()
+            if (checkInTime.length < 2) {
+              setSaveError('Check-in Time must be at least 2 characters before continuing.')
+              return false
+            }
+            if (checkOutTime.length < 2) {
+              setSaveError('Check-out Time must be at least 2 characters before continuing.')
+              return false
+            }
+          }
+
+          const payload: LocalizationPayload = {
+            currency: localizationData.currency,
+            timezone: localizationData.timezone,
+            language: localizationData.language,
+            check_in_time: checkInTime,
+            check_out_time: checkOutTime,
+            check_in_grace_period: localizationData.earlyCheckInGrace,
+            check_out_grace_period: localizationData.lateCheckOutGrace,
+            always_allow_check_in_out: localizationData.allowAlwaysCheckIn,
+          }
+          await createLocalization(propertyId, payload)
+          return true
+        }
+
+        case 'branding': {
+          if (propertyId === null) return false
+          let logoUrl: string | null = null
+          if (brandData.logo) {
+            const formData = new FormData()
+            formData.append('files', brandData.logo)
+            const urls = await uploadPropertyImage(propertyId, formData)
+            if (urls.length > 0) logoUrl = urls[0]
+          }
+          const payload: BrandVisualPayload = {
+            brand_color: brandData.brandColor,
+            brand_logo_url: logoUrl,
+          }
+          await createBrandVisual(propertyId, payload)
+          return true
+        }
+
+        case 'rooms': {
+          if (propertyId === null) return false
+
+          const roomTypeCache: Record<string, string> = {}
+          const bedTypeCache: Record<string, string> = {}
+
+          let existingRoomTypes: { room_type_name: string; id: string }[] = []
+          let existingBedTypes: { bed_name: string; id: string }[] = []
+          try {
+            const [rt, bt] = await Promise.all([
+              getRoomTypes(propertyId),
+              getBedTypes(propertyId),
+            ])
+            existingRoomTypes = rt
+            existingBedTypes = bt
+          } catch {
+            // room-types/bed-types endpoints may not be available yet
+          }
+          for (const rt of existingRoomTypes) {
+            roomTypeCache[rt.room_type_name] = rt.id
+          }
+          for (const bt of existingBedTypes) {
+            bedTypeCache[bt.bed_name] = bt.id
+          }
+
+          for (const room of rooms) {
+            if (room.type && !roomTypeCache[room.type]) {
+              const res = await createRoomType(propertyId, room.type)
+              roomTypeCache[room.type] = res.id
+            }
+            if (room.bedType && !bedTypeCache[room.bedType]) {
+              const res = await createBedType(propertyId, room.bedType)
+              bedTypeCache[room.bedType] = res.id
+            }
+          }
+
+          const roomBases: RoomBase[] = []
+
+          for (const room of rooms) {
+            let coverUrl: string | null = null
+            let galleryUrls: string[] = []
+            if (room.photos.length > 0) {
+              const coverIdx = room.coverPhotoIndex ?? 0
+              const orderedPhotos = coverIdx < room.photos.length
+                ? [room.photos[coverIdx], ...room.photos.filter((_, i) => i !== coverIdx)]
+                : room.photos
+              const formData = new FormData()
+              orderedPhotos.forEach(p => formData.append('files', p))
+              const uploadedUrls = await uploadRoomImages(propertyId, formData)
+              if (uploadedUrls.length > 0) {
+                coverUrl = uploadedUrls[0]
+                galleryUrls = uploadedUrls.slice(1)
+              }
+            }
+
+            let cancellationPolicy = (room.cancellationPolicy || 'moderate').toUpperCase() as string
+            let cancellationTitle: string | null = null
+            let cancellationDescription: string | null = null
+            if (cancellationPolicy.startsWith('CUSTOM-')) {
+              const saved = room.savedCustomPolicies.find(p => p.id === room.cancellationPolicy)
+              if (saved) {
+                cancellationPolicy = 'CUSTOM'
+                cancellationTitle = saved.title
+                cancellationDescription = saved.description
+              }
+            }
+
+            const systemAmenityIds = room.amenities
+              .map(name => {
+                const found = availableAmenities.find(a => (a.label || a.name) === name)
+                return found ? String(found.id) : null
+              })
+              .filter((id): id is string => id !== null)
+
+            const customAmenityNames = room.amenities.filter(name =>
+              !availableAmenities.some(a => (a.label || a.name) === name)
+            )
+
+            roomBases.push({
+              floor_number: parseInt(room.floor, 10) || 0,
+              room_name: room.name,
+              room_type_id: roomTypeCache[room.type] || '',
+              bed_type_id: bedTypeCache[room.bedType] || '',
+              max_adults: room.maxAdults,
+              max_children: room.maxChildren,
+              base_rate: parseFloat(room.minRate) || 1,
+              status: 'AVAILABLE',
+              cancellation_policy: cancellationPolicy,
+              cancellation_title: cancellationTitle,
+              cancellation_description: cancellationDescription,
+              photos: { cover: coverUrl, gallery: galleryUrls },
+              system_amenity_ids: systemAmenityIds,
+              custom_amenities: customAmenityNames.map(name => ({ name, icon: null })),
+            })
+          }
+
+          await createRooms(propertyId, { rooms: roomBases })
+          return true
+        }
+
+        case 'pricing': {
+          if (propertyId === null) return false
+          const enabledOffers = offers.filter(o => o.enabled)
+          if (enabledOffers.length > 0) {
+            const payload: SpecialOfferPayload[] = enabledOffers.map(o => ({
+              title: o.label,
+              description: o.desc,
+              discount_percentage: o.discountPercentage,
+              start_date: o.startDate ? o.startDate.toISOString().split('T')[0] : null,
+              end_date: o.endDate ? o.endDate.toISOString().split('T')[0] : null,
+              is_active: true,
+              is_custom: o.id.startsWith('custom-'),
+            }))
+            await createSpecialOffers(propertyId, payload)
+          }
+          return true
+        }
+
+        case 'review':
+          return true
+
+        default:
+          return true
       }
-      setCurrentStep(next)
-    } catch (err) {
-      showError(err)
-    } finally {
-      setIsSaving(false)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save'
+      setSaveError(msg)
+      return false
     }
-  }, [currentStep, propertyData, locationData, photos, amenities, rooms, offers, starRating, propertyId])
+  }, [currentStep, propertyData, locationData, systemAmenityIds, customAmenities, starRating, localizationData, brandData, rooms, offers, photos, propertyId])
+
+  const handleNext = useCallback(async () => {
+    setIsSaving(true)
+    const ok = await saveCurrentStep()
+    setIsSaving(false)
+    if (!ok) return
+    const next = getNextStep()
+    if (next) setCurrentStep(next)
+  }, [saveCurrentStep])
 
   const handleBack = useCallback(() => {
+    setSaveError(null)
     const prev = getPrevStep()
     if (prev) setCurrentStep(prev)
   }, [currentStep])
@@ -402,40 +589,6 @@ export default function HostPortalPageNew() {
       setCurrentStep(stepOrder[stepIdx])
     }
   }, [])
-
-  const handleSaveDraft = useCallback(async () => {
-    setIsSaving(true)
-    setSaveError(null)
-    try {
-      if (!propertyId) {
-        const id = await savePropertyBasic()
-        setPropertyId(id)
-      } else {
-        // Update with whatever we have so far
-        await pmsApi.updateProperty(propertyId, buildPropertyPayload())
-      }
-      alert('Draft saved successfully!')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [propertyData, locationData, photos, amenities, rooms, offers, starRating, propertyId])
-
-  const handlePublish = useCallback(async () => {
-    if (!propertyId) return
-    setIsSaving(true)
-    setSaveError(null)
-    try {
-      await pmsApi.updatePropertyActivation(propertyId, { is_active: true })
-      alert('Property published successfully!')
-      navigate('/host/dashboard')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [propertyId, navigate])
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -471,11 +624,33 @@ export default function HostPortalPageNew() {
           <Step3PhotosAmenities
             photos={photos}
             onPhotosChange={setPhotos}
-            amenities={amenities}
-            onAmenitiesChange={setAmenities}
+            coverIndex={coverIndex}
+            onCoverIndexChange={setCoverIndex}
+            availableAmenities={availableAmenities}
+            systemAmenityIds={systemAmenityIds}
+            onSystemAmenityIdsChange={setSystemAmenityIds}
+            customAmenities={customAmenities}
+            onCustomAmenitiesChange={setCustomAmenities}
             starRating={starRating}
             onStarRatingChange={setStarRating}
-            apiAmenities={apiAmenities}
+          />
+        )
+
+      case 'localization':
+        return (
+          <Step4Localization
+            data={localizationData}
+            onChange={(data) => setLocalizationData(prev => ({ ...prev, ...data }))}
+          />
+        )
+
+      case 'branding':
+        return (
+          <Step5BrandingVisuals
+            data={brandData}
+            onChange={(data) => setBrandData(prev => ({ ...prev, ...data }))}
+            propertyName={propertyData.name}
+            propertyPhone={propertyData.phone}
           />
         )
 
@@ -484,7 +659,8 @@ export default function HostPortalPageNew() {
           <Step4RoomSetup
             rooms={rooms}
             onRoomsChange={setRooms}
-            apiAmenities={apiAmenities}
+            availableAmenities={availableAmenities}
+            floors={propertyData.floors}
           />
         )
 
@@ -511,12 +687,19 @@ export default function HostPortalPageNew() {
             }}
             location={locationData}
             photos={photos}
-            amenities={amenities}
+            availableAmenities={availableAmenities}
+            systemAmenityIds={systemAmenityIds}
+            customAmenities={customAmenities}
             rooms={rooms}
             offers={offers}
             starRating={starRating}
             onGoToStep={handleGoToStep}
-            onPublish={handlePublish}
+            onPublish={async () => {
+              if (propertyId) {
+                try { await updatePropertyActivation(propertyId) } catch {}
+              }
+              clearDraft()
+            }}
           />
         )
 
@@ -532,42 +715,43 @@ export default function HostPortalPageNew() {
     const prev = getPrevStep()
     const next = getNextStep()
 
-    const nextLabel = currentStep === 'rooms' ? 'Continue to Pricing & Offers' : 'Next Step'
-    const showSaveDraft = currentStep === 'photos' || currentStep === 'pricing'
+    const nextLabel =
+      currentStep === 'localization' ? 'Continue to Branding & Visuals' :
+      currentStep === 'rooms' ? 'Continue to Pricing & Offers' :
+      'Next Step'
 
     return (
       <div className="portal-nav-container">
+        {saveError && <div className="error-banner">{saveError}</div>}
         <NavigationButtons
           onBack={prev ? handleBack : undefined}
-          onNext={isSaving ? undefined : (next ? handleNext : undefined)}
-          onSaveDraft={showSaveDraft ? handleSaveDraft : undefined}
+          onNext={next ? handleNext : undefined}
           backLabel="Previous Step"
-          nextLabel={isSaving ? 'Saving...' : nextLabel}
-          showSaveDraft={showSaveDraft}
+          nextLabel={nextLabel}
+          loading={isSaving}
         />
+      </div>
+    )
+  }
+
+  if (authLoading) {
+    return (
+      <div className="portal-page">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 24, height: 24, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+            <p style={{ fontSize: 14, color: 'var(--muted-foreground)' }}>Loading...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="portal-page">
-      <PortalHeader stepText={currentStep !== 'type' ? `Step ${getStepNumber().current} of ${getStepNumber().total}` : undefined} />
+      <PortalHeader />
 
       <main className="portal-main">
-        {saveError && (
-          <div className="portal-error-banner">
-            <span>{saveError}</span>
-            <button onClick={() => setSaveError(null)} className="portal-error-close">&times;</button>
-          </div>
-        )}
-
-        {isSaving && currentStep !== 'type' && (
-          <div className="portal-saving-indicator">
-            <div className="saving-spinner" />
-            <span>Saving...</span>
-          </div>
-        )}
-
         {currentStep === 'type' ? (
           <div className="portal-type-container">
             <div className="portal-type-card">

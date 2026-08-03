@@ -154,7 +154,7 @@ export default function TaskFilters({
           padding: '10px 20px',
           border: 'none',
           borderRadius: 8,
-          background: '#7C3AED',
+          background: 'var(--primary)',
           fontSize: 14,
           fontWeight: 600,
           color: '#fff',

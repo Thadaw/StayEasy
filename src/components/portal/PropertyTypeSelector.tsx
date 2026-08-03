@@ -1,12 +1,14 @@
-import { Building2, TreePalm, UtensilsCrossed, BedDouble, LayoutGrid, Plus } from 'lucide-react'
+import { Building2, TreePalm, UtensilsCrossed, BedDouble, Plus } from 'lucide-react'
 
 const PROPERTY_TYPES = [
-  { id: 'hotel', label: 'Hotel', icon: Building2 },
-  { id: 'resort', label: 'Resort', icon: TreePalm },
-  { id: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed },
-  { id: 'hostel', label: 'Hostel', icon: BedDouble },
-  { id: 'mixed', label: 'Mixed', icon: LayoutGrid },
-  { id: 'custom', label: 'Add Property Type', icon: Plus },
+  { id: 'HOTEL', label: 'Hotel', icon: Building2 },
+  { id: 'RESORT', label: 'Resort', icon: TreePalm },
+  { id: 'RESTURANT', label: 'Restaurant', icon: UtensilsCrossed },
+  { id: 'HOSTEL', label: 'Hostel', icon: BedDouble },
+  { id: 'VILLA', label: 'Villa', icon: Building2 },
+  { id: 'APARTMENT', label: 'Apartment', icon: Building2 },
+  { id: 'GUESTHOUSE', label: 'Guesthouse', icon: BedDouble },
+  { id: 'OTHER', label: 'Other', icon: Plus },
 ]
 
 interface PropertyTypeSelectorProps {

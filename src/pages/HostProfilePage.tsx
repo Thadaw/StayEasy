@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUIStore } from '../stores/uiStore'
 import { useAuth } from '../context/AuthContext'
 import logo1 from '../assets/logo1.png'
 import {
@@ -22,7 +23,8 @@ export default function HostProfilePage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
 
   const firstName = user?.firstName || user?.first_name || ''
   const lastName = user?.lastName || user?.last_name || ''

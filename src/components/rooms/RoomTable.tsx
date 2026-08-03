@@ -46,6 +46,7 @@ interface RoomTableProps {
   roomType: string
   status: string
   floor: string
+  rooms: Room[]
   onEditRoom: (room: Room) => void
   onDeleteRoom: (room: Room) => void
   onChangeStatus: (room: Room, newStatus: string) => void
@@ -53,14 +54,14 @@ interface RoomTableProps {
 
 type SortKey = 'number' | 'type' | 'floor' | 'status' | 'capacity' | 'price'
 
-export default function RoomTable({ searchQuery, roomType, status, floor, onEditRoom, onDeleteRoom, onChangeStatus }: RoomTableProps) {
+export default function RoomTable({ searchQuery, roomType, status, floor, rooms, onEditRoom, onDeleteRoom, onChangeStatus }: RoomTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('number')
   const [sortAsc, setSortAsc] = useState(true)
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; room: Room } | null>(null)
 
-  const filtered = allRooms.filter((r) => {
+  const filtered = rooms.filter((r) => {
     const matchesSearch = !searchQuery || r.number.includes(searchQuery) || r.type.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = roomType === 'All Types' || r.type === roomType
     const matchesStatus = status === 'All Status' || r.status === status
@@ -293,7 +294,7 @@ export default function RoomTable({ searchQuery, roomType, status, floor, onEdit
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
-                  <item.icon size={14} />
+                  {item.icon && <item.icon size={14} />}
                   {item.label}
                 </button>
               )

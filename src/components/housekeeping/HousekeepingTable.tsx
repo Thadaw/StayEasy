@@ -15,7 +15,7 @@ const statusBadgeColors: Record<string, { bg: string; text: string }> = {
 }
 
 const avatarColors = [
-  '#7C3AED', '#2563EB', '#059669', '#D97706',
+  'var(--primary)', '#2563EB', '#059669', '#D97706',
   '#DC2626', '#0891B2', '#4F46E5', '#065F46',
 ]
 

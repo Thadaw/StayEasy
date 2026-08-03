@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import OrdersTabs from '../components/restaurant/orders/OrdersTabs'
@@ -242,7 +243,8 @@ const orderDetails: Record<string, OrderDetail> = {
 }
 
 export default function RestaurantOrdersPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [activeTab, setActiveTab] = useState('All Orders')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -264,7 +266,7 @@ export default function RestaurantOrdersPage() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Orders" subtitle="Manage and track all restaurant orders." />
         <main style={{ flex: 1, overflow: 'hidden', background: '#f5f6fa', display: 'flex', flexDirection: 'column' }}>

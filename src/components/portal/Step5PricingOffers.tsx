@@ -10,6 +10,7 @@ interface Offer {
   badgeColor: string
   badgeText: string
   desc: string
+  discountPercentage: number
   enabled: boolean
   startDate?: Date | null
   endDate?: Date | null
@@ -51,6 +52,7 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
         badgeColor: '#f3e8ff',
         badgeText: '#9333ea',
         desc: customOffer.description || 'Custom offer',
+        discountPercentage: 0,
         enabled: true,
         startDate: customOffer.startDate,
         endDate: customOffer.endDate,
@@ -107,10 +109,14 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
                 </div>
               </div>
               <button
-                className="btn-set-dates"
+                className={`btn-set-dates ${activeCalendar === offer.id ? 'active' : ''}`}
                 onClick={() => setActiveCalendar(activeCalendar === offer.id ? null : offer.id)}
               >
-                <Calendar size={12} /> Set Dates
+                {activeCalendar === offer.id ? (
+                  'Close'
+                ) : (
+                  <><Calendar size={12} /> Set Dates</>
+                )}
               </button>
 
               {activeCalendar === offer.id && (
@@ -179,62 +185,6 @@ export default function Step5PricingOffers({ offers, onOffersChange }: Step5Prop
         <button className="btn-add-custom-offer" onClick={() => setShowCustomModal(true)}>
           + Add Custom Offer
         </button>
-      </div>
-
-      <div className="step-card">
-        <h3 className="step-card-title">Stay Policies</h3>
-        <p className="step-card-subtitle" style={{ margin: '0 0 20px' }}>
-          Define check-in/out windows and automated access preferences.
-        </p>
-
-        <div className="form-row-2" style={{ marginBottom: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Check-in Time</label>
-            <div className="time-select-wrapper">
-              <input type="time" defaultValue="15:00" className="form-input" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Check-out Time</label>
-            <div className="time-select-wrapper">
-              <input type="time" defaultValue="11:00" className="form-input" />
-            </div>
-          </div>
-        </div>
-
-        <div className="form-row-2" style={{ marginBottom: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Early Check-in Grace Period</label>
-            <select className="form-select">
-              <option>None</option>
-              <option>1 hour</option>
-              <option>2 hours</option>
-              <option>3 hours</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Late Check-out Grace Period</label>
-            <select className="form-select">
-              <option>None</option>
-              <option>1 hour</option>
-              <option>2 hours</option>
-              <option>3 hours</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="self-checkin-row">
-          <div className="self-checkin-info">
-            <div className="self-checkin-icon">&#128273;</div>
-            <div>
-              <div className="self-checkin-label">Allow Self Check-in</div>
-              <p className="form-hint" style={{ margin: 0 }}>Guests receive digital codes automatically</p>
-            </div>
-          </div>
-          <button className="toggle-switch active">
-            <div className="toggle-knob" />
-          </button>
-        </div>
       </div>
 
       {showCustomModal && (

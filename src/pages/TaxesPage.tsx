@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import TaxesTable from '../components/taxes/TaxesTable'
@@ -10,12 +11,13 @@ import QuickActionsSidebar from '../components/taxes/QuickActionsSidebar'
 const tabs = ['Taxes', 'Policies']
 
 export default function TaxesPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [activeTab, setActiveTab] = useState('Taxes')
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Taxes & Policies" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
@@ -39,9 +41,9 @@ export default function TaxesPage() {
                   background: 'transparent',
                   fontSize: 14,
                   fontWeight: 500,
-                  color: activeTab === tab ? '#7C3AED' : '#6B7280',
+                  color: activeTab === tab ? 'var(--primary)' : '#6B7280',
                   cursor: 'pointer',
-                  borderBottom: activeTab === tab ? '2px solid #7C3AED' : '2px solid transparent',
+                  borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
                   marginBottom: -1,
                 }}
               >

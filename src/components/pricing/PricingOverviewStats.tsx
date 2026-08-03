@@ -47,7 +47,7 @@ export default function PricingOverviewStats({ stats, onNavigate }: PricingOverv
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'none', border: 'none', padding: 0,
-                color: '#7C3AED', fontSize: 13, fontWeight: 600,
+                color: 'var(--primary)', fontSize: 13, fontWeight: 600,
                 cursor: 'pointer',
               }}
             >

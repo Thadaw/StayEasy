@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import { Bell, AlertTriangle, Clock, CheckCircle, Info, Trash2, CheckCheck } from 'lucide-react'
@@ -63,7 +64,8 @@ const typeConfig = {
 }
 
 export default function NotificationsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -83,7 +85,7 @@ export default function NotificationsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} simplified />
+      <Sidebar simplified />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Notifications" subtitle="Stay updated with your subscription and account alerts." />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import RestaurantStatsRow from '../components/restaurant/RestaurantStatsRow'
@@ -11,11 +11,12 @@ import BusyHoursHeatmap from '../components/restaurant/BusyHoursHeatmap'
 import KitchenStatus from '../components/restaurant/KitchenStatus'
 
 export default function RestaurantPosPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Restaurant (POS)" subtitle="Manage restaurant operations, orders and menu." />
         <main style={{ flex: 1, overflow: 'auto', padding: 24, background: '#f5f6fa' }}>

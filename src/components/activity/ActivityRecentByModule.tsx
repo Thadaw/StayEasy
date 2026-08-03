@@ -62,7 +62,7 @@ export default function ActivityRecentByModule({ modules }: ActivityRecentByModu
       <button style={{
         width: '100%', marginTop: 16, padding: '10px 16px',
         border: '1px solid #E5E7EB', borderRadius: 8, background: '#fff',
-        fontSize: 14, fontWeight: 500, color: '#7C3AED', cursor: 'pointer',
+        fontSize: 14, fontWeight: 500, color: 'var(--primary)', cursor: 'pointer',
         textAlign: 'center',
       }}>
         View full report

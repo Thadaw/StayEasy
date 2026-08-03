@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://stayeasy-1-35ba.onrender.com/',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://stay-easy-sizw.onrender.com/api/v1',
   headers: {
     'ngrok-skip-browser-warning': 'true',
     'Content-Type': 'application/json'
@@ -21,7 +21,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      window.location.href = '/host/login'
     }
     return Promise.reject(error)
   }

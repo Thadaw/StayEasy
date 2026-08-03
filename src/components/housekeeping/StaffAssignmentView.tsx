@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Search, ChevronDown, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import type { StaffWorkload, StaffTask } from '../../types/housekeeping'
 
-const avatarColors = ['#7C3AED', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2']
+const avatarColors = ['var(--primary)', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2']
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase()
 
 const allStaff: StaffWorkload[] = [
@@ -119,13 +119,13 @@ export default function StaffAssignmentView() {
         <div style={{ display: 'flex', gap: 4, border: '1px solid #E5E7EB', borderRadius: 8, padding: 2, background: '#F9FAFB' }}>
           <button
             onClick={() => setViewMode('cards')}
-            style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: viewMode === 'cards' ? '#7C3AED' : 'transparent', color: viewMode === 'cards' ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: viewMode === 'cards' ? 'var(--primary)' : 'transparent', color: viewMode === 'cards' ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
           >
             Cards
           </button>
           <button
             onClick={() => setViewMode('table')}
-            style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: viewMode === 'table' ? '#7C3AED' : 'transparent', color: viewMode === 'table' ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: viewMode === 'table' ? 'var(--primary)' : 'transparent', color: viewMode === 'table' ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
           >
             Table
           </button>
@@ -133,7 +133,7 @@ export default function StaffAssignmentView() {
 
         <button
           onClick={() => setShowAssignModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', borderRadius: 8, background: '#7C3AED', fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', borderRadius: 8, background: 'var(--primary)', fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
         >
           <Plus size={18} />
           Assign Task
@@ -183,7 +183,7 @@ export default function StaffAssignmentView() {
                   {s.availability === 'Available' ? (
                     <button
                       onClick={() => { setAssignForm({ staff: s.name, task: '', priority: 'High', dueTime: '', notes: '' }); setShowAssignModal(true) }}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #7C3AED', background: '#fff', color: '#7C3AED', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: '#fff', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                     >
                       Assign Task
                     </button>
@@ -243,7 +243,7 @@ export default function StaffAssignmentView() {
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
                         {s.availability === 'Available' ? (
-                          <button onClick={() => { setAssignForm({ staff: s.name, task: '', priority: 'High', dueTime: '', notes: '' }); setShowAssignModal(true) }} style={{ padding: '4px 12px', border: '1px solid #7C3AED', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#7C3AED' }}>
+                          <button onClick={() => { setAssignForm({ staff: s.name, task: '', priority: 'High', dueTime: '', notes: '' }); setShowAssignModal(true) }} style={{ padding: '4px 12px', border: '1px solid var(--primary)', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>
                             Assign
                           </button>
                         ) : (
@@ -304,7 +304,7 @@ export default function StaffAssignmentView() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowAssignModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={handleAssign} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Assign</button>
+              <button onClick={handleAssign} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Assign</button>
             </div>
           </div>
         </div>

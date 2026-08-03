@@ -97,16 +97,16 @@ export default function ActivityFilters({
 
       <button style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px',
-        border: '1px solid #7C3AED', borderRadius: 8, background: '#fff',
-        fontSize: 14, fontWeight: 500, color: '#7C3AED', cursor: 'pointer',
+        border: '1px solid var(--primary)', borderRadius: 8, background: '#fff',
+        fontSize: 14, fontWeight: 500, color: 'var(--primary)', cursor: 'pointer',
       }}>
         <Filter size={14} /> Filters
       </button>
 
       <button style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px',
-        border: '1px solid #7C3AED', borderRadius: 8, background: '#fff',
-        fontSize: 14, fontWeight: 500, color: '#7C3AED', cursor: 'pointer',
+        border: '1px solid var(--primary)', borderRadius: 8, background: '#fff',
+        fontSize: 14, fontWeight: 500, color: 'var(--primary)', cursor: 'pointer',
       }}>
         <Download size={14} /> Export
       </button>

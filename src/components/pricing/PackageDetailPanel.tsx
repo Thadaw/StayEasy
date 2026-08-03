@@ -104,8 +104,8 @@ export default function PackageDetailPanel({ pkg, onClose }: PackageDetailPanelP
       <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 10 }}>
         <button style={{
           flex: 1, padding: '10px 16px', borderRadius: 8,
-          border: '1px solid #7C3AED', background: '#fff',
-          color: '#7C3AED', fontSize: 13, fontWeight: 600,
+          border: '1px solid var(--primary)', background: '#fff',
+          color: 'var(--primary)', fontSize: 13, fontWeight: 600,
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
           ✏️ Edit Package

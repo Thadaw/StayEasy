@@ -2,10 +2,9 @@
 import logo1 from '../../assets/logo1.png'
 
 interface PortalHeaderProps {
-  stepText?: string
 }
 
-export default function PortalHeader({ stepText }: PortalHeaderProps) {
+export default function PortalHeader({}: PortalHeaderProps) {
   return (
     <header className="portal-header">
       <div className="portal-header-left">
@@ -16,11 +15,6 @@ export default function PortalHeader({ stepText }: PortalHeaderProps) {
           </span>
         </Link>
       </div>
-
-      {stepText && (
-        <span className="portal-header-step">{stepText}</span>
-      )}
-      {stepText && <div />}
     </header>
   )
 }

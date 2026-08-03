@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import StatCard from '../components/dashboard/StatCard'
 import {
-  Users, UserPlus, Star, Heart, Gem, Search, Filter, Plus,
+  Users, UserPlus, Star, Heart, Gem, Search, Plus,
   Eye, MoreHorizontal, ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
 
@@ -48,7 +49,8 @@ function colorFromName(name: string) {
 const emptyForm = { name: '', email: '', phone: '', country: '', location: 'Kathmandu', roomType: 'Standard Room' }
 
 export default function GuestsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; guest: Guest } | null>(null)
@@ -125,7 +127,7 @@ export default function GuestsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Guests" subtitle="Manage all guest profiles and their information" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>

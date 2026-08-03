@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import { Search } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
@@ -133,7 +134,8 @@ const categories = ['All', 'Payment', 'Calendar', 'Email', 'Messaging', 'Maps', 
 const statuses = ['All', 'Connected', 'Not Connected']
 
 export default function IntegrationsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -195,7 +197,7 @@ export default function IntegrationsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Integrations" subtitle="Manage third-party service integrations" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>

@@ -41,7 +41,7 @@ const statCards = (stats: RoomStats) => [
     subtitle: `${stats.total > 0 ? ((stats.inProgress / stats.total) * 100).toFixed(1) : 0}% of total`,
     icon: Loader,
     bg: '#F3E8FF',
-    color: '#7C3AED',
+    color: 'var(--primary)',
     filterValue: 'In Progress',
   },
   {
@@ -73,10 +73,10 @@ export default function HousekeepingStats({ stats, activeFilter, onFilterChange 
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              border: isActive ? '2px solid #7C3AED' : '1px solid #E5E7EB',
+              border: isActive ? '2px solid var(--primary)' : '1px solid #E5E7EB',
               cursor: 'pointer',
               transition: 'border 0.15s, box-shadow 0.15s',
-              boxShadow: isActive ? '0 0 0 1px #7C3AED' : 'none',
+              boxShadow: isActive ? '0 0 0 1px var(--primary)' : 'none',
             }}
             onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C4B5FD' }}
             onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = 'none' } }}

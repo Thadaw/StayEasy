@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      const { data } = await api.get<User>('/api/v1/auth/users/me')
+      const { data } = await api.get<User>('/auth/users/me')
       setUser(mapUser(data))
     } catch {
       localStorage.removeItem('token')
@@ -59,11 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const credentialLogin = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const form = new FormData()
-      form.append('username', email)
-      form.append('password', password)
-      const res = await api.post('/api/v1/auth/users/login', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const params = new URLSearchParams()
+      params.append('username', email)
+      params.append('password', password)
+      const res = await api.post('/auth/login', params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       await login(res.data.access_token)
       return { success: true }
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (fullName: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await api.post('/api/v1/auth/users/register', {
+      await api.post('/auth/users/register', {
         full_name: fullName,
         email,
         password,
@@ -99,6 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token')
+    try {
+      const keys = Object.keys(localStorage)
+      for (const key of keys) {
+        if (key === 'stayEasyDraft' || key.startsWith('stayEasyDraft_')) {
+          localStorage.removeItem(key)
+        }
+      }
+    } catch {}
     setToken(null)
     setUser(null)
   }

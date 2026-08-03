@@ -89,7 +89,7 @@ function Toggle({ enabled, onChange }: ToggleProps) {
         height: 24,
         borderRadius: 12,
         border: 'none',
-        background: enabled ? '#6C3AED' : '#D1D5DB',
+        background: enabled ? '#1A3C5E' : '#D1D5DB',
         cursor: 'pointer',
         position: 'relative',
         transition: 'background 0.2s',
@@ -166,7 +166,7 @@ export default function BookingSettingsForm({ data, onChange }: BookingSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <CalendarCheck size={16} color="#6C3AED" />
+            <CalendarCheck size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Booking Preferences</h3>
         </div>
@@ -231,7 +231,7 @@ export default function BookingSettingsForm({ data, onChange }: BookingSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <CalendarCheck size={16} color="#6C3AED" />
+            <CalendarCheck size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Stay Restrictions</h3>
         </div>
@@ -284,7 +284,7 @@ export default function BookingSettingsForm({ data, onChange }: BookingSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <Clock size={16} color="#6C3AED" />
+            <Clock size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Check-in / Check-out</h3>
         </div>
@@ -346,7 +346,7 @@ export default function BookingSettingsForm({ data, onChange }: BookingSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <Shield size={16} color="#6C3AED" />
+            <Shield size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Cancellation Policy</h3>
         </div>
@@ -397,7 +397,7 @@ export default function BookingSettingsForm({ data, onChange }: BookingSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <CreditCard size={16} color="#6C3AED" />
+            <CreditCard size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Advance & Payment</h3>
         </div>

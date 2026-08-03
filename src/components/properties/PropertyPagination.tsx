@@ -54,9 +54,9 @@ export default function PropertyPagination({
             onClick={() => onPageChange(page)}
             style={{
               width: 36, height: 36,
-              border: page === currentPage ? '1px solid #7C3AED' : '1px solid #E5E7EB',
+              border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB',
               borderRadius: 8,
-              background: page === currentPage ? '#7C3AED' : '#fff',
+              background: page === currentPage ? 'var(--primary)' : '#fff',
               color: page === currentPage ? '#fff' : '#374151',
               fontWeight: page === currentPage ? 600 : 400,
               fontSize: 14, cursor: 'pointer',

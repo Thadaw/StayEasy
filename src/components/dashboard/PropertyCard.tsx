@@ -9,8 +9,10 @@ interface PropertyCardProps {
   type: string
   units: string
   status: 'Active' | 'Maintenance' | 'Inactive'
+  is_active?: boolean
   nextInspection?: string
   teamCount?: number
+  onToggleActivation?: (id: string) => void
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -19,14 +21,14 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   Inactive: { bg: '#fee2e2', text: '#dc2626' },
 }
 
-export default function PropertyCard({ name, location, image, type, units, status, nextInspection, teamCount = 2 }: PropertyCardProps) {
+export default function PropertyCard({ id, name, location, image, type, units, status, is_active = true, nextInspection, teamCount = 2, onToggleActivation }: PropertyCardProps) {
   const navigate = useNavigate()
   return (
     <div style={{
       background: '#fff', borderRadius: 12, border: '1px solid var(--border)',
       overflow: 'hidden', cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
     }}
-      onClick={() => navigate('/host/my-properties/dashboard')}
+      onClick={() => navigate(`/host/my-properties/dashboard/${id}`)}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' }}
     >
@@ -79,7 +81,16 @@ export default function PropertyCard({ name, location, image, type, units, statu
               </div>
             ))}
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Details →</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleActivation?.(id) }}
+              className={`toggle-switch ${is_active ? 'active' : ''}`}
+              title={is_active ? 'Deactivate property' : 'Activate property'}
+            >
+              <div className="toggle-knob" />
+            </button>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Details →</span>
+          </div>
         </div>
       </div>
     </div>

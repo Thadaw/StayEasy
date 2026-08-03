@@ -1,10 +1,15 @@
-import { Monitor, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { Monitor, Settings, AlertTriangle, X, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import type { GeneralSettings } from '../../types/settings'
-import SystemInfoBar from './SystemInfoBar'
+import { deleteProperty } from '../../services/pmsApi'
 
 interface GeneralSettingsFormProps {
   data: GeneralSettings
   onChange: (data: Partial<GeneralSettings>) => void
+  propertyId?: string
+  propertyName?: string
 }
 
 const cardStyle: React.CSSProperties = {
@@ -72,7 +77,7 @@ function Toggle({ enabled, onChange }: ToggleProps) {
         height: 24,
         borderRadius: 12,
         border: 'none',
-        background: enabled ? '#6C3AED' : '#D1D5DB',
+        background: enabled ? '#1A3C5E' : '#D1D5DB',
         cursor: 'pointer',
         position: 'relative',
         transition: 'background 0.2s',
@@ -96,22 +101,41 @@ function Toggle({ enabled, onChange }: ToggleProps) {
   )
 }
 
-const systemData = {
-  systemVersion: '',
-  lastBackup: '',
-  nextBackup: '',
-  databaseSize: '',
-  totalUsers: 0,
-  totalProperties: 0,
-}
+export default function GeneralSettingsForm({ data, onChange, propertyId, propertyName }: GeneralSettingsFormProps) {
+  const navigate = useNavigate()
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-export default function GeneralSettingsForm({ data, onChange }: GeneralSettingsFormProps) {
+  const handleDelete = async () => {
+    if (!propertyId) return
+    setDeleting(true)
+    try {
+      await deleteProperty(propertyId)
+      setShowConfirmDelete(false)
+      navigate('/host/my-properties')
+    } catch (error) {
+      let message = 'Failed to delete property.'
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const data = error.response?.data as { detail?: string; error?: string } | undefined
+        const serverMsg = data?.detail || data?.error || error.message
+        message = `Failed to delete property (${status ?? 'network error'}): ${serverMsg}`
+        console.error('Delete property failed:', { status, data: error.response?.data, message: error.message })
+      } else {
+        console.error('Delete property failed:', error)
+      }
+      alert(message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div>
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <Monitor size={16} color="#6C3AED" />
+            <Monitor size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
             System Preferences
@@ -193,7 +217,7 @@ export default function GeneralSettingsForm({ data, onChange }: GeneralSettingsF
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>
           <div style={iconCircleStyle}>
-            <Settings size={16} color="#6C3AED" />
+            <Settings size={16} color="#1A3C5E" />
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
             Other Preferences
@@ -283,7 +307,153 @@ export default function GeneralSettingsForm({ data, onChange }: GeneralSettingsF
         </div>
       </div>
 
-      <SystemInfoBar data={systemData} />
+      <div style={{ ...cardStyle, border: '1px solid #FECACA', background: '#FEF2F2' }}>
+        <div style={sectionHeaderStyle}>
+          <div style={{ ...iconCircleStyle, background: '#FEE2E2' }}>
+            <AlertTriangle size={16} color="#DC2626" />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#991B1B', margin: 0 }}>
+            Delete Property
+          </h3>
+        </div>
+        <p style={{ fontSize: 14, color: '#991B1B', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+          Permanently delete {propertyName ? <strong>{propertyName}</strong> : 'this property'} and all associated data including rooms, bookings, and settings. This action cannot be undone.
+        </p>
+        <button
+          onClick={() => setShowConfirmDelete(true)}
+          disabled={!propertyId}
+          style={{
+            padding: '10px 20px',
+            border: '1px solid #DC2626',
+            borderRadius: 8,
+            background: '#DC2626',
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#fff',
+            cursor: propertyId ? 'pointer' : 'not-allowed',
+            opacity: propertyId ? 1 : 0.5,
+          }}
+        >
+          Delete This Property
+        </button>
+      </div>
+
+      {showConfirmDelete && (
+        <div
+          onClick={() => setShowConfirmDelete(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: 32,
+              width: 440,
+              boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+              position: 'relative',
+            }}
+          >
+            <button
+              onClick={() => setShowConfirmDelete(false)}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                width: 32,
+                height: 32,
+                border: 'none',
+                background: 'transparent',
+                borderRadius: 8,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#9CA3AF',
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                <AlertTriangle size={28} color="#DC2626" />
+              </div>
+
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
+                Delete Property
+              </h3>
+
+              <p style={{ fontSize: 14, color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
+                Are you sure you want to delete <strong style={{ color: '#DC2626' }}>{propertyName || 'this property'}</strong>? This will permanently delete all rooms, bookings, offers, and settings. This action cannot be undone.
+              </p>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 28, width: '100%' }}>
+                <button
+                  onClick={() => setShowConfirmDelete(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    borderRadius: 10,
+                    border: '1px solid #E5E7EB',
+                    background: '#fff',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#374151',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#DC2626',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#fff',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    opacity: deleting ? 0.6 : 1,
+                    boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {deleting && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

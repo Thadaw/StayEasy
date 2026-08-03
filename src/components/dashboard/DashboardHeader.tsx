@@ -1,7 +1,4 @@
-import { Menu } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import DateRangePickerDropdown from './DateRangePickerDropdown'
-import NotificationDropdown from './NotificationDropdown'
 import UserProfileDropdown from './UserProfileDropdown'
 
 interface DashboardHeaderProps {
@@ -10,7 +7,7 @@ interface DashboardHeaderProps {
   subtitle?: string
 }
 
-export default function DashboardHeader({ onMenuToggle, title, subtitle }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
   const { user } = useAuth()
 
   return (
@@ -27,40 +24,14 @@ export default function DashboardHeader({ onMenuToggle, title, subtitle }: Dashb
         zIndex: 20,
       }}
     >
-      {/* Left: Hamburger + Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {onMenuToggle && (
-          <button
-            onClick={onMenuToggle}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--muted)',
-              cursor: 'pointer',
-              color: 'var(--muted-foreground)',
-            }}
-            title="Toggle Sidebar"
-          >
-            <Menu size={18} />
-          </button>
+      <div>
+        {title && <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--brand-dark)' }}>{title}</h1>}
+        {subtitle && (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--muted-foreground)' }}>{subtitle}</p>
         )}
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--brand-dark)' }}>{title || 'Dashboard'}</h1>
-          {subtitle && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted-foreground)' }}>{subtitle}</p>
-          )}
-        </div>
       </div>
 
-      {/* Right: Date Range + Notifications + User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <DateRangePickerDropdown />
-        <NotificationDropdown />
         <UserProfileDropdown user={user} />
       </div>
     </header>

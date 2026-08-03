@@ -33,7 +33,7 @@ const propertyImages = [
 ]
 
 const avatarColors = [
-  '#7C3AED', '#2563EB', '#059669', '#D97706',
+  'var(--primary)', '#2563EB', '#059669', '#D97706',
   '#DC2626', '#0891B2',
 ]
 
@@ -99,7 +99,7 @@ export default function PropertyTable({ properties }: PropertyTableProps) {
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>{prop.name}</p>
-                      <p style={{ margin: 0, fontSize: 13, color: '#7C3AED', fontWeight: 500 }}>{prop.code}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--primary)', fontWeight: 500 }}>{prop.code}</p>
                     </div>
                   </div>
                 </td>

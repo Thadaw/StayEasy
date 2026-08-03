@@ -96,7 +96,7 @@ export default function ActivityTable({ activities, onSelectActivity, selectedAc
                     {activity.descriptionLink ? (
                       <>
                         {activity.description.split(activity.descriptionLink)[0]}
-                        <span style={{ color: '#7C3AED', fontWeight: 500 }}>{activity.descriptionLink}</span>
+                        <span style={{ color: 'var(--primary)', fontWeight: 500 }}>{activity.descriptionLink}</span>
                         {activity.description.split(activity.descriptionLink)[1] || ''}
                       </>
                     ) : activity.description}
@@ -158,9 +158,9 @@ export default function ActivityTable({ activities, onSelectActivity, selectedAc
             {[1, 2, 3].map(page => (
               <button key={page} onClick={() => setCurrentPage(page)} style={{
                 width: 32, height: 32,
-                border: page === currentPage ? '1px solid #7C3AED' : '1px solid #E5E7EB',
+                border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB',
                 borderRadius: 6,
-                background: page === currentPage ? '#7C3AED' : '#fff',
+                background: page === currentPage ? 'var(--primary)' : '#fff',
                 color: page === currentPage ? '#fff' : '#374151',
                 fontWeight: page === currentPage ? 600 : 400,
                 fontSize: 13, cursor: 'pointer',

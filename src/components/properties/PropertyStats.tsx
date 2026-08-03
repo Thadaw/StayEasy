@@ -12,7 +12,7 @@ const statCards = (stats: PropertyStatsType) => [
     subtitle: 'All Properties',
     icon: Building2,
     bg: '#F3E8FF',
-    color: '#7C3AED',
+    color: 'var(--primary)',
   },
   {
     label: 'Total Rooms',

@@ -66,7 +66,7 @@ export default function TopRoomTypes({ rooms }: TopRoomTypesProps) {
             gap: 6,
             background: 'none',
             border: 'none',
-            color: '#7C3AED',
+            color: 'var(--primary)',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',

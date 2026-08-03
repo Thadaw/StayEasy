@@ -1,7 +1,7 @@
 import { Info } from 'lucide-react'
 
 const taxData = [
-  { name: 'VAT 13%', rate: '13.00%', color: '#7C3AED' },
+  { name: 'VAT 13%', rate: '13.00%', color: 'var(--primary)' },
   { name: 'Service Charge 10%', rate: '10.00%', color: '#F59E0B' },
   { name: 'SC 5% (Takeaway)', rate: '5.00%', color: '#2563EB' },
   { name: 'Delivery Charge 0%', rate: '0.00%', color: '#10B981' },
@@ -20,7 +20,7 @@ function DonutChart() {
   const circumference = 2 * Math.PI * radius
 
   const segments = [
-    { pct: 32.5, color: '#7C3AED' },   // VAT 13% of 40% total
+    { pct: 32.5, color: 'var(--primary)' },   // VAT 13% of 40% total
     { pct: 25, color: '#F59E0B' },     // SC 10%
     { pct: 12.5, color: '#2563EB' },   // SC 5%
     { pct: 0, color: '#10B981' },      // Delivery 0%

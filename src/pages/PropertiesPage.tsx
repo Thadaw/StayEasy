@@ -1,23 +1,19 @@
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import PropertyStats from '../components/properties/PropertyStats'
 import PropertyFilters from '../components/properties/PropertyFilters'
 import PropertyTable from '../components/properties/PropertyTable'
 import PropertyPagination from '../components/properties/PropertyPagination'
-import type { Property } from '../types/properties'
-
-const MOCK_PROPERTIES: Property[] = [
-  { id: 1, name: 'Hotel Blue Pearl', code: 'HTL-001', type: 'Hotel', location: 'Kathmandu, Nepal', phone: '+977 1 4567890', rooms: 45, occupancy: 78.6, status: 'Active', manager: 'Ramesh Thapa', managerEmail: 'ramesh.thapa@email.com' },
-  { id: 2, name: 'Lake View Resort', code: 'RES-002', type: 'Resort', location: 'Pokhara, Nepal', phone: '+977 61 456789', rooms: 32, occupancy: 63.3, status: 'Active', manager: 'Sunita Shrestha', managerEmail: 'sunita.shrestha@email.com' },
-  { id: 3, name: 'Mountain Resort', code: 'RES-003', type: 'Resort', location: 'Chitwan, Nepal', phone: '+977 56 456789', rooms: 28, occupancy: 81.2, status: 'Active', manager: 'Kiran Gurung', managerEmail: 'kiran.gurung@email.com' },
-  { id: 4, name: 'City Center Hotel', code: 'HTL-004', type: 'Hotel', location: 'Lalitpur, Nepal', phone: '+977 1 5544332', rooms: 15, occupancy: 56.7, status: 'Inactive', manager: 'Anita Lama', managerEmail: 'anita.lama@email.com' },
-  { id: 5, name: 'Boutique Hotel Vista', code: 'HTL-005', type: 'Hotel', location: 'Kathmandu, Nepal', phone: '+977 1 4411223', rooms: 18, occupancy: 69.4, status: 'Active', manager: 'Bikash Maharjan', managerEmail: 'bikash.maharjan@email.com' },
-  { id: 6, name: 'Jungle Safari Lodge', code: 'LOD-006', type: 'Lodge', location: 'Bardia, Nepal', phone: '+977 81 456789', rooms: 12, occupancy: 50.0, status: 'Active', manager: 'Dinesh Karki', managerEmail: 'dinesh.karki@email.com' },
-]
+import { getAllProperties } from '../services/pmsApi'
+import { propertyKeys } from '../lib/queryKeys'
+import type { GeneralInfoResponse } from '../types/pms'
 
 export default function PropertiesPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
@@ -25,8 +21,39 @@ export default function PropertiesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  const { data: apiProperties = [] } = useQuery<GeneralInfoResponse[]>({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+
+  const properties = useMemo(() => {
+    return apiProperties.map((p, i) => ({
+      id: i + 1,
+      name: p.name,
+      code: (p as any).code || `PRP-${String(i + 1).padStart(3, '0')}`,
+      type: p.type || 'Hotel',
+      location: [p.city, p.state, p.country].filter(Boolean).join(', ') || (p as any).address || '',
+      phone: (p as any).phone || '',
+      rooms: p.total_rooms || 0,
+      occupancy: 0,
+      status: (p as any).is_active === false ? 'Inactive' as const : 'Active' as const,
+      manager: (p as any).manager || '',
+      managerEmail: (p as any).manager_email || '',
+    }))
+  }, [apiProperties])
+
+  const stats = useMemo(() => ({
+    totalProperties: properties.length,
+    totalRooms: properties.reduce((sum, p) => sum + p.rooms, 0),
+    totalBookings: 0,
+    revenue: 0,
+    occupancyRate: 0,
+    revenueGrowth: 0,
+    occupancyGrowth: 0,
+  }), [properties])
+
   const filteredProperties = useMemo(() => {
-    return MOCK_PROPERTIES.filter(prop => {
+    return properties.filter(prop => {
       const matchesSearch =
         !search ||
         prop.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -43,22 +70,12 @@ export default function PropertiesPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Properties" subtitle="Manage all your hotel properties and their details" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
 
-          <PropertyStats
-            stats={{
-              totalProperties: 6,
-              totalRooms: 126,
-              totalBookings: 1248,
-              revenue: 1248000,
-              occupancyRate: 72.4,
-              revenueGrowth: 18.6,
-              occupancyGrowth: 10.3,
-            }}
-          />
+          <PropertyStats stats={stats} />
 
           <PropertyFilters
             search={search}

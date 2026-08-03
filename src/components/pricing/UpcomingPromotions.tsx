@@ -72,7 +72,7 @@ export default function UpcomingPromotions({ promotions }: UpcomingPromotionsPro
 
       <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6', textAlign: 'center' }}>
         <button style={{
-          background: 'none', border: 'none', color: '#7C3AED',
+          background: 'none', border: 'none', color: 'var(--primary)',
           fontSize: 13, fontWeight: 600, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', gap: 4,
         }}>

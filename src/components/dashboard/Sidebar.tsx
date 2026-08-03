@@ -1,12 +1,13 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useUIStore } from '../../stores/uiStore'
+import { usePropertyStore } from '../../stores/propertyStore'
 import logo1 from '../../assets/logo1.png'
 import {
   LayoutDashboard,
   CalendarDays,
   BedDouble,
-  UtensilsCrossed,
   Users,
   UserCog,
   Sparkles,
@@ -17,7 +18,6 @@ import {
   BarChart3,
   Building2,
   Settings,
-  Receipt,
   CreditCard,
   Plug,
   Bell,
@@ -27,13 +27,9 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  ClipboardList,
-  Table2,
-  Utensils,
-  FolderOpen,
-  Monitor,
-  FileText,
-  Wallet,
+  Wifi,
+  Receipt,
+  Image,
 } from 'lucide-react'
 
 interface NavItem {
@@ -56,22 +52,6 @@ const sections: NavSection[] = [
       { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/host/my-properties/dashboard' },
       { label: 'Bookings', icon: <CalendarDays size={18} />, path: '/host/bookings' },
       { label: 'Rooms', icon: <BedDouble size={18} />, path: '/host/rooms' },
-      {
-        label: 'Restaurant (POS)',
-        icon: <UtensilsCrossed size={18} />,
-        path: '/host/restaurant',
-        children: [
-          { label: 'Overview', icon: <LayoutDashboard size={16} />, path: '/host/restaurant' },
-          { label: 'Orders', icon: <ClipboardList size={16} />, path: '/host/restaurant/orders' },
-          { label: 'Tables', icon: <Table2 size={16} />, path: '/host/restaurant/tables' },
-          { label: 'Menu Items', icon: <Utensils size={16} />, path: '/host/restaurant/menu' },
-          { label: 'Categories', icon: <FolderOpen size={16} />, path: '/host/restaurant/categories' },
-          { label: 'Kitchen Display', icon: <Monitor size={16} />, path: '/host/restaurant/kitchen' },
-          { label: 'Receipts', icon: <FileText size={16} />, path: '/host/restaurant/receipts' },
-          { label: 'Payments', icon: <Wallet size={16} />, path: '/host/restaurant/payments' },
-          { label: 'Reports', icon: <BarChart3 size={16} />, path: '/host/restaurant/reports' },
-        ],
-      },
       { label: 'Guests', icon: <Users size={18} />, path: '/host/guests' },
       { label: 'Staff', icon: <UserCog size={18} />, path: '/host/staff' },
       { label: 'Housekeeping', icon: <Sparkles size={18} />, path: '/host/housekeeping' },
@@ -92,8 +72,20 @@ const sections: NavSection[] = [
   {
     label: 'PROPERTY',
     items: [
-      { label: 'Settings', icon: <Settings size={18} />, path: '/host/settings' },
-      { label: 'Taxes & Policies', icon: <Receipt size={18} />, path: '/host/taxes' },
+      {
+        label: 'Settings',
+        icon: <Settings size={18} />,
+        path: '/host/settings',
+        children: [
+          { label: 'Company Profile', icon: <Building2 size={16} />, path: '/host/settings?tab=company' },
+          { label: 'General Settings', icon: <Settings size={16} />, path: '/host/settings?tab=general' },
+          { label: 'Booking Settings', icon: <Calendar size={16} />, path: '/host/settings?tab=booking' },
+          { label: 'Room & Rate Settings', icon: <BedDouble size={16} />, path: '/host/settings?tab=room' },
+          { label: 'Taxes & Policies', icon: <Receipt size={16} />, path: '/host/settings?tab=taxes' },
+          { label: 'Amenities', icon: <Wifi size={16} />, path: '/host/settings?tab=amenities' },
+          { label: 'Gallery', icon: <Image size={16} />, path: '/host/settings?tab=gallery' },
+        ],
+      },
       { label: 'Payment Methods', icon: <CreditCard size={18} />, path: '/host/payments' },
       { label: 'Integrations', icon: <Plug size={18} />, path: '/host/integrations' },
     ],
@@ -109,16 +101,25 @@ const sections: NavSection[] = [
 ]
 
 interface SidebarProps {
-  collapsed: boolean
-  onToggle: () => void
   simplified?: boolean
 }
 
-export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProps) {
+export default function Sidebar({ simplified }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const collapsed = useUIStore((s) => s.sidebarCollapsed)
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const navRef = useRef<HTMLElement>(null)
+  const scrollPositionRef = useRef(0)
+
+  useEffect(() => {
+    if (currentPropertyId) {
+      localStorage.setItem('currentPropertyId', currentPropertyId)
+    }
+  }, [currentPropertyId])
 
   useEffect(() => {
     sections.forEach((section) => {
@@ -136,7 +137,10 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
 
   const isParentActive = (item: NavItem) => {
     if (item.children) {
-      return item.children.some((child) => location.pathname === child.path)
+      return item.children.some((child) => {
+        const childPathname = child.path.split('?')[0]
+        return location.pathname === childPathname
+      })
     }
     return location.pathname === item.path || location.pathname.startsWith(item.path + '/')
   }
@@ -147,12 +151,24 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
   }
 
   const handleNavClick = (item: NavItem) => {
+    if (navRef.current) {
+      scrollPositionRef.current = navRef.current.scrollTop
+    }
     if (item.children) {
       toggleExpand(item.label)
+    } else if (item.label === 'Dashboard' && item.path === '/host/my-properties/dashboard') {
+      const id = currentPropertyId || localStorage.getItem('currentPropertyId')
+      navigate(id ? `/host/my-properties/dashboard/${id}` : '/host/my-properties')
     } else {
       navigate(item.path)
     }
   }
+
+  useEffect(() => {
+    if (navRef.current) {
+      navRef.current.scrollTop = scrollPositionRef.current
+    }
+  }, [location.pathname])
 
   return (
     <aside
@@ -181,7 +197,7 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
         )}
       </div>
 
-      <nav style={{ flex: 1, overflowY: 'auto', padding: collapsed ? '12px 8px' : '12px 12px' }} className="sidebar-scrollbar">
+      <nav ref={navRef} style={{ flex: 1, overflowY: 'auto', padding: collapsed ? '12px 8px' : '12px 12px' }} className="sidebar-scrollbar">
         {simplified ? (
           <>
           <button
@@ -209,7 +225,6 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
           </button>
 
           <button
-            onClick={() => navigate('/host/notifications')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -289,7 +304,9 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
                   {!collapsed && item.children && expanded && (
                     <div style={{ paddingLeft: 20, marginTop: 2 }}>
                       {item.children.map((child) => {
-                        const childActive = location.pathname === child.path
+                        const childPathname = child.path.split('?')[0]
+                        const childSearchParams = child.path.split('?')[1] || ''
+                        const childActive = location.pathname === childPathname && location.search.includes(childSearchParams)
                         return (
                           <button
                             key={child.label}
@@ -342,7 +359,7 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
               <div style={{ fontSize: 11, opacity: 0.6 }}>Super Admin</div>
             </div>
             <button
-              onClick={onToggle}
+              onClick={toggleSidebar}
               style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', opacity: 0.6 }}
             >
               <ChevronLeft size={16} />
@@ -351,7 +368,7 @@ export default function Sidebar({ collapsed, onToggle, simplified }: SidebarProp
         )}
         {collapsed && (
           <button
-            onClick={onToggle}
+            onClick={toggleSidebar}
             style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', opacity: 0.6 }}
           >
             <ChevronRight size={16} />

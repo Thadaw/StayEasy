@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import ActivityStats from '../components/activity/ActivityStats'
@@ -132,7 +133,8 @@ const OVERVIEW_BREAKDOWN = [
 ]
 
 export default function ActivityLogsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null)
   const [search, setSearch] = useState('')
   const [userFilter, setUserFilter] = useState('')
@@ -142,7 +144,7 @@ export default function ActivityLogsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Activity Logs" subtitle="Track all important activities and changes made in the system." />
         <main style={{ display: 'flex', flex: 1, overflow: 'hidden', gap: 0 }}>

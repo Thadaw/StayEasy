@@ -4,4 +4,12 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://stay-easy-sizw.onrender.com',
+        changeOrigin: true,
+      }
+    }
+  }
 })

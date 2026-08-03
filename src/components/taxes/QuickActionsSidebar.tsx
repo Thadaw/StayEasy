@@ -5,28 +5,28 @@ const actions = [
     icon: Tag,
     label: 'Apply Tax to Items',
     subtitle: 'Manage item-wise tax',
-    color: '#7C3AED',
+    color: 'var(--primary)',
     bg: '#F5F3FF',
   },
   {
     icon: Users,
     label: 'Tax Groups',
     subtitle: 'Create tax groups',
-    color: '#7C3AED',
+    color: 'var(--primary)',
     bg: '#F5F3FF',
   },
   {
     icon: Download,
     label: 'Import Taxes',
     subtitle: 'Import from Excel',
-    color: '#7C3AED',
+    color: 'var(--primary)',
     bg: '#F5F3FF',
   },
   {
     icon: Upload,
     label: 'Export Policies',
     subtitle: 'Download all policies',
-    color: '#7C3AED',
+    color: 'var(--primary)',
     bg: '#F5F3FF',
   },
 ]
@@ -118,7 +118,7 @@ export default function QuickActionsSidebar() {
             marginTop: 1,
           }}
         >
-          <Info size={14} color="#7C3AED" />
+          <Info size={14} color="var(--primary)" />
         </div>
         <p style={{ fontSize: 13, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>
           Changes to taxes or policies will be reflected in new orders only.

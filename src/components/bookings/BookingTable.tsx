@@ -16,24 +16,6 @@ export interface Booking {
   paymentStatus: string
 }
 
-export const allBookings: Booking[] = [
-  { id: 'BK-250601', guest: 'John Smith', email: 'john@email.com', roomType: 'Deluxe Room', roomNumber: '301', checkIn: 'Jun 1, 2026', checkOut: 'Jun 4, 2026', nights: 3, status: 'Confirmed', amount: 'NPR 18,000', paymentStatus: 'Paid' },
-  { id: 'BK-250602', guest: 'Emily Johnson', email: 'emily@email.com', roomType: 'Suite Room', roomNumber: '502', checkIn: 'Jun 1, 2026', checkOut: 'Jun 3, 2026', nights: 2, status: 'Checked-in', amount: 'NPR 24,000', paymentStatus: 'Paid' },
-  { id: 'BK-250603', guest: 'Michael Brown', email: 'michael@email.com', roomType: 'Standard Room', roomNumber: '105', checkIn: 'Jun 1, 2026', checkOut: 'Jun 2, 2026', nights: 1, status: 'Pending', amount: 'NPR 9,000', paymentStatus: 'Pending' },
-  { id: 'BK-250604', guest: 'Sarah Taylor', email: 'sarah@email.com', roomType: 'Deluxe Room', roomNumber: '302', checkIn: 'Jun 2, 2026', checkOut: 'Jun 5, 2026', nights: 3, status: 'Confirmed', amount: 'NPR 21,000', paymentStatus: 'Paid' },
-  { id: 'BK-250605', guest: 'David Wilson', email: 'david@email.com', roomType: 'Suite Room', roomNumber: '503', checkIn: 'Jun 2, 2026', checkOut: 'Jun 4, 2026', nights: 2, status: 'Confirmed', amount: 'NPR 22,500', paymentStatus: 'Paid' },
-  { id: 'BK-250606', guest: 'Jessica Anderson', email: 'jessica@email.com', roomType: 'Presidential Suite', roomNumber: '801', checkIn: 'Jun 3, 2026', checkOut: 'Jun 7, 2026', nights: 4, status: 'Confirmed', amount: 'NPR 68,000', paymentStatus: 'Paid' },
-  { id: 'BK-250607', guest: 'Robert Martinez', email: 'robert@email.com', roomType: 'Standard Room', roomNumber: '106', checkIn: 'Jun 3, 2026', checkOut: 'Jun 5, 2026', nights: 2, status: 'Cancelled', amount: 'NPR 6,000', paymentStatus: 'Refunded' },
-  { id: 'BK-250608', guest: 'Amanda Chen', email: 'amanda@email.com', roomType: 'Deluxe Room', roomNumber: '303', checkIn: 'Jun 4, 2026', checkOut: 'Jun 8, 2026', nights: 4, status: 'Pending', amount: 'NPR 28,000', paymentStatus: 'Pending' },
-  { id: 'BK-250609', guest: 'Daniel Lee', email: 'daniel@email.com', roomType: 'Suite Room', roomNumber: '504', checkIn: 'Jun 4, 2026', checkOut: 'Jun 6, 2026', nights: 2, status: 'Checked-in', amount: 'NPR 24,000', paymentStatus: 'Paid' },
-  { id: 'BK-250610', guest: 'Laura Wright', email: 'laura@email.com', roomType: 'Standard Room', roomNumber: '107', checkIn: 'Jun 5, 2026', checkOut: 'Jun 7, 2026', nights: 2, status: 'Confirmed', amount: 'NPR 6,000', paymentStatus: 'Paid' },
-  { id: 'BK-250611', guest: 'Kevin Patel', email: 'kevin@email.com', roomType: 'Deluxe Room', roomNumber: '304', checkIn: 'Jun 5, 2026', checkOut: 'Jun 9, 2026', nights: 4, status: 'Checked-out', amount: 'NPR 24,000', paymentStatus: 'Paid' },
-  { id: 'BK-250612', guest: 'Sophie Garcia', email: 'sophie@email.com', roomType: 'Suite Room', roomNumber: '505', checkIn: 'Jun 6, 2026', checkOut: 'Jun 9, 2026', nights: 3, status: 'Confirmed', amount: 'NPR 36,000', paymentStatus: 'Paid' },
-  { id: 'BK-250613', guest: 'James Thompson', email: 'james@email.com', roomType: 'Standard Room', roomNumber: '108', checkIn: 'Jun 6, 2026', checkOut: 'Jun 7, 2026', nights: 1, status: 'Pending', amount: 'NPR 3,000', paymentStatus: 'Pending' },
-  { id: 'BK-250614', guest: 'Olivia Robinson', email: 'olivia@email.com', roomType: 'Presidential Suite', roomNumber: '802', checkIn: 'Jun 7, 2026', checkOut: 'Jun 12, 2026', nights: 5, status: 'Confirmed', amount: 'NPR 85,000', paymentStatus: 'Paid' },
-  { id: 'BK-250615', guest: 'Chris Nakamura', email: 'chris@email.com', roomType: 'Deluxe Room', roomNumber: '305', checkIn: 'Jun 7, 2026', checkOut: 'Jun 10, 2026', nights: 3, status: 'Cancelled', amount: 'NPR 18,000', paymentStatus: 'Refunded' },
-]
-
 export const statusColors: Record<string, { bg: string; text: string }> = {
   Confirmed: { bg: '#dcfce7', text: '#16a34a' },
   Pending: { bg: '#fef3c7', text: '#d97706' },
@@ -49,6 +31,7 @@ const paymentColors: Record<string, { bg: string; text: string }> = {
 }
 
 interface BookingTableProps {
+  bookings: Booking[]
   searchQuery: string
   activeStatus: string
   roomType: string
@@ -57,17 +40,17 @@ interface BookingTableProps {
 
 type SortKey = 'id' | 'guest' | 'roomType' | 'checkIn' | 'checkOut' | 'amount' | 'status'
 
-export default function BookingTable({ searchQuery, activeStatus, roomType, dateFilter }: BookingTableProps) {
+export default function BookingTable({ bookings, searchQuery, activeStatus, roomType, dateFilter }: BookingTableProps) {
   const navigate = useNavigate()
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [sortAsc, setSortAsc] = useState(true)
   const [page, setPage] = useState(1)
   const perPage = 8
 
-  const filtered = allBookings.filter((b) => {
+  const filtered = bookings.filter((b) => {
     const matchesSearch = searchQuery === '' || b.guest.toLowerCase().includes(searchQuery.toLowerCase()) || b.id.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = activeStatus === 'All' || b.status === activeStatus
-    const matchesRoom = roomType === 'All Rooms' || b.roomType === roomType
+    const matchesRoom = roomType === 'All Rooms' || b.roomType.toLowerCase().includes(roomType.toLowerCase())
     const matchesDate = dateFilter === '' || b.checkIn === new Date(dateFilter).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     return matchesSearch && matchesStatus && matchesRoom && matchesDate
   })
@@ -138,7 +121,7 @@ export default function BookingTable({ searchQuery, activeStatus, roomType, date
                 </td>
                 <td style={{ padding: '12px 14px' }}>
                   <div>{b.roomType}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Room {b.roomNumber}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{b.roomNumber === '1' ? '1 room' : `${b.roomNumber} rooms`}</div>
                 </td>
                 <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{b.checkIn}</td>
                 <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{b.checkOut}</td>

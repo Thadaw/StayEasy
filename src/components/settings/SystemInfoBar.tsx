@@ -51,7 +51,7 @@ export default function SystemInfoBar({ data }: SystemInfoBarProps) {
             justifyContent: 'center',
           }}
         >
-          <Info size={16} color="#6C3AED" />
+          <Info size={16} color="#1A3C5E" />
         </div>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0 }}>
           System Information

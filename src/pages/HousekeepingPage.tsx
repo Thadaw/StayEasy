@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useUIStore } from '../stores/uiStore'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import HousekeepingStats from '../components/housekeeping/HousekeepingStats'
@@ -9,18 +12,10 @@ import HousekeepingPagination from '../components/housekeeping/HousekeepingPagin
 import TaskFilters from '../components/housekeeping/TaskFilters'
 import TaskTable, { allTasks } from '../components/housekeeping/TaskTable'
 import StaffAssignmentView from '../components/housekeeping/StaffAssignmentView'
+import { getAllProperties, getRooms } from '../services/pmsApi'
+import { propertyKeys, roomKeys } from '../lib/queryKeys'
 import type { HousekeepingRoom, RoomStats, HousekeepingTask } from '../types/housekeeping'
-
-const MOCK_ROOMS: HousekeepingRoom[] = [
-  { id: 1, roomNumber: '101', roomType: 'Deluxe Room', bedDescription: '1 King Bed', floor: '1st Floor', status: 'Clean', assignedTo: 'Sunita Shrestha', lastCleaned: 'May 30, 2026\n10:30 AM', nextCleaning: 'Jun 1, 2026\n10:00 AM' },
-  { id: 2, roomNumber: '102', roomType: 'Suite Room', bedDescription: '1 King Bed', floor: '1st Floor', status: 'Dirty', assignedTo: 'Kiran Gurung', lastCleaned: 'May 30, 2026\n09:15 AM', nextCleaning: null },
-  { id: 3, roomNumber: '103', roomType: 'Standard Room', bedDescription: '2 Single Beds', floor: '1st Floor', status: 'In Progress', assignedTo: 'Anita Lama', lastCleaned: null, nextCleaning: 'May 31, 2026\n02:00 PM' },
-  { id: 4, roomNumber: '104', roomType: 'Deluxe Room', bedDescription: '1 King Bed', floor: '1st Floor', status: 'Dirty', assignedTo: 'Bikash Magar', lastCleaned: 'May 29, 2026\n11:00 AM', nextCleaning: 'May 31, 2026\n10:00 AM' },
-  { id: 5, roomNumber: '201', roomType: 'Suite Room', bedDescription: '1 King Bed', floor: '2nd Floor', status: 'Clean', assignedTo: 'Pooja Adhikari', lastCleaned: 'May 30, 2026\n12:10 PM', nextCleaning: 'Jun 1, 2026\n12:00 PM' },
-  { id: 6, roomNumber: '202', roomType: 'Standard Room', bedDescription: '2 Single Beds', floor: '2nd Floor', status: 'Out of Service', assignedTo: null, lastCleaned: null, nextCleaning: null },
-  { id: 7, roomNumber: '203', roomType: 'Family Room', bedDescription: '1 King + 1 Single Bed', floor: '2nd Floor', status: 'Clean', assignedTo: 'Sunita Shrestha', lastCleaned: 'May 30, 2026\n09:45 AM', nextCleaning: 'Jun 1, 2026\n09:00 AM' },
-  { id: 8, roomNumber: '204', roomType: 'Deluxe Room', bedDescription: '1 King Bed', floor: '2nd Floor', status: 'In Progress', assignedTo: 'Kiran Gurung', lastCleaned: null, nextCleaning: 'May 31, 2026\n04:00 PM' },
-]
+import type { GeneralInfoResponse, RoomResponse } from '../types/pms'
 
 const staffList = ['Sita Sharma', 'Ram Gurung', 'Maya Rai', 'Anita Lama', 'Bikash Magar', 'Pooja Adhikari']
 const roomOptions = ['Room 101', 'Room 102', 'Room 201', 'Room 205', 'Room 305', 'Room 108', 'Room 402', 'Room 401']
@@ -30,11 +25,49 @@ const priorityOptions = ['High', 'Medium', 'Low']
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontSize: 14, color: '#374151', outline: 'none', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 4, display: 'block' }
 
+function mapApiRoomToHousekeeping(apiRoom: RoomResponse, index: number): HousekeepingRoom {
+  const statusMap: Record<string, HousekeepingRoom['status']> = {
+    AVAILABLE: 'Clean', OCCUPIED: 'Dirty', BOOKED: 'Dirty',
+    CLEANING: 'In Progress', DIRTY: 'Dirty', MAINTENANCE: 'Out of Service',
+    OUT_OF_ORDER: 'Out of Service', OUT_OF_SERVICE: 'Out of Service',
+  }
+  const floor = apiRoom.floor_number ? `${apiRoom.floor_number}${apiRoom.floor_number === 1 ? 'st' : apiRoom.floor_number === 2 ? 'nd' : apiRoom.floor_number === 3 ? 'rd' : 'th'} Floor` : '1st Floor'
+  return {
+    id: index + 1,
+    roomNumber: apiRoom.room_name || String(index + 101),
+    roomType: apiRoom.room_type_id || 'Room',
+    bedDescription: apiRoom.bed_type_id || '1 Bed',
+    floor,
+    status: statusMap[apiRoom.status || ''] || 'Clean',
+    assignedTo: null,
+    lastCleaned: null,
+    nextCleaning: null,
+  }
+}
+
 export default function HousekeepingPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [topTab, setTopTab] = useState('Room Status')
 
-  const [rooms] = useState<HousekeepingRoom[]>(MOCK_ROOMS)
+  const { data: properties = [] } = useQuery<GeneralInfoResponse[]>({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const propertyId = properties.find((p) => p.id === currentPropertyId)?.id ?? properties[0]?.id
+
+  const { data: apiRooms = [] } = useQuery<RoomResponse[]>({
+    queryKey: roomKeys.byProperty(propertyId ?? ''),
+    queryFn: () => getRooms(propertyId!),
+    enabled: !!propertyId,
+  })
+
+  const rooms: HousekeepingRoom[] = useMemo(
+    () => apiRooms.map((r, i) => mapApiRoomToHousekeeping(r, i)),
+    [apiRooms]
+  )
   const [roomSearch, setRoomSearch] = useState('')
   const [floorFilter, setFloorFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -154,7 +187,7 @@ export default function HousekeepingPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Housekeeping" subtitle="Manage room cleaning status, tasks and housekeeping activities" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
@@ -291,7 +324,7 @@ export default function HousekeepingPage() {
                 <button onClick={() => handleCompleteTask(viewingTask.id)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Mark Complete</button>
               )}
               <button onClick={() => { setViewingTask(null); setAssigningTask(viewingTask); setAssignForm({ staff: viewingTask.assignedTo || '', priority: viewingTask.priority, dueTime: '', notes: '' }) }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Reassign</button>
-              <button onClick={() => setViewingTask(null)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Close</button>
+              <button onClick={() => setViewingTask(null)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Close</button>
             </div>
           </div>
         </div>
@@ -339,7 +372,7 @@ export default function HousekeepingPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowCreateTask(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={handleCreateTask} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Create Task</button>
+              <button onClick={handleCreateTask} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Create Task</button>
             </div>
           </div>
         </div>
@@ -376,7 +409,7 @@ export default function HousekeepingPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setAssigningTask(null)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={handleAssignTask} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Assign</button>
+              <button onClick={handleAssignTask} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Assign</button>
             </div>
           </div>
         </div>
@@ -424,8 +457,8 @@ export default function HousekeepingPage() {
                 setViewingRoom(null)
                 setCreateForm({ room: `Room ${viewingRoom.roomNumber}`, taskType: 'Cleaning', priority: 'High', assignedStaff: viewingRoom.assignedTo || '', dueTime: '11:00', notes: '' })
                 setShowCreateTask(true)
-              }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #7C3AED', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>Create Task</button>
-              <button onClick={() => setViewingRoom(null)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Close</button>
+              }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--primary)', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Create Task</button>
+              <button onClick={() => setViewingRoom(null)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Close</button>
             </div>
           </div>
         </div>

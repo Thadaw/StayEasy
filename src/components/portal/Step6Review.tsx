@@ -1,5 +1,7 @@
-﻿import { CheckCircle, Edit, Rocket, Save, LifeBuoy, MapPin, Camera, Tag, Star } from 'lucide-react'
+﻿import { useNavigate } from 'react-router-dom'
+import { CheckCircle, Edit, Rocket, LifeBuoy, MapPin, Camera, Tag, Star, Home, Users, Bed, DollarSign, FileText } from 'lucide-react'
 import { Room } from './Step4RoomSetup'
+import type { AmenityOption } from '../../types/pms'
 
 interface Offer {
   id: string
@@ -28,27 +30,39 @@ interface Step6Props {
     state: string
     country: string
     zip: string
-    mapLink: string
+    latitude: number | null
+    longitude: number | null
   }
   photos: File[]
-  amenities: string[]
+  availableAmenities: AmenityOption[]
+  systemAmenityIds: string[]
+  customAmenities: Array<{ name: string; icon: string }>
   rooms: Room[]
   offers: Offer[]
   starRating: number
   onGoToStep: (step: number) => void
-  onPublish: () => void
+  onPublish?: () => void
 }
 
 const stepOrder = ['type', 'property', 'location', 'photos', 'rooms', 'pricing', 'review']
 
 export default function Step6Review({
-  property, location, photos, amenities, rooms, offers, starRating,
+  property, location, photos, availableAmenities, systemAmenityIds, customAmenities, rooms, offers, starRating,
   onGoToStep, onPublish,
 }: Step6Props) {
+  const navigate = useNavigate()
   const fullAddress = [location.street, location.city, location.state, location.country, location.zip]
     .filter(Boolean).join(', ')
 
   const enabledOffers = offers.filter(o => o.enabled)
+
+  const systemAmenityNames = systemAmenityIds
+    .map(id => availableAmenities.find(a => String(a.id) === id)?.name)
+    .filter((name): name is string => !!name)
+  const allAmenityNames = [
+    ...systemAmenityNames,
+    ...customAmenities.map(c => c.name),
+  ]
 
   const checklist = [
     { label: 'Core Identity Verified', done: true },
@@ -62,7 +76,7 @@ export default function Step6Review({
      (property.description ? 15 : 0) +
      (photos.length > 0 ? 20 : 0) +
      (location.street ? 15 : 0) +
-     (amenities.length > 0 ? 10 : 0) +
+     (allAmenityNames.length > 0 ? 10 : 0) +
      (rooms.length > 0 ? 15 : 0) +
      (enabledOffers.length > 0 ? 10 : 0))
   ))
@@ -127,11 +141,11 @@ export default function Step6Review({
             <span className="review-field-label">ADDRESS</span>
             <span className="review-field-value">{fullAddress || 'No address set'}</span>
           </div>
-          {location.mapLink && (
+          {location.latitude != null && location.longitude != null && (
             <div className="review-field" style={{ marginTop: 8 }}>
-              <span className="review-field-label">MAP LINK</span>
-              <span className="review-field-value" style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>
-                {location.mapLink}
+              <span className="review-field-label">COORDINATES</span>
+              <span className="review-field-value">
+                {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
               </span>
             </div>
           )}
@@ -163,13 +177,88 @@ export default function Step6Review({
             <span className="review-field-label">AMENITIES</span>
           </div>
           <div className="review-amenities-tags">
-            {amenities.slice(0, 8).map(a => (
+            {allAmenityNames.slice(0, 8).map(a => (
               <span key={a} className="review-amenity-tag">{a}</span>
             ))}
-            {amenities.length > 8 && (
-              <span className="review-amenity-more">+{amenities.length - 8} more</span>
+            {allAmenityNames.length > 8 && (
+              <span className="review-amenity-more">+{allAmenityNames.length - 8} more</span>
             )}
           </div>
+        </div>
+
+        <div className="review-card">
+          <div className="review-card-header">
+            <h3 className="review-card-title">
+              <Home size={14} className="icon-primary" /> Rooms ({rooms.length})
+            </h3>
+            <button className="review-edit-btn" onClick={() => onGoToStep(stepOrder.indexOf('rooms'))}>
+              <Edit size={12} /> Edit
+            </button>
+          </div>
+          {rooms.length > 0 ? (
+            <div className="review-rooms-grid">
+              {rooms.map((r, idx) => (
+                <div key={r.id} className="review-room-card">
+                  <div className="review-room-header">
+                    <div className="review-room-number">{idx + 1}</div>
+                    <span className="review-room-name">{r.name || `Room ${idx + 1}`}</span>
+                  </div>
+                  <div className="review-room-details">
+                    <div className="review-room-detail">
+                      <Tag size={12} />
+                      <span>{r.type || 'Standard'}</span>
+                    </div>
+                    <div className="review-room-detail">
+                      <Bed size={12} />
+                      <span>{r.bedType || 'Not set'}</span>
+                    </div>
+                    <div className="review-room-detail">
+                      <Home size={12} />
+                      <span>Floor {r.floor}</span>
+                    </div>
+                    <div className="review-room-detail">
+                      <Users size={12} />
+                      <span>{r.maxAdults} adults, {r.maxChildren} children</span>
+                    </div>
+                    <div className="review-room-detail">
+                      <DollarSign size={12} />
+                      <span>${r.minRate || '0'}/night</span>
+                    </div>
+                    <div className="review-room-detail">
+                      <FileText size={12} />
+                      <span>{r.cancellationPolicy || 'moderate'}</span>
+                    </div>
+                  </div>
+                  {r.amenities.length > 0 && (
+                    <div className="review-room-amenities">
+                      {r.amenities.slice(0, 5).map(a => (
+                        <span key={a} className="review-room-amenity-tag">{a}</span>
+                      ))}
+                      {r.amenities.length > 5 && (
+                        <span className="review-room-amenity-more">+{r.amenities.length - 5}</span>
+                      )}
+                    </div>
+                  )}
+                  {r.photos.length > 0 && (
+                    <div className="review-room-photos">
+                      <Camera size={12} />
+                      <span>{r.photos.length} photo{r.photos.length > 1 ? 's' : ''}</span>
+                      <div className="review-room-photo-thumbs">
+                        {r.photos.slice(0, 3).map((p, i) => (
+                          <img key={i} src={URL.createObjectURL(p)} alt="" className="review-room-photo-thumb" />
+                        ))}
+                        {r.photos.length > 3 && (
+                          <span className="review-room-photo-more">+{r.photos.length - 3}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="form-hint">No rooms added yet</p>
+          )}
         </div>
 
         <div className="review-card">
@@ -195,18 +284,6 @@ export default function Step6Review({
           ) : (
             <p className="form-hint">No offers enabled</p>
           )}
-          {rooms.length > 0 && (
-            <div className="review-field" style={{ marginTop: 16 }}>
-              <span className="review-field-label">ROOMS ({rooms.length})</span>
-              <div className="review-rooms-list">
-                {rooms.map(r => (
-                  <span key={r.id} className="review-room-tag">
-                    {r.name} - {r.type || 'Standard'} ({r.bedType || 'No bed type'})
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -218,11 +295,8 @@ export default function Step6Review({
           <p className="review-publish-desc">
             Your property listing is complete. Once you launch, it will be visible on the public portal and ready to accept bookings.
           </p>
-          <button className="btn-launch" onClick={onPublish}>
+          <button className="btn-launch" onClick={async () => { await onPublish?.(); navigate('/host/my-properties') }}>
             <Rocket size={16} /> Launch Property
-          </button>
-          <button className="btn-save-draft" onClick={onPublish}>
-            <Save size={16} /> Save as Draft
           </button>
         </div>
 

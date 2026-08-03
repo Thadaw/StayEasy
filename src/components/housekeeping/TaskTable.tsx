@@ -31,7 +31,7 @@ export const priorityColors: Record<string, { bg: string; text: string }> = {
   Low: { bg: '#E5E7EB', text: '#374151' },
 }
 
-const avatarColors = ['#7C3AED', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2']
+const avatarColors = ['var(--primary)', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2']
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase()
 
 export default function TaskTable({ tasks, onViewTask, onAssignTask, onCompleteTask }: TaskTableProps) {
@@ -174,7 +174,7 @@ export default function TaskTable({ tasks, onViewTask, onAssignTask, onCompleteT
                         title="Assign"
                         onClick={() => onAssignTask(task)}
                         style={{
-                          padding: '4px 12px', border: '1px solid #7C3AED', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '4px 12px', border: '1px solid var(--primary)', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4,
                         }}
                       >
                         <UserPlus size={14} />

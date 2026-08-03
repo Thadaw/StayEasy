@@ -25,9 +25,9 @@ export default function ReportTabs({ activeTab, onTabChange }: ReportTabsProps) 
             background: 'transparent',
             fontSize: 14,
             fontWeight: 500,
-            color: activeTab === tab ? '#7C3AED' : '#6B7280',
+            color: activeTab === tab ? 'var(--primary)' : '#6B7280',
             cursor: 'pointer',
-            borderBottom: activeTab === tab ? '2px solid #7C3AED' : '2px solid transparent',
+            borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
             marginBottom: -1,
           }}
         >

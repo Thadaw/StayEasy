@@ -1,40 +1,56 @@
 ﻿import { useState } from 'react'
-import { Upload, Plus, Search, Star } from 'lucide-react'
+import { Upload, Search, Star, X } from 'lucide-react'
 import type { AmenityOption } from '../../types/pms'
+
+interface CustomAmenity {
+  name: string
+  icon: string
+}
 
 interface Step3Props {
   photos: File[]
   onPhotosChange: (photos: File[]) => void
-  amenities: string[]
-  onAmenitiesChange: (amenities: string[]) => void
+  coverIndex: number
+  onCoverIndexChange: (index: number) => void
+  availableAmenities: AmenityOption[]
+  systemAmenityIds: string[]
+  onSystemAmenityIdsChange: (ids: string[]) => void
+  customAmenities: CustomAmenity[]
+  onCustomAmenitiesChange: (items: CustomAmenity[]) => void
   starRating: number
   onStarRatingChange: (rating: number) => void
-  apiAmenities: AmenityOption[]
 }
 
 export default function Step3PhotosAmenities({
   photos, onPhotosChange,
-  amenities, onAmenitiesChange,
+  coverIndex, onCoverIndexChange,
+  availableAmenities,
+  systemAmenityIds, onSystemAmenityIdsChange,
+  customAmenities, onCustomAmenitiesChange,
   starRating, onStarRatingChange,
-  apiAmenities,
 }: Step3Props) {
   const [amenitySearch, setAmenitySearch] = useState('')
   const [customAmenity, setCustomAmenity] = useState('')
   const [dragActive, setDragActive] = useState(false)
 
-  const toggleAmenity = (label: string) => {
-    onAmenitiesChange(
-      amenities.includes(label)
-        ? amenities.filter(x => x !== label)
-        : [...amenities, label]
+  const toggleSystemAmenity = (id: string) => {
+    onSystemAmenityIdsChange(
+      systemAmenityIds.includes(id)
+        ? systemAmenityIds.filter(x => x !== id)
+        : [...systemAmenityIds, id]
     )
   }
 
   const addCustomAmenity = () => {
-    if (customAmenity.trim() && !amenities.includes(customAmenity.trim())) {
-      onAmenitiesChange([...amenities, customAmenity.trim()])
+    const name = customAmenity.trim()
+    if (name && !customAmenities.some(c => c.name === name)) {
+      onCustomAmenitiesChange([...customAmenities, { name, icon: '✏️' }])
       setCustomAmenity('')
     }
+  }
+
+  const removeCustomAmenity = (name: string) => {
+    onCustomAmenitiesChange(customAmenities.filter(c => c.name !== name))
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -53,25 +69,36 @@ export default function Step3PhotosAmenities({
     setDragActive(false)
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const newPhotos = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
-      onPhotosChange([...photos, ...newPhotos].slice(0, 50))
+      onPhotosChange([...photos, ...newPhotos].slice(0, 5))
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newPhotos = Array.from(e.target.files).filter(f => f.type.startsWith('image/'))
-      onPhotosChange([...photos, ...newPhotos].slice(0, 50))
+      onPhotosChange([...photos, ...newPhotos].slice(0, 5))
     }
   }
 
   const removePhoto = (index: number) => {
     onPhotosChange(photos.filter((_, i) => i !== index))
+    if (index === coverIndex) {
+      onCoverIndexChange(0)
+    } else if (index < coverIndex) {
+      onCoverIndexChange(coverIndex - 1)
+    }
   }
 
-  const filteredAmenities = apiAmenities.filter(a => {
+  const searchLower = amenitySearch.toLowerCase()
+
+  const filteredSystemAmenities = (Array.isArray(availableAmenities) ? availableAmenities : []).filter(a => {
     const label = a.label || a.name || ''
-    return label.toLowerCase().includes(amenitySearch.toLowerCase())
+    return label.toLowerCase().includes(searchLower)
   })
+
+  const filteredCustomAmenities = customAmenities.filter(c =>
+    c.name.toLowerCase().includes(searchLower)
+  )
 
   return (
     <div className="step-photos-wrapper">
@@ -79,7 +106,7 @@ export default function Step3PhotosAmenities({
         <div className="step-card">
           <div className="step-card-header">
             <h3 className="step-card-title">Property Photos</h3>
-            <span className="photo-count">{photos.length} / 50 Uploaded</span>
+            <span className="photo-count">{photos.length} / 5 Uploaded</span>
           </div>
 
           <div
@@ -109,10 +136,21 @@ export default function Step3PhotosAmenities({
           />
 
           {photos.length > 0 && (
-            <div className="photo-preview-grid">
-              {photos.slice(0, 4).map((p, i) => (
-                <div key={i} className="photo-preview-item">
+            <>
+              <p className="form-hint" style={{ margin: '12px 0 8px' }}>
+                Click the star on a photo to set it as your cover image.
+              </p>
+              <div className="photo-preview-grid">
+              {photos.map((p, i) => (
+                <div key={i} className={`photo-preview-item ${i === coverIndex ? 'cover' : ''}`}>
                   <img src={URL.createObjectURL(p)} alt="" className="photo-preview-img" />
+                  <button
+                    className={`photo-cover-btn ${i === coverIndex ? 'active' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); onCoverIndexChange(i) }}
+                    title={i === coverIndex ? 'Cover photo' : 'Set as cover'}
+                  >
+                    <Star size={12} fill={i === coverIndex ? '#F39C12' : 'none'} />
+                  </button>
                   <button
                     className="photo-remove-btn"
                     onClick={(e) => { e.stopPropagation(); removePhoto(i) }}
@@ -121,18 +159,8 @@ export default function Step3PhotosAmenities({
                   </button>
                 </div>
               ))}
-              {photos.length > 4 && (
-                <div className="photo-preview-more">
-                  +{photos.length - 4}
-                </div>
-              )}
-              <div
-                className="photo-preview-add"
-                onClick={() => document.getElementById('photo-input')?.click()}
-              >
-                <Plus size={20} />
-              </div>
             </div>
+            </>
           )}
         </div>
 
@@ -179,14 +207,15 @@ export default function Step3PhotosAmenities({
           </div>
 
           <div className="amenities-list">
-            {filteredAmenities.map(a => {
+            {filteredSystemAmenities.map(a => {
               const label = a.label || a.name || ''
+              const amenityId = String(a.id)
               return (
-                <label key={a.id} className="amenity-item">
+                <label key={amenityId} className="amenity-item">
                   <input
                     type="checkbox"
-                    checked={amenities.includes(label)}
-                    onChange={() => toggleAmenity(label)}
+                    checked={systemAmenityIds.includes(amenityId)}
+                    onChange={() => toggleSystemAmenity(amenityId)}
                     className="amenity-checkbox"
                   />
                   {a.icon && <span className="amenity-icon">{a.icon}</span>}
@@ -194,6 +223,35 @@ export default function Step3PhotosAmenities({
                 </label>
               )
             })}
+
+            {filteredCustomAmenities.length > 0 && (
+              <>
+                {filteredCustomAmenities.map(c => (
+                  <label key={c.name} className="amenity-item">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={() => removeCustomAmenity(c.name)}
+                      className="amenity-checkbox"
+                    />
+                    <span className="amenity-icon">{c.icon}</span>
+                    <span className="amenity-label">{c.name}</span>
+                    <button
+                      type="button"
+                      className="custom-amenity-remove-btn"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        removeCustomAmenity(c.name)
+                      }}
+                      title="Remove"
+                    >
+                      <X size={12} />
+                    </button>
+                  </label>
+                ))}
+              </>
+            )}
           </div>
 
           <div className="custom-amenity-section">

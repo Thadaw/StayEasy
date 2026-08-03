@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
+import { useUIStore } from '../stores/uiStore'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
-import SettingsSidebar from '../components/settings/SettingsSidebar'
 import CompanyProfileForm from '../components/settings/CompanyProfileForm'
 import LogoBranding from '../components/settings/LogoBranding'
 import BusinessInfo from '../components/settings/BusinessInfo'
@@ -10,6 +13,11 @@ import ContactPerson from '../components/settings/ContactPerson'
 import GeneralSettingsForm from '../components/settings/GeneralSettingsForm'
 import BookingSettingsForm from '../components/settings/BookingSettingsForm'
 import RoomRateSettingsForm from '../components/settings/RoomRateSettingsForm'
+import TaxesSettingsTab from '../components/settings/TaxesSettingsTab'
+import AmenitiesSettingsTab from '../components/settings/AmenitiesSettingsTab'
+import GallerySettingsTab from '../components/settings/GallerySettingsTab'
+import { getAllProperties } from '../services/pmsApi'
+import { propertyKeys } from '../lib/queryKeys'
 import type {
   CompanyProfile,
   LogoBranding as LogoBrandingType,
@@ -21,8 +29,24 @@ import type {
 } from '../types/settings'
 
 export default function SettingsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState('company')
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'company')
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
+
+  const { data: properties = [] } = useQuery({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const selectedProperty = properties.find((p) => p.id === currentPropertyId) ?? properties[0]
+  const propertyId = selectedProperty?.id ?? ''
 
   const [companyData, setCompanyData] = useState<CompanyProfile>({
     propertyName: 'Hotel Blue Pearl',
@@ -47,7 +71,7 @@ export default function SettingsPage() {
   const [logoData, setLogoData] = useState<LogoBrandingType>({
     logoUrl: '',
     logoName: 'bluepearl-logo.png',
-    primaryColor: '#6C3AED',
+    primaryColor: '#1A3C5E',
     secondaryColor: '#1F2937',
   })
 
@@ -124,7 +148,7 @@ export default function SettingsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Settings" subtitle="Manage your system preferences and configurations" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
@@ -137,7 +161,7 @@ export default function SettingsPage() {
                 padding: '10px 20px',
                 border: 'none',
                 borderRadius: 8,
-                background: '#7C3AED',
+                background: 'var(--primary)',
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
@@ -150,9 +174,6 @@ export default function SettingsPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-            <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-
-            <div style={{ flex: 1, display: 'flex', gap: 24, alignItems: 'flex-start' }}>
               {activeTab === 'company' ? (
                 <>
                   <div style={{ flex: '1 1 0', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 24 }}>
@@ -166,7 +187,7 @@ export default function SettingsPage() {
                 </>
               ) : activeTab === 'general' ? (
                 <div style={{ flex: '1 1 0' }}>
-                  <GeneralSettingsForm data={generalData} onChange={d => setGeneralData(prev => ({ ...prev, ...d }))} />
+                  <GeneralSettingsForm data={generalData} onChange={d => setGeneralData(prev => ({ ...prev, ...d }))} propertyId={propertyId} propertyName={selectedProperty?.name} />
                 </div>
               ) : activeTab === 'booking' ? (
                 <div style={{ flex: '1 1 0' }}>
@@ -176,13 +197,24 @@ export default function SettingsPage() {
                 <div style={{ flex: '1 1 0' }}>
                   <RoomRateSettingsForm data={roomRateData} onChange={d => setRoomRateData(prev => ({ ...prev, ...d }))} />
                 </div>
+              ) : activeTab === 'taxes' ? (
+                <div style={{ flex: '1 1 0' }}>
+                  <TaxesSettingsTab />
+                </div>
+              ) : activeTab === 'amenities' ? (
+                <div style={{ flex: '1 1 0' }}>
+                  <AmenitiesSettingsTab />
+                </div>
+              ) : activeTab === 'gallery' ? (
+                <div style={{ flex: '1 1 0' }}>
+                  <GallerySettingsTab />
+                </div>
               ) : (
                 <div style={{ flex: '1 1 0', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 40, textAlign: 'center' }}>
                   <p style={{ fontSize: 14, color: '#6B7280' }}>This settings section is coming soon.</p>
                 </div>
               )}
             </div>
-          </div>
         </main>
       </div>
     </div>

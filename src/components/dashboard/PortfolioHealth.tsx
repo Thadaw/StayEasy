@@ -29,7 +29,7 @@ export default function PortfolioHealth() {
       {properties.map((p, i) => (
         <div
           key={i}
-          onClick={() => navigate('/host/my-properties/dashboard')}
+          onClick={() => navigate('/host/my-properties')}
           style={{
             display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
             padding: '12px 0', borderBottom: i < properties.length - 1 ? '1px solid var(--border)' : 'none',

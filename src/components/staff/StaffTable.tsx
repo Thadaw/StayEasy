@@ -32,8 +32,8 @@ const getInitials = (name: string) => {
 }
 
 const avatarColors = [
-  '#7C3AED', '#2563EB', '#059669', '#D97706',
-  '#DC2626', '#7C3AED', '#0891B2', '#4F46E5',
+  'var(--primary)', '#2563EB', '#059669', '#D97706',
+  '#DC2626', 'var(--primary)', '#0891B2', '#4F46E5',
 ]
 
 export default function StaffTable({ staff, onViewStaff, onEditStaff, onDeleteStaff, onChangeStatus }: StaffTableProps) {

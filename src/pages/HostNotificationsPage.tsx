@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUIStore } from '../stores/uiStore'
 import { Search, Bell } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
@@ -59,7 +60,8 @@ const typeConfig: Record<string, { label: string; icon: string }> = {
 }
 
 export default function HostNotificationsPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState('All')
   const [filterRead, setFilterRead] = useState('All')
@@ -103,7 +105,7 @@ export default function HostNotificationsPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Notifications" subtitle="Stay updated with bookings, payments, housekeeping, and system alerts." />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
