@@ -28,6 +28,7 @@ export default function Signup() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [nationality, setNationality] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(true)
   const [pwFocused, setPwFocused] = useState(false)
@@ -52,21 +53,18 @@ export default function Signup() {
   const handleSignup = async () => {
     setError('')
 
-    if (!isHost) {
-      setError('Coming soon')
-      return
-    }
-
     if (!fullName.trim()) { setError('Full name is required.'); return }
     if (!phone.trim()) { setError('Phone number is required.'); return }
+    if (!isHost && !nationality.trim()) { setError('Nationality is required.'); return }
     if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); return }
     if (!PASSWORD_RE.test(password)) { setError('Password must be 8+ characters with a number and a special character.'); return }
     setLoading(true)
     try {
-      await api.post('/auth/users/register', {
+      await api.post(isHost ? '/auth/users/register' : '/auth/guests/register', {
         full_name: fullName,
         email,
         phone,
+        nationality,
         password,
       })
       toast.success('Verification code sent to your email')
@@ -82,7 +80,7 @@ export default function Signup() {
     setError('')
     setOtpLoading(true)
     try {
-      await api.post('/auth/users/verify-otp', { email, otp })
+      await api.post(isHost ? '/auth/users/verify-otp' : '/auth/guests/verify-otp', { email, otp })
       setVerified(true)
       toast.success('Account verified successfully!')
     } catch (err) {
@@ -96,7 +94,7 @@ export default function Signup() {
     setError('')
     setResendLoading(true)
     try {
-      await api.post('/auth/users/resend-otp', { email })
+      await api.post(isHost ? '/auth/users/resend-otp' : '/auth/guests/resend-otp', { email })
       toast.success('Verification code resent to your email')
       setResendTimer(30)
     } catch {
@@ -233,6 +231,32 @@ export default function Signup() {
                   }}
                 />
               </div>
+
+              {/* Nationality (guests only) */}
+              {!isHost && (
+                <div style={{ position: 'relative', marginBottom: 7 }}>
+                  <label
+                    style={{
+                      fontSize: 11, color: '#666', marginBottom: 3, display: 'block',
+                      textTransform: 'uppercase', letterSpacing: '0.4px',
+                    }}
+                  >
+                    Nationality
+                  </label>
+                  <input
+                    type="text"
+                    value={nationality}
+                    onChange={e => setNationality(e.target.value)}
+                    onFocus={() => setPwFocused(false)}
+                    placeholder="e.g. Nepal"
+                    autoComplete="off"
+                    style={{
+                      width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
+                      padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Email */}
               <div style={{ position: 'relative', marginBottom: 7 }}>

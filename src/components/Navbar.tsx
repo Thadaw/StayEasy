@@ -14,7 +14,7 @@ interface GuestCount {
 
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -374,7 +374,7 @@ export function Navbar() {
                       </div>
                     </div>
                     <div className="py-1">
-                      <button onClick={() => { navigate("/host/profile"); setMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent" style={{ color: "var(--foreground)" }}>
+                      <button onClick={() => { navigate(role === "guest" ? "/profile" : "/host/profile"); setMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent" style={{ color: "var(--foreground)" }}>
                         <User size={15} style={{ color: "var(--primary)" }} />Profile
                       </button>
                       <button onClick={() => { navigate("/notifications"); setMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent" style={{ color: "var(--foreground)" }}>

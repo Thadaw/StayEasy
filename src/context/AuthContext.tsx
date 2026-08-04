@@ -3,14 +3,65 @@ import { AxiosError } from 'axios'
 import api from '../api'
 import type { User } from '../types'
 
+type AuthRole = 'guest' | 'host'
+
 interface AuthContextValue {
   user: User | null
   token: string | null
+  role: AuthRole
   loading: boolean
-  login: (token: string) => Promise<void>
+  login: (token: string, remember?: boolean, role?: AuthRole, refreshToken?: string) => Promise<void>
   credentialLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
+}
+
+const TOKEN_KEY = 'token'
+const REFRESH_KEY = 'refreshToken'
+const ROLE_KEY = 'authRole'
+const EXPIRY_KEY = 'tokenExpiry'
+const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
+
+function storageGet(key: string): string | null {
+  return localStorage.getItem(key) || sessionStorage.getItem(key)
+}
+
+function readToken(): string | null {
+  const persisted = localStorage.getItem(TOKEN_KEY)
+  if (persisted) {
+    const expiresAt = Number(localStorage.getItem(EXPIRY_KEY) || 0)
+    if (expiresAt && Date.now() > expiresAt) {
+      clearAuth()
+      return null
+    }
+    return persisted
+  }
+  return sessionStorage.getItem(TOKEN_KEY)
+}
+
+function readRole(): AuthRole {
+  return storageGet(ROLE_KEY) === 'guest' ? 'guest' : 'host'
+}
+
+function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken?: string) {
+  const keys = [TOKEN_KEY, REFRESH_KEY, ROLE_KEY, EXPIRY_KEY]
+  keys.forEach((k) => {
+    localStorage.removeItem(k)
+    sessionStorage.removeItem(k)
+  })
+  const store = remember ? localStorage : sessionStorage
+  store.setItem(TOKEN_KEY, token)
+  store.setItem(ROLE_KEY, role)
+  if (refreshToken) store.setItem(REFRESH_KEY, refreshToken)
+  if (remember) store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
+}
+
+function clearAuth() {
+  const keys = [TOKEN_KEY, REFRESH_KEY, ROLE_KEY, EXPIRY_KEY]
+  keys.forEach((k) => {
+    localStorage.removeItem(k)
+    sessionStorage.removeItem(k)
+  })
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -29,15 +80,17 @@ function mapUser(u: User): User {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
+  const [token, setToken] = useState<string | null>(() => readToken())
+  const [role, setRole] = useState<AuthRole>(() => readRole())
   const [loading, setLoading] = useState(true)
 
   const fetchUser = async () => {
     try {
-      const { data } = await api.get<User>('/auth/users/me')
-      setUser(mapUser(data))
+      const guest = readRole() === 'guest'
+      const { data } = await api.get<User>(guest ? '/auth/guests/me' : '/auth/users/me')
+      setUser(mapUser({ ...data, role: guest ? 'Guest' : data.role }))
     } catch {
-      localStorage.removeItem('token')
+      clearAuth()
       setToken(null)
       setUser(null)
     }
@@ -51,8 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token])
 
-  const login = async (newToken: string) => {
-    localStorage.setItem('token', newToken)
+  const login = async (newToken: string, remember = true, newRole: AuthRole = 'host', refreshToken?: string) => {
+    saveAuth(newToken, remember, newRole, refreshToken)
+    setRole(newRole)
     setToken(newToken)
     await fetchUser()
   }
@@ -65,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      await login(res.data.access_token)
+      await login(res.data.access_token, true, 'host', res.data.refresh_token)
       return { success: true }
     } catch (err) {
       let msg = 'Incorrect email or password.'
@@ -98,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
+    clearAuth()
     try {
       const keys = Object.keys(localStorage)
       for (const key of keys) {
@@ -109,10 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
     setToken(null)
     setUser(null)
+    setRole('host')
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, credentialLogin, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, role, loading, login, credentialLogin, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )

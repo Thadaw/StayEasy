@@ -2,6 +2,8 @@
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import HostLandingPage from './pages/HostLandingPage'
 import HostPortalPage from './pages/HostPortalPage'
 import HostPortalPageNew from './pages/HostPortalPageNew'
@@ -40,6 +42,10 @@ function App() {
         <Route path="/become-a-host" element={<HostLandingPage />} />
         <Route path="/host/login" element={<Login />} />
         <Route path="/host/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/host/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/*" element={<ResetPassword />} />
+        <Route path="/host/reset-password/*" element={<ResetPassword />} />
         <Route path="/host" element={<HostLandingPage />} />
         <Route path="/host/portal" element={<HostPortalPageNew />} />
         <Route path="/host/portal-old" element={<HostPortalPage />} />

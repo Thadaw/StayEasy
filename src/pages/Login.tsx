@@ -41,12 +41,6 @@ export default function Login() {
     setError('')
     setLoginClicked(true)
 
-    if (!isHost) {
-      setError('Coming soon')
-      setLoginClicked(false)
-      return
-    }
-
     if (!email.trim()) { setError('Email is required.'); setLoginClicked(false); return }
     if (!password.trim()) { setError('Password is required.'); setLoginClicked(false); return }
     if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); setLoginClicked(false); return }
@@ -60,8 +54,11 @@ export default function Login() {
       const res = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      localStorage.setItem('token', res.data.access_token)
-      await authLogin(res.data.access_token)
+      await authLogin(res.data.access_token, remember, isHost ? 'host' : 'guest', res.data.refresh_token)
+      if (!isHost) {
+        setTimeout(() => navigate('/'), 800)
+        return
+      }
       try {
         const properties = await pmsApi.getAllProperties()
         if (Array.isArray(properties) && properties.length > 0) {
@@ -264,9 +261,12 @@ export default function Login() {
               style={{ width: 12, height: 12, accentColor: '#111' }}
             />
             <label htmlFor="remember" style={{ fontSize: 11, color: '#999' }}>
-              Remember for 30 days
+              Remember me
             </label>
-            <span style={{ fontSize: 11, color: '#bbb', cursor: 'pointer', marginLeft: 'auto' }}>
+            <span
+              onClick={() => navigate(isHost ? '/host/forgot-password' : '/forgot-password')}
+              style={{ fontSize: 11, color: '#bbb', cursor: 'pointer', marginLeft: 'auto' }}
+            >
               Forgot password?
             </span>
           </div>

@@ -1,5 +1,5 @@
 export interface User {
-  id?: number
+  id?: number | string
   first_name: string
   last_name: string
   full_name?: string
@@ -12,6 +12,7 @@ export interface User {
   countryFlag?: string
   country?: string
   phone?: string
+  nationality?: string
   joinedDate?: string
 }
 
