@@ -160,7 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(key)
         }
       }
-    } catch {}
+    } catch {
+      // Ignore storage cleanup errors
+    }
     setToken(null)
     setUser(null)
     setRole('host')

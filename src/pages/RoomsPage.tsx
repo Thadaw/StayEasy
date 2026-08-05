@@ -46,6 +46,7 @@ export default function RoomsPage() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [confirmDelete, setConfirmDelete] = useState<Room | null>(null)
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({})
 
   const { data: properties = [] } = useQuery<GeneralInfoResponse[]>({
     queryKey: propertyKeys.all,
@@ -75,7 +76,10 @@ export default function RoomsPage() {
     select: (data) => Array.isArray(data) ? data : [],
   })
 
-  const rooms: Room[] = apiRooms.map(r => mapApiRoomToRoom(r, roomTypes, bedTypes))
+  const rooms: Room[] = apiRooms.map(r => {
+    const mapped = mapApiRoomToRoom(r, roomTypes, bedTypes)
+    return statusOverrides[mapped.number] ? { ...mapped, status: statusOverrides[mapped.number] } : mapped
+  })
 
   const deleteMutation = useMutation({
     mutationFn: (roomId: string) => deleteRoom(propertyId!, roomId),
@@ -123,7 +127,7 @@ export default function RoomsPage() {
   }
 
   const handleChangeStatus = (room: Room, newStatus: string) => {
-    setRooms(prev => prev.map(r => (r.number === room.number ? { ...r, status: newStatus } : r)))
+    setStatusOverrides(prev => ({ ...prev, [room.number]: newStatus }))
   }
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 13, color: 'var(--foreground)', outline: 'none', boxSizing: 'border-box' }
