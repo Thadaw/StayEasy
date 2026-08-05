@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import BuildingScene from '../components/BuildingScene'
 import api from '../api'
+import authBg from '../assets/763122246_2308959363186237_8116762065722093544_n.png'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 
@@ -21,6 +22,15 @@ export default function ResetPassword() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const isHost = location.pathname.startsWith('/host')
+
+  useEffect(() => {
+    document.body.style.background = 'transparent'
+    document.documentElement.style.background = '#000'
+    return () => {
+      document.body.style.background = ''
+      document.documentElement.style.background = ''
+    }
+  }, [])
 
   const [token, setToken] = useState(searchParams.get('token') || '')
   const [password, setPassword] = useState('')
@@ -53,14 +63,31 @@ export default function ResetPassword() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#e8e8e8',
+        backgroundColor: '#000',
+        backgroundImage: `url(${authBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
         fontFamily: "'Segoe UI', sans-serif",
+        position: 'relative',
       }}
     >
+      {/* Dark overlay for better card visibility */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 0,
+        }}
+      />
       <div
         style={{
           width: 640,
@@ -69,7 +96,9 @@ export default function ResetPassword() {
           borderRadius: 16,
           display: 'flex',
           overflow: 'hidden',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+          zIndex: 1,
+          position: 'relative',
         }}
       >
         <div
