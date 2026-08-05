@@ -591,3 +591,28 @@ export function getCityFromCountry(countryCode: string, cityName: string) {
   const country = getCountry(countryCode);
   return country?.cities.find((c) => c.name.toLowerCase() === cityName.toLowerCase());
 }
+
+export interface City {
+  name: string;
+  image: string;
+  description: string;
+  attractions: string[];
+  bestFor: string[];
+}
+
+export interface Country {
+  code: string;
+  flag: string;
+  name: string;
+  currency: string;
+  symbol: string;
+  currencyName: string;
+  continent: string;
+  capital: string;
+  heroImage: string;
+  description: string;
+  cities: City[];
+  topAttractions: string[];
+  cuisine: string[];
+  bestTime: string;
+}

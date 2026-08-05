@@ -1,5 +1,6 @@
 @import './styles/fonts.css';
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 @import 'tw-animate-css';
 @import './styles/theme.css';
 
@@ -26,4 +27,15 @@
 }
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.45);
+}
+
+.custom-scroll-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll-thin::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 99px;
 }
