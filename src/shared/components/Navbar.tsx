@@ -3,7 +3,7 @@ import { ChevronDown, LogOut, User } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { LanguagePicker } from "./LanguagePicker"
-import { useAuth } from "../../context/AuthContext"
+import { useAuth } from "../../auth/AuthContext"
 import { useUserProfile } from "../../features/profile/hooks/useUserProfile"
 import logo1 from "../../assets/logo1.png"
 

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../auth/AuthContext'
 import { User, Heart, CalendarDays, TicketPercent, Star, Bell, LogOut, ChevronRight } from 'lucide-react'
 import { Navbar } from '../../../shared/components/Navbar'
 

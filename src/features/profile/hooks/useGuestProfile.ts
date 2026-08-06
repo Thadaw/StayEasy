@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../auth/AuthContext'
 import api from '../../../services/axios'
 import type { GuestProfile } from '../types'
 

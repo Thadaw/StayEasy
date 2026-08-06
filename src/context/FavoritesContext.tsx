@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from './AuthContext'
+import { useAuth } from '../auth/AuthContext'
 
 interface FavoritesContextValue {
   favorites: Set<number>

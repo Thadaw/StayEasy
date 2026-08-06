@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import BuildingScene from '../../../shared/components/BuildingScene'
-import api from '../../../services/axios'
-import { useAuth } from '../../../context/AuthContext'
-import * as pmsApi from '../services/pmsApi'
+import api from '../services/axios'
+import { useAuth } from './AuthContext'
+import loginAni from '../assets/login.mp4'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -22,8 +21,10 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
+
   const { login: authLogin } = useAuth()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
+  const [videoReady, setVideoReady] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(true)
@@ -55,21 +56,15 @@ export default function Login() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       await authLogin(res.data.access_token, remember, isHost ? 'host' : 'guest', res.data.refresh_token)
-      if (!isHost) {
-        const redirectTo = searchParams.get('redirect')
-        setTimeout(() => navigate(redirectTo && redirectTo !== '/login' ? redirectTo : '/'), 800)
+      const redirectTo = searchParams.get('redirect')
+      const redirectIsHost = !!redirectTo && redirectTo.startsWith('/host')
+      const isAuthPage =
+        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup'
+      if (redirectTo && !isAuthPage && redirectIsHost === isHost) {
+        setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      try {
-        const properties = await pmsApi.getAllProperties()
-        if (Array.isArray(properties) && properties.length > 0) {
-          setTimeout(() => navigate('/host/my-properties'), 1500)
-        } else {
-          setTimeout(() => navigate('/host/portal'), 1500)
-        }
-      } catch {
-        setTimeout(() => navigate('/host/portal'), 1500)
-      }
+      setTimeout(() => navigate(isHost ? '/host/profile' : '/profile'), 800)
     } catch (err) {
       setError(extractError(err))
       setLoginClicked(false)
@@ -81,33 +76,51 @@ export default function Login() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#e8e8e8',
+        backgroundColor: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
         fontFamily: "'Segoe UI', sans-serif",
+        position: 'relative',
       }}
     >
       <div
         style={{
-          width: 640,
-          height: 440,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          width: 820,
+          height: 470,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
           overflow: 'hidden',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+          zIndex: 1,
+          position: 'relative',
+          visibility: videoReady ? 'visible' : 'hidden',
         }}
       >
-        {/* Animated scene panel */}
-        <div style={{ width: '50%', background: '#dde0ee', order: 1, flexShrink: 0 }}>
-          <BuildingScene
-            mode="login"
-            fieldsReady={fieldsReady}
-            loginClicked={loginClicked}
-            passwordFocused={pwFocused}
-            passwordVisible={showPw}
+        {/* Animated video panel — on the LEFT for login */}
+        <div style={{ width: '50%', background: '#000', order: 1, flexShrink: 0, overflow: 'hidden' }}>
+          <video
+            src={loginAni}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
 

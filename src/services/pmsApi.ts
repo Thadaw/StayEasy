@@ -22,11 +22,20 @@ import type {
   BookingCreatePayload,
 } from '../types/pms'
 
+// The backend wraps every JSON response in a StandardResponse envelope:
+//   { success: true, data: <payload>, meta: ... }
+// Unwrap `data` while falling back to the raw body so both envelope and
+// bare-response backends keep working.
+function unwrapBody<T>(body: unknown): T {
+  const wrapped = body as { data?: T } | null
+  return wrapped?.data ?? (body as T)
+}
+
 // ─── Properties ──────────────────────────────────────────────
 
 export const createGeneralInfo = async (data: GeneralInfoPayload): Promise<GeneralInfoResponse> => {
   const { data: result } = await api.post('/properties/general-information', data)
-  return result.data
+  return unwrapBody<GeneralInfoResponse>(result)
 }
 
 export const createLocation = async (propertyId: string, data: LocationPayload): Promise<void> => {
@@ -47,7 +56,7 @@ export const createBrandVisual = async (propertyId: string, data: BrandVisualPay
 
 export const getProperty = async (id: string): Promise<GeneralInfoResponse> => {
   const { data: result } = await api.get(`/properties/${id}`)
-  return result.data
+  return unwrapBody<GeneralInfoResponse>(result)
 }
 
 export const getAllProperties = async (): Promise<GeneralInfoResponse[]> => {
@@ -56,7 +65,8 @@ export const getAllProperties = async (): Promise<GeneralInfoResponse[]> => {
   const pageSize = 50
   for (;;) {
     const { data: result } = await api.get('/properties/', { params: { skip, limit: pageSize } })
-    const batch: GeneralInfoResponse[] = result.data?.properties ?? []
+    const data = unwrapBody<{ properties?: GeneralInfoResponse[] }>(result)
+    const batch: GeneralInfoResponse[] = data?.properties ?? []
     all.push(...batch)
     if (batch.length < pageSize) break
     skip += pageSize
@@ -70,12 +80,13 @@ export const deleteProperty = async (id: string): Promise<void> => {
 
 export const updatePropertyActivation = async (id: string): Promise<string> => {
   const { data: result } = await api.post(`/properties/${id}/toggle-property-activation`)
-  return result.data
+  return unwrapBody<string>(result)
 }
 
 export const getAmenities = async (): Promise<AmenityOption[]> => {
   const { data: result } = await api.get('/properties/amenities')
-  return Array.isArray(result.data?.amenities) ? result.data.amenities : []
+  const data = unwrapBody<{ amenities?: AmenityOption[] }>(result)
+  return Array.isArray(data?.amenities) ? data.amenities : []
 }
 
 // ─── Images ──────────────────────────────────────────────────
@@ -84,36 +95,39 @@ export const uploadPropertyImage = async (propertyId: string, formData: FormData
   const { data: result } = await api.post(`/properties/${propertyId}/images`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
-  return Array.isArray(result.data) ? result.data : []
+  const data = unwrapBody<string[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const uploadRoomImages = async (propertyId: string, formData: FormData): Promise<string[]> => {
   const { data: result } = await api.post(`/properties/${propertyId}/rooms/images`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
-  return Array.isArray(result.data) ? result.data : []
+  const data = unwrapBody<string[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 // ─── Rooms ───────────────────────────────────────────────────
 
 export const createRooms = async (propertyId: string, data: RoomBulkCreateRequest): Promise<{ rooms: RoomResponse[] }> => {
   const { data: result } = await api.post(`/properties/${propertyId}/rooms`, data)
-  return result.data
+  return unwrapBody<{ rooms: RoomResponse[] }>(result)
 }
 
 export const getRooms = async (propertyId: string): Promise<RoomResponse[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms`)
-  return result.data
+  const data = unwrapBody<RoomResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const getRoom = async (propertyId: string, roomId: string): Promise<RoomResponse> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/${roomId}`)
-  return result.data
+  return unwrapBody<RoomResponse>(result)
 }
 
 export const updateRoom = async (propertyId: string, roomId: string, data: Partial<RoomBase>): Promise<RoomResponse> => {
   const { data: result } = await api.patch(`/properties/${propertyId}/rooms/${roomId}`, data)
-  return result.data
+  return unwrapBody<RoomResponse>(result)
 }
 
 export const deleteRoom = async (propertyId: string, roomId: string): Promise<void> => {
@@ -124,53 +138,58 @@ export const getAvailableRooms = async (propertyId: string, checkinDate: string,
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/available-rooms`, {
     params: { checkin_date: checkinDate, checkout_date: checkoutDate },
   })
-  return result.data
+  const data = unwrapBody<AvailableRoom[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 // ─── Room Types ─────────────────────────────────────────────
 
 export const getRoomTypes = async (propertyId: string): Promise<RoomTypeResponse[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/room-types`)
-  return result.data
+  const data = unwrapBody<RoomTypeResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const createRoomType = async (propertyId: string, roomTypeName: string): Promise<RoomTypeResponse> => {
   const { data: result } = await api.post(`/properties/${propertyId}/rooms/room-type`, { room_type_name: roomTypeName })
-  return result.data
+  return unwrapBody<RoomTypeResponse>(result)
 }
 
 // ─── Bed Types ──────────────────────────────────────────────
 
 export const getBedTypes = async (propertyId: string): Promise<BedTypeResponse[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/bed-types`)
-  return result.data
+  const data = unwrapBody<BedTypeResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const createBedType = async (propertyId: string, bedName: string): Promise<BedTypeResponse> => {
   const { data: result } = await api.post(`/properties/${propertyId}/rooms/bed-type`, { bed_name: bedName })
-  return result.data
+  return unwrapBody<BedTypeResponse>(result)
 }
 
 // ─── Special Offers ──────────────────────────────────────────
 
 export const createSpecialOffers = async (propertyId: string, offers: SpecialOfferPayload[]): Promise<SpecialOfferResponse[]> => {
   const { data: result } = await api.post(`/properties/${propertyId}/special-offers/`, { offers })
-  return result.data
+  const data = unwrapBody<SpecialOfferResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const getSpecialOffers = async (propertyId: string): Promise<SpecialOfferResponse[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/special-offers/`)
-  return result.data
+  const data = unwrapBody<SpecialOfferResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const getSpecialOffer = async (propertyId: string, offerId: string): Promise<SpecialOfferResponse> => {
   const { data: result } = await api.get(`/properties/${propertyId}/special-offers/${offerId}`)
-  return result.data
+  return unwrapBody<SpecialOfferResponse>(result)
 }
 
 export const updateSpecialOffer = async (propertyId: string, offerId: string, data: Partial<SpecialOfferPayload>): Promise<SpecialOfferResponse> => {
   const { data: result } = await api.patch(`/properties/${propertyId}/special-offers/${offerId}`, data)
-  return result.data
+  return unwrapBody<SpecialOfferResponse>(result)
 }
 
 export const deleteSpecialOffer = async (propertyId: string, offerId: string): Promise<void> => {
@@ -181,22 +200,23 @@ export const deleteSpecialOffer = async (propertyId: string, offerId: string): P
 
 export const createDiscountCode = async (propertyId: string, data: DiscountCodePayload): Promise<DiscountCodeResponse> => {
   const { data: result } = await api.post(`/properties/${propertyId}/discount-codes/`, data)
-  return result.data
+  return unwrapBody<DiscountCodeResponse>(result)
 }
 
 export const getDiscountCodes = async (propertyId: string): Promise<DiscountCodeResponse[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/discount-codes/`)
-  return result.data
+  const data = unwrapBody<DiscountCodeResponse[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const getDiscountCode = async (propertyId: string, discountId: string): Promise<DiscountCodeResponse> => {
   const { data: result } = await api.get(`/properties/${propertyId}/discount-codes/${discountId}`)
-  return result.data
+  return unwrapBody<DiscountCodeResponse>(result)
 }
 
 export const updateDiscountCode = async (propertyId: string, discountId: string, data: Partial<DiscountCodePayload>): Promise<DiscountCodeResponse> => {
   const { data: result } = await api.patch(`/properties/${propertyId}/discount-codes/${discountId}`, data)
-  return result.data
+  return unwrapBody<DiscountCodeResponse>(result)
 }
 
 export const deleteDiscountCode = async (propertyId: string, discountId: string): Promise<void> => {
@@ -207,17 +227,17 @@ export const deleteDiscountCode = async (propertyId: string, discountId: string)
 
 export const getTenant = async (): Promise<TenantResponse> => {
   const { data: result } = await api.get('/tenants/')
-  return result.data
+  return unwrapBody<TenantResponse>(result)
 }
 
 export const createTenant = async (name: string): Promise<TenantResponse> => {
   const { data: result } = await api.post('/tenants/', { name })
-  return result.data
+  return unwrapBody<TenantResponse>(result)
 }
 
 export const updateTenant = async (name: string): Promise<TenantResponse> => {
   const { data: result } = await api.patch('/tenants/', { name })
-  return result.data
+  return unwrapBody<TenantResponse>(result)
 }
 
 export const deleteTenant = async (): Promise<void> => {
@@ -232,7 +252,8 @@ export const getPropertyBookings = async (propertyId: string): Promise<PropertyB
   const pageSize = 50
   for (;;) {
     const { data: result } = await api.get(`/properties/${propertyId}/bookings`, { params: { skip, limit: pageSize } })
-    const batch: PropertyBooking[] = Array.isArray(result.data) ? result.data : []
+    const data = unwrapBody<PropertyBooking[]>(result)
+    const batch: PropertyBooking[] = Array.isArray(data) ? data : []
     all.push(...batch)
     if (batch.length < pageSize) break
     skip += pageSize
@@ -242,10 +263,10 @@ export const getPropertyBookings = async (propertyId: string): Promise<PropertyB
 
 export const getBookingByRefNumber = async (refNumber: string): Promise<PropertyBooking> => {
   const { data: result } = await api.get(`/bookings/${refNumber}`)
-  return result.data
+  return unwrapBody<PropertyBooking>(result)
 }
 
 export const createBooking = async (data: BookingCreatePayload): Promise<PropertyBooking> => {
   const { data: result } = await api.post('/bookings/', data)
-  return result.data
+  return unwrapBody<PropertyBooking>(result)
 }

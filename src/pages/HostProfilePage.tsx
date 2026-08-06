@@ -1,7 +1,7 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '../stores/uiStore'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import logo1 from '../assets/logo1.png'
 import {
   ArrowLeft,
@@ -64,7 +64,7 @@ export default function HostProfilePage() {
 
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/host/login')
   }
 
   return (

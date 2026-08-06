@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, User, Settings, Lock, HelpCircle, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../auth/AuthContext'
 
 interface UserProfileDropdownProps {
   user: {

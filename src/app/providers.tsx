@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from '../context/AuthContext'
+import { AuthProvider } from '../auth/AuthContext'
 import { FavoritesProvider } from '../context/FavoritesContext'
 import { BookingProvider } from '../context/BookingContext'
 import { CouponProvider } from '../context/CouponContext'

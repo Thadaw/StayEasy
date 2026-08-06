@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Search, ChevronDown, LogOut, User, Settings, Bell, Globe, MapPin, Plus, Minus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { CountryCurrencyPicker } from "./CountryCurrencyPicker";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 import { hotels } from "../data/hotels";
 import logo1 from "../assets/logo1.png";
 

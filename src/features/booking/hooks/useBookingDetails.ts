@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useBookings } from "../../../context/BookingContext"
-import { useAuth } from "../../../context/AuthContext"
+import { useAuth } from "../../../auth/AuthContext"
 import { calculateNights } from "../../../shared/utils/time"
 import { buildPropertyLocation, calculatePriceBreakdown } from "../../../shared/utils/bookingHelpers"
 import api from "../../../services/axios"

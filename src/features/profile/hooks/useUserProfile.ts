@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../auth/AuthContext'
 
 export function useUserProfile() {
   const { user } = useAuth()

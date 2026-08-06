@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import BuildingScene from '../../../shared/components/BuildingScene'
+import BuildingScene from '../../shared/components/BuildingScene'
 
 interface AuthLayoutProps {
   mode: 'login' | 'signup'
