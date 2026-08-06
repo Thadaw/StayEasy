@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from './AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import type { Booking } from '../shared/types/booking'
 import { parseBookingDate } from '../shared/utils/time'
 

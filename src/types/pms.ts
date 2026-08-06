@@ -13,6 +13,22 @@ export interface GeneralInfoResponse extends GeneralInfoPayload {
   id: string
   created_at?: string
   updated_at?: string
+  tenant_id?: string
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  zip_code?: string | null
+  address?: string | null
+  latitude?: string | null
+  longitude?: string | null
+  currency?: string
+  timezone?: string
+  language?: string | null
+  brand_logo_url?: string | null
+  brand_color?: string | null
+  is_active?: boolean
+  cover_image?: string | null
+  photos?: { cover?: string | null; gallery?: string[] }
 }
 
 export interface LocationPayload {

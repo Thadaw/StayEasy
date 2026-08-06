@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import PortalHeader from '../components/portal/PortalHeader'
 import ProgressBar from '../components/portal/ProgressBar'
 import PropertyTypeSelector from '../components/portal/PropertyTypeSelector'

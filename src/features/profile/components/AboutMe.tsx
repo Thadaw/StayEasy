@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../auth/AuthContext'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { Camera, Pencil, Check, X, Star, Calendar, Shield, Mail, Phone, User, MapPin } from 'lucide-react'
 import { StatBadge } from '../../../shared/components/StatBadge'

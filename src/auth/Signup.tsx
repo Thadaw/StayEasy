@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import BuildingScene from '../../../shared/components/BuildingScene'
-import api from '../../../services/axios'
+import api from '../services/axios'
 import toast from 'react-hot-toast'
+import signupAni from '../assets/signupani.mp4'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -24,6 +24,8 @@ export default function Signup() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
+
+  const [videoReady, setVideoReady] = useState(false)
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -108,23 +110,27 @@ export default function Signup() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#e8e8e8',
+        backgroundColor: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
         fontFamily: "'Segoe UI', sans-serif",
+        position: 'relative',
       }}
     >
       <div
         style={{
-          width: 640,
-          height: 440,
+          width: 820,
+          height: 470,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
           overflow: 'hidden',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+          zIndex: 1,
+          position: 'relative',
+          visibility: videoReady ? 'visible' : 'hidden',
         }}
       >
         {/* Form panel — on the LEFT for sign up */}
@@ -438,9 +444,19 @@ export default function Signup() {
           )}
         </div>
 
-        {/* Animated scene panel — on the RIGHT for sign up */}
-        <div style={{ width: '50%', background: '#dde0ee', order: 2, flexShrink: 0 }}>
-          <BuildingScene mode="signup" passwordFocused={pwFocused} passwordVisible={showPw} />
+        {/* Animated video panel — on the RIGHT for sign up */}
+        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+          <video
+            src={signupAni}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
         </div>
       </div>
     </div>

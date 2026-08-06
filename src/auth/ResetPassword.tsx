@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import BuildingScene from '../components/BuildingScene'
-import api from '../api'
-import authBg from '../assets/763122246_2308959363186237_8116762065722093544_n.png'
+import BuildingScene from '../shared/components/BuildingScene'
+import api from '../services/axios'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 
@@ -63,11 +62,7 @@ export default function ResetPassword() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#000',
-        backgroundImage: `url(${authBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -76,7 +71,6 @@ export default function ResetPassword() {
         position: 'relative',
       }}
     >
-      {/* Dark overlay for better card visibility */}
       <div
         style={{
           position: 'absolute',
@@ -84,7 +78,6 @@ export default function ResetPassword() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
           zIndex: 0,
         }}
       />

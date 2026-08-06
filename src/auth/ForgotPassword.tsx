@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import BuildingScene from '../components/BuildingScene'
-import api from '../api'
-import authBg from '../assets/763122246_2308959363186237_8116762065722093544_n.png'
+import BuildingScene from '../shared/components/BuildingScene'
+import api from '../services/axios'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -58,11 +57,7 @@ export default function ForgotPassword() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#000',
-        backgroundImage: `url(${authBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -71,7 +66,6 @@ export default function ForgotPassword() {
         position: 'relative',
       }}
     >
-      {/* Dark overlay for better card visibility */}
       <div
         style={{
           position: 'absolute',
@@ -79,7 +73,6 @@ export default function ForgotPassword() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
           zIndex: 0,
         }}
       />

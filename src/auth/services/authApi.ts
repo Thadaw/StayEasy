@@ -1,4 +1,4 @@
-import api from '../../../services/axios'
+import api from '../../services/axios'
 import type { User } from '../types'
 
 export async function loginApi(email: string, password: string) {

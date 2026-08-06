@@ -3,6 +3,33 @@ import api from "../../../services/axios";
 import type { SearchProperty } from "../../../shared/types/api";
 import { getDefaultDates } from "../../../shared/utils/date";
 
+const CACHE_KEY = "nearbyPropertiesCache";
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface NearbyCache {
+  timestamp: number;
+  limit: number;
+  properties: SearchProperty[];
+}
+
+function readCache(): NearbyCache | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as NearbyCache;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(entry: NearbyCache) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // localStorage unavailable or full
+  }
+}
+
 function hasPermissionApi(): boolean {
   return typeof navigator !== "undefined" && "permissions" in navigator;
 }
@@ -14,8 +41,20 @@ export function useNearbyProperties(limit = 6) {
   useEffect(() => {
     let cancelled = false;
 
+    const cached = readCache();
+    const cacheValid = !!cached && cached.limit === limit && cached.properties.length > 0;
+    const isFresh = cacheValid && Date.now() - cached.timestamp < CACHE_TTL_MS;
+
+    if (cacheValid) {
+      setProperties(cached.properties);
+      setLoading(false);
+    }
+
+    // Fresh cache — skip network + geolocation entirely, render instantly.
+    if (isFresh) return;
+
     const loadNearbyProperties = async () => {
-      setLoading(true);
+      if (!cacheValid) setLoading(true);
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
@@ -57,7 +96,12 @@ export function useNearbyProperties(limit = 6) {
             }
           })
         );
-        if (!cancelled) setProperties(withDetails);
+        if (!cancelled) {
+          setProperties(withDetails);
+          if (withDetails.length > 0) {
+            writeCache({ timestamp: Date.now(), limit, properties: withDetails });
+          }
+        }
       } catch {
         // Geolocation or API failure — show empty state.
         if (!cancelled) setProperties([]);

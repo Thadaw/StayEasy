@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api from '../services/axios'
-import type { User } from '../features/auth/types'
+import api, { type AuthRequestConfig } from '../services/axios'
+import type { User } from './types'
 
 type AuthRole = 'host' | 'guest'
 
@@ -108,12 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadCurrentUser = async () => {
     try {
-      const response = await api.get<User>(getMeEndpoint())
+      const response = await api.get<User>(getMeEndpoint(), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
-      // Token is invalid or expired — clear the session so the UI shows the logged-out state.
-      clearAuth()
-      setToken(null)
+      // The session can't be confirmed right now (e.g. /me is down or the role
+      // endpoint rejects the token). Keep the stored token so the user isn't
+      // force-logged-out immediately after signing in — protected pages will
+      // surface their own errors.
       setUser(null)
     }
   }
@@ -163,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     if (!token) return
     try {
-      const response = await api.get<User>(getMeEndpoint())
+      const response = await api.get<User>(getMeEndpoint(), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
       // Ignore refresh errors — the existing session and user state remain usable.
@@ -173,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const response = await api.patch<User>(getMeEndpoint(), data)
+      const response = await api.patch<User>(getMeEndpoint(), data, { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
       return { success: true }
     } catch (err) {

@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../auth/AuthContext'
 import { useUIStore } from '../../stores/uiStore'
 import { usePropertyStore } from '../../stores/propertyStore'
 import logo1 from '../../assets/logo1.png'

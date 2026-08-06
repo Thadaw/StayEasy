@@ -7,7 +7,7 @@ import { Footer } from "../../../shared/components/Footer";
 import { PageMessage } from "../../../shared/components/PageMessage";
 import { SearchBar } from "../../../shared/components/SearchBar";
 import { StickySearchHeader } from "../../../shared/components/StickySearchHeader";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../auth/AuthContext";
 import { useFavorites } from "../../../context/FavoritesContext";
 import { HotelHeader } from "../components/HotelHeader";
 import { ImageGallery } from "../components/ImageGallery";
