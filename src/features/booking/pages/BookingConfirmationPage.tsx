@@ -35,6 +35,7 @@ export default function BookingConfirmationPage() {
 
   const {
     booking,
+    localBooking,
     loading,
     propertyName,
     propertyCity,
@@ -45,6 +46,7 @@ export default function BookingConfirmationPage() {
     roomNames,
     totalGuests,
     checkIn,
+    checkOut,
     refNumber: confirmationCode,
     taxAmount,
     basePrice,
@@ -53,6 +55,10 @@ export default function BookingConfirmationPage() {
     guestPhone,
     guestNationality,
     coverImage,
+    totalAmount,
+    specialOfferDiscount,
+    couponDiscount,
+    paymentGateway,
   } = useBookingDetails(refNumber)
 
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
@@ -71,7 +77,7 @@ export default function BookingConfirmationPage() {
     return <PageMessage loading title="Loading confirmation..." />
   }
 
-  if (!booking) {
+  if (!booking && !localBooking) {
     return (
       <PageMessage
         icon="📋"
@@ -85,36 +91,26 @@ export default function BookingConfirmationPage() {
     )
   }
 
-  const {
-    check_in,
-    check_out,
-    rooms: bookingRooms,
-    special_offer_discount,
-    coupon_code,
-    coupon_discount,
-    total_amount,
-    payment_gateway,
-  } = booking
-
-  // Receipt can only be generated once booking data is available.
+  // Receipt can be generated from API data, or from local fallback values when
+  // the API booking can't be fetched.
   const handleDownloadReceipt = () => {
     downloadReceipt({
       refNumber: confirmationCode,
       propertyName,
       shareText,
       propertyLocation: `${propertyCity}, ${propertyCountry}`,
-      checkIn: check_in,
-      checkOut: check_out,
+      checkIn,
+      checkOut,
       roomNames,
       totalGuests,
       guestName: guestName ?? 'Guest',
       guestEmail,
       guestPhone,
-      rooms: bookingRooms,
-      specialOfferDiscount: special_offer_discount,
-      couponCode: coupon_code ?? undefined,
-      couponDiscount: coupon_discount,
-      totalAmount: total_amount,
+      rooms,
+      specialOfferDiscount,
+      couponCode: booking?.coupon_code ?? undefined,
+      couponDiscount,
+      totalAmount,
       currency,
     })
   }
@@ -158,11 +154,11 @@ export default function BookingConfirmationPage() {
         currency={currency}
         basePrice={basePrice}
         taxAmount={taxAmount}
-        specialOfferDiscount={special_offer_discount ?? 0}
-        couponDiscount={coupon_discount ?? 0}
-        couponCode={coupon_code}
-        totalAmount={total_amount}
-        paymentGateway={payment_gateway ?? undefined}
+        specialOfferDiscount={specialOfferDiscount}
+        couponDiscount={couponDiscount}
+        couponCode={booking?.coupon_code}
+        totalAmount={totalAmount}
+        paymentGateway={paymentGateway}
         refNumber={confirmationCode}
       />
       <BookingActions

@@ -12,6 +12,6 @@ export const usePropertyStore = create<PropertyState>()(
       currentPropertyId: null,
       setCurrentPropertyId: (id) => set({ currentPropertyId: id }),
     }),
-    { name: 'stayeasy-current-property' }
+    { name: 'serveiq-current-property' }
   )
 )

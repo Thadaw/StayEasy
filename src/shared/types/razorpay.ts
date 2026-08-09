@@ -22,6 +22,7 @@ export interface RazorpayCheckoutOptions {
     name?: string
     email?: string
     contact?: string
+    method?: string
     vpa?: string
     bank?: string
   }
@@ -35,7 +36,7 @@ export interface RazorpayCheckoutOptions {
     display?: {
       blocks?: Record<string, {
         name?: string
-        instruments?: Array<{ method: string }>
+        instruments?: Array<{ method: string; flows?: string[]; banks?: string[] }>
       }>
       sequence?: string[]
       preferences?: {
@@ -75,6 +76,9 @@ export interface HostBankDetails {
 
 declare global {
   interface Window {
-    Razorpay: new (options: RazorpayCheckoutOptions) => { open: () => void }
+    Razorpay: new (options: RazorpayCheckoutOptions) => {
+      open: () => void
+      on: (event: string, callback: (response: RazorpayFailureResponse) => void) => void
+    }
   }
 }

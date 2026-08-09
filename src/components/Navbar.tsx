@@ -123,7 +123,7 @@ export function Navbar() {
       <div className="max-w-[1280px] mx-auto px-6 h-[68px] flex items-center justify-between gap-4">
 
         <Link to="/" className="shrink-0 flex items-center gap-2 group">
-          <img src={logo1} alt="StayEasy" className="h-[34px] w-auto transition-transform duration-300 group-hover:scale-105" />
+          <img src={logo1} alt="ServeIQ" className="h-[34px] w-auto transition-transform duration-300 group-hover:scale-105" />
           <span
             style={{
               fontFamily: "'Sora', 'Inter', sans-serif",
@@ -134,7 +134,7 @@ export function Navbar() {
               color: "#1A3C5E",
             }}
           >
-            Stay<span style={{ color: "#2E86AB" }}>Easy</span>
+            Serve<span style={{ color: "#2E86AB" }}>IQ</span>
           </span>
         </Link>
 

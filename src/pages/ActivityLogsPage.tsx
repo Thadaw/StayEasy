@@ -22,7 +22,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 1,
     dateTime: 'May 30, 2025 10:30:25 AM',
-    user: { name: 'Admin', email: 'admin@stayeasy.com' },
+    user: { name: 'Admin', email: 'admin@serveiq.com' },
     module: 'Bookings', moduleColor: { bg: '#DBEAFE', text: '#1E40AF' },
     action: 'Created', actionColor: { bg: '#D1FAE5', text: '#065F46' },
     description: 'New booking created for John Smith (BK-1254)',
@@ -32,7 +32,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 2,
     dateTime: 'May 30, 2025 10:15:42 AM',
-    user: { name: 'Sita Sharma', email: 'sita@stayeasy.com' },
+    user: { name: 'Sita Sharma', email: 'sita@serveiq.com' },
     module: 'Guests', moduleColor: { bg: '#D1FAE5', text: '#065F46' },
     action: 'Updated', actionColor: { bg: '#DBEAFE', text: '#1E40AF' },
     description: 'Updated guest information for Rahul Verma (G-1023)',
@@ -42,7 +42,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 3,
     dateTime: 'May 30, 2025 09:58:11 AM',
-    user: { name: 'Ramesh Thapa', email: 'ramesh@stayeasy.com' },
+    user: { name: 'Ramesh Thapa', email: 'ramesh@serveiq.com' },
     module: 'Rooms', moduleColor: { bg: '#FEF3C7', text: '#92400E' },
     action: 'Updated', actionColor: { bg: '#DBEAFE', text: '#1E40AF' },
     description: 'Room 205 details updated (Type: Deluxe)',
@@ -51,7 +51,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 4,
     dateTime: 'May 30, 2025 09:30:05 AM',
-    user: { name: 'Maya Gurung', email: 'maya@stayeasy.com' },
+    user: { name: 'Maya Gurung', email: 'maya@serveiq.com' },
     module: 'Housekeeping', moduleColor: { bg: '#FCE7F3', text: '#BE185D' },
     action: 'Completed', actionColor: { bg: '#D1FAE5', text: '#065F46' },
     description: 'Housekeeping task completed for Room 305',
@@ -60,7 +60,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 5,
     dateTime: 'May 30, 2025 09:12:47 AM',
-    user: { name: 'Admin', email: 'admin@stayeasy.com' },
+    user: { name: 'Admin', email: 'admin@serveiq.com' },
     module: 'Pricing', moduleColor: { bg: '#EDE9FE', text: '#5B21B6' },
     action: 'Created', actionColor: { bg: '#D1FAE5', text: '#065F46' },
     description: 'Seasonal pricing added (Summer Promotion)',
@@ -70,7 +70,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 6,
     dateTime: 'May 30, 2025 08:45:33 AM',
-    user: { name: 'Anita Karki', email: 'anita@stayeasy.com' },
+    user: { name: 'Anita Karki', email: 'anita@serveiq.com' },
     module: 'Payments', moduleColor: { bg: '#D1FAE5', text: '#065F46' },
     action: 'Updated', actionColor: { bg: '#DBEAFE', text: '#1E40AF' },
     description: 'Payment status updated for Booking BK-1248',
@@ -80,7 +80,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 7,
     dateTime: 'May 30, 2025 08:20:18 AM',
-    user: { name: 'System', email: 'system@stayeasy.com' },
+    user: { name: 'System', email: 'system@serveiq.com' },
     module: 'System', moduleColor: { bg: '#F3F4F6', text: '#374151' },
     action: 'Login', actionColor: { bg: '#DBEAFE', text: '#1E40AF' },
     description: 'User logged in to the system',
@@ -89,7 +89,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 8,
     dateTime: 'May 30, 2025 07:55:02 AM',
-    user: { name: 'John Doe', email: 'john@stayeasy.com' },
+    user: { name: 'John Doe', email: 'john@serveiq.com' },
     module: 'Guests', moduleColor: { bg: '#D1FAE5', text: '#065F46' },
     action: 'Deleted', actionColor: { bg: '#FEE2E2', text: '#991B1B' },
     description: 'Guest record deleted (Guest ID: G-0998)',
@@ -99,7 +99,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 9,
     dateTime: 'May 30, 2025 07:30:44 AM',
-    user: { name: 'Pooja Lama', email: 'pooja@stayeasy.com' },
+    user: { name: 'Pooja Lama', email: 'pooja@serveiq.com' },
     module: 'Users', moduleColor: { bg: '#DBEAFE', text: '#1E40AF' },
     action: 'Login Failed', actionColor: { bg: '#FEE2E2', text: '#991B1B' },
     description: 'Failed login attempt',
@@ -108,7 +108,7 @@ const MOCK_ACTIVITIES: ActivityLog[] = [
   {
     id: 10,
     dateTime: 'May 30, 2025 07:10:31 AM',
-    user: { name: 'Admin', email: 'admin@stayeasy.com' },
+    user: { name: 'Admin', email: 'admin@serveiq.com' },
     module: 'Settings', moduleColor: { bg: '#F3F4F6', text: '#374151' },
     action: 'Updated', actionColor: { bg: '#DBEAFE', text: '#1E40AF' },
     description: 'General settings updated',

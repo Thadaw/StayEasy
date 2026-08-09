@@ -73,33 +73,10 @@ export function useNearbyProperties(limit = 6) {
           },
         });
         const results: SearchProperty[] = response.data?.data || [];
-        const withDetails = await Promise.all(
-          results.map(async (p) => {
-            try {
-              const detailResponse = await api.get(`/properties/${p.property_id}/public`);
-              const prop = detailResponse.data?.data;
-              return {
-                ...p,
-                description: prop?.description || "",
-                total_rooms: prop?.total_rooms || 0,
-                year_built: prop?.year_built || 0,
-                phone_number: prop?.phone_number || "",
-                email: prop?.email || "",
-                system_amenities: prop?.system_amenities || [],
-                custom_amenities: prop?.custom_amenities || [],
-                total_price: p.lowest_rate ?? p.total_price ?? 0,
-                currency: prop?.currency || p.currency,
-              };
-            } catch {
-              // Individual property detail failure is non-critical — return the basic search result.
-              return p;
-            }
-          })
-        );
         if (!cancelled) {
-          setProperties(withDetails);
-          if (withDetails.length > 0) {
-            writeCache({ timestamp: Date.now(), limit, properties: withDetails });
+          setProperties(results);
+          if (results.length > 0) {
+            writeCache({ timestamp: Date.now(), limit, properties: results });
           }
         }
       } catch {

@@ -1,30 +1,6 @@
-export interface Hotel {
-  id: number;
-  name: string;
-  location: string;
-  city: string;
-  country: string;
-  rating: number;
-  reviews: number;
-  price: number;
-  imageUrl: string;
-  images: string[];
-  tag?: string;
-  isSuperhost?: boolean;
-  category: string;
-  description: string;
-  amenities: string[];
-  hostName: string;
-  hostAvatar: string;
-  hostJoined: string;
-  hostReviews: number;
-  bedrooms: number;
-  beds: number;
-  bathrooms: number;
-  maxGuests: number;
-}
+export type MockHotel = Omit<Hotel, 'lat' | 'lng' | 'hostBankDetails' | 'maxAdults' | 'maxChildren' | 'roomTypes'>
 
-export const hotels: Hotel[] = [
+export const hotels: MockHotel[] = [
   {
     id: 1,
     name: "Serenity Beachfront Villa",
@@ -273,7 +249,7 @@ export const reviewSamples = [
   { id: 4, author: "Yuki S.", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=48&h=48&fit=crop&auto=format", date: "February 2026", rating: 5, text: "Magical. We stayed for our anniversary and every detail was perfect — from the welcome champagne to the sunset views. We didn't want to leave." },
 ];
 
-import type { HostBankDetails } from '../types/razorpay'
+import type { HostBankDetails } from '../shared/types/razorpay'
 
 export interface RoomType {
   id: string;
@@ -300,6 +276,8 @@ export interface RoomType {
   roomFacilities?: string[];
   smokingPolicy?: string;
   cancellationPolicy?: string;
+  cancellationDescription?: string;
+  systemAmenities?: string[];
   breakfastIncluded?: boolean;
   bedComfortRating?: number;
   bedComfortReviews?: number;
@@ -338,4 +316,16 @@ export interface Hotel {
   maxAdults: number;
   maxChildren: number;
   roomTypes: RoomType[];
+  numberOfFloors?: number;
+  totalRooms?: number;
+  yearBuilt?: number;
+  phoneNumber?: string;
+  email?: string;
+  currency?: string;
+  timezone?: string;
+  language?: string;
+  brandLogoUrl?: string;
+  brandColor?: string;
+  isActive?: boolean;
+  systemAmenities?: string[];
 }

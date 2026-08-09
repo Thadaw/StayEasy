@@ -182,7 +182,7 @@ export default function BookingsPage() {
                           }}>
                             {hasCover ? (
                               <img
-                                src={r.photos.cover!}
+                                src={r.photos?.cover ?? ''}
                                 alt={r.room_name}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               />

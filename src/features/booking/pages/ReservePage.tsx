@@ -121,6 +121,7 @@ export default function ReservePage() {
     loading: false,
     error: null as string | null,
   })
+  const [razorpayRetryCount, setRazorpayRetryCount] = useState(0)
   const [stripeState, setStripeState] = useState({
     paymentIntentId: null as string | null,
     clientSecret: null as string | null,
@@ -128,14 +129,13 @@ export default function ReservePage() {
     error: null as string | null,
     transactionTime: null as number | null,
   })
+  const [stripeRetryCount, setStripeRetryCount] = useState(0)
   const [khaltiState, setKhaltiState] = useState({
     paymentIntentId: null as string | null,
     loading: false,
     error: null as string | null,
   })
-const [upiId, setUpiId] = useState('')
-  const [selectedBank, setSelectedBank] = useState('')
-  const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
+const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
 
   const refNumber = searchParams.get('ref') || ''
   const { isLoaded: razorpayLoaded } = useRazorpay()
@@ -223,26 +223,25 @@ const [upiId, setUpiId] = useState('')
     }
     createOrder()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber])
+  }, [selectedPayment, refNumber, razorpayRetryCount])
 
   useEffect(() => {
     if (selectedPayment !== "stripe" || !refNumber) return
-    if (stripeState.paymentIntentId) return
     let cancelled = false
     const createStripeIntent = async () => {
-      setStripeState(prev => ({ ...prev, loading: true, error: null }))
+      setStripeState(prev => ({ ...prev, loading: true, error: null, clientSecret: null }))
       try {
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_gateway: "stripe" })
         if (cancelled) return
         const secret = response.data?.client_secret || response.data?.data?.client_secret
         if (!secret) {
-          setStripeState(prev => ({ ...prev, error: "Failed to initialize payment" }))
+          setStripeState(prev => ({ ...prev, error: "Failed to initialize Stripe" }))
           return
         }
         setStripeState(prev => ({ ...prev, clientSecret: secret }))
       } catch (err: unknown) {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : "Failed to initialize payment"
+        const msg = err instanceof Error ? err.message : "Failed to initialize Stripe"
         setStripeState(prev => ({ ...prev, error: msg }))
       } finally {
         if (!cancelled) setStripeState(prev => ({ ...prev, loading: false }))
@@ -250,7 +249,7 @@ const [upiId, setUpiId] = useState('')
     }
     createStripeIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, stripeState.paymentIntentId])
+  }, [selectedPayment, refNumber, stripeRetryCount])
 
   useEffect(() => {
     if (selectedPayment !== "khalti" || !refNumber) return
@@ -264,10 +263,10 @@ const [upiId, setUpiId] = useState('')
           return_url: `${window.location.origin}/reserve/${id}?ref=${refNumber}`,
         })
         if (cancelled) return
-        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id
+        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx
         const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
         if (redirectUrl) {
-          localStorage.setItem('khalti_payment_intent_id', intentId || '')
+          if (intentId) localStorage.setItem('khalti_payment_intent_id', intentId)
           localStorage.setItem('khalti_return_to', window.location.href)
           window.location.href = redirectUrl
           return
@@ -290,27 +289,26 @@ const [upiId, setUpiId] = useState('')
   }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId])
 
   useEffect(() => {
-    const khaltiStatus = searchParams.get('khalti_status')
-    if (khaltiStatus === 'Completed') {
-      const storedIntentId = localStorage.getItem('khalti_payment_intent_id')
-      const returnTo = localStorage.getItem('khalti_return_to')
-      localStorage.removeItem('khalti_return_to')
-      if (storedIntentId) {
-        setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
-        toast.success("Payment successful!")
-      }
-      if (returnTo && returnTo !== window.location.href) {
-        window.location.href = returnTo
-      }
+    const rawQuery = window.location.search
+    const statusMatch = rawQuery.match(/[?&](?:status|khalti_status)=([^&]+)/i)
+    const pidxMatch = rawQuery.match(/[?&]pidx=([^&]+)/i)
+    if (!statusMatch && !pidxMatch) return
+    const khaltiStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('khalti_status') || '').toLowerCase()
+    const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
+    const storedIntentId = pidx || localStorage.getItem('khalti_payment_intent_id')
+    localStorage.removeItem('khalti_return_to')
+    if (khaltiStatus === 'completed' && storedIntentId) {
+      setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
+      setSelectedPayment("khalti")
+      toast.success("Payment successful!")
     }
   }, [searchParams])
 
   useEffect(() => {
-    const storedIntentId = localStorage.getItem('khalti_payment_intent_id')
-    if (storedIntentId && !searchParams.get('khalti_status')) {
-      setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
-      setSelectedPayment("khalti")
-    }
+    const rawQuery = window.location.search
+    if (/[?&](?:status|khalti_status|pidx)=/i.test(rawQuery)) return
+    localStorage.removeItem('khalti_payment_intent_id')
+    localStorage.removeItem('khalti_return_to')
   }, [searchParams])
 
   const handleApplyPromo = async () => {
@@ -326,7 +324,7 @@ const [upiId, setUpiId] = useState('')
       if (discount) {
         setAppliedDiscount({
           code,
-          type: discount.type || 'percentage',
+          type: String(discount.type || 'percentage').toLowerCase() === 'percentage' ? 'percentage' : 'fixed',
           amount: discount.amount || discount.discount || 0,
         })
         setPromoError('')
@@ -448,15 +446,14 @@ const [upiId, setUpiId] = useState('')
         amount: Math.max(0, total) * 100,
         currency: "INR",
         order_id: razorpayState.orderId,
-        name: "StayEasy",
+        name: "ServeIQ",
         description: `Booking at ${hotelName}`,
         handler: (response: RazorpayPaymentResponse) => { setRazorpayState(prev => ({ ...prev, response })) },
         prefill: {
           name: guestName,
           email: guestEmail,
           contact: guestPhone,
-          vpa: options.upiId,
-          bank: options.bank,
+          method: options.type,
         },
         theme: { color: "#0071c2" },
       }
@@ -468,13 +465,13 @@ const [upiId, setUpiId] = useState('')
               upib: {
                 name: "Pay via UPI",
                 instruments: [
-                  { method: "upi" }
+                  { method: "upi", flows: ["intent"] }
                 ]
               }
             },
             sequence: ["block.upib"],
             preferences: {
-              show_default_blocks: false
+              show_default_blocks: true
             }
           }
         }
@@ -491,14 +488,14 @@ const [upiId, setUpiId] = useState('')
             },
             sequence: ["block.nbb"],
             preferences: {
-              show_default_blocks: false
+              show_default_blocks: true
             }
           }
         }
       }
 
       const razorpay = new window.Razorpay(razorpayOptions)
-      razorpay.on('payment.failed', (response: RazorpayFailureResponse) => { toast.error("Payment failed: " + response.error?.description || "Unknown error") })
+      razorpay.on('payment.failed', (response: RazorpayFailureResponse) => { toast.error("Payment failed: " + (response.error?.description || "Unknown error")) })
       razorpay.open()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error"
@@ -552,6 +549,7 @@ const [upiId, setUpiId] = useState('')
       if (selectedPayment === "khalti" && khaltiState.paymentIntentId && refNumber) {
         await confirmBookingWithRetry(refNumber, {
           idempotency_key: crypto.randomUUID(),
+          payment_gateway: "khalti",
           gateway_payload: {
             payment_intent_id: khaltiState.paymentIntentId,
           },
@@ -560,7 +558,7 @@ const [upiId, setUpiId] = useState('')
 
       const roomTypeName = roomLines.map(l => l.room.name).join(", ")
       const localBookingData = {
-        hotelId: booking?.property?.id || hotel?.id || id,
+        hotelId: Number(booking?.property?.id || hotel?.id || id),
         hotelName: hotelName,
         hotelCity: hotelCity,
         hotelCountry: hotelCountry,
@@ -638,6 +636,8 @@ const [upiId, setUpiId] = useState('')
     hotelName,
     hotelCity,
     hotelCountry,
+    hotelPhone: property?.phone_number || '',
+    hotelEmail: property?.email || '',
     hotelImage: hotel?.imageUrl || hotel?.images?.[0] || '',
     rating: hotel?.rating || 0,
     reviews: hotel?.reviews || 0,
@@ -719,14 +719,11 @@ const [upiId, setUpiId] = useState('')
               khaltiLoading={khaltiState.loading}
               khaltiError={khaltiState.error}
               paySubMethod={paySubMethod}
-              upiId={upiId}
-              selectedBank={selectedBank}
               onSetPaySubMethod={setPaySubMethod}
-              onSetUpiId={setUpiId}
-              onSetSelectedBank={setSelectedBank}
               onStripeSuccess={(id, secret, createdAt) => { setStripeState(prev => ({ ...prev, paymentIntentId: id, clientSecret: secret, transactionTime: createdAt })) }}
-              onStripeRetry={() => { setStripeState(prev => ({ ...prev, clientSecret: null, paymentIntentId: null })) }}
+              onStripeRetry={() => setStripeRetryCount(count => count + 1)}
               onRazorpayPay={handleRazorpayPayment}
+              onRazorpayRetry={() => setRazorpayRetryCount(count => count + 1)}
               onSetKhaltiError={(error) => setKhaltiState(prev => ({ ...prev, error }))}
               onSetKhaltiLoading={(loading) => setKhaltiState(prev => ({ ...prev, loading }))}
             />

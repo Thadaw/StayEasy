@@ -1,3 +1,6 @@
+import { useNavigate } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
+
 interface ReserveStepperProps {
   currentStep?: number
 }
@@ -9,9 +12,17 @@ const steps = [
 ]
 
 export function ReserveStepper({ currentStep = 3 }: ReserveStepperProps) {
+  const navigate = useNavigate()
   return (
     <div className="bg-white border-b border-gray-200">
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5">
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 relative">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Go back"
+          className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:text-[#1A3C5E] hover:border-[#1A3C5E] transition-colors cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+        </button>
         <div className="flex items-center justify-center">
           {steps.map((step, i) => {
             const isCompleted = step.number < currentStep

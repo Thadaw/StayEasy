@@ -2,9 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useAuth } from '../auth/AuthContext'
 
 interface FavoritesContextValue {
-  favorites: Set<number>
-  isFavorite: (id: number) => boolean
-  toggleFavorite: (id: number) => void
+  favorites: Set<string>
+  isFavorite: (id: string) => boolean
+  toggleFavorite: (id: string) => void
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null)
@@ -13,7 +13,7 @@ function getStorageKey(userId?: number): string {
   return userId ? `favorites_${userId}` : 'favorites_guest'
 }
 
-function loadFavorites(userId?: number): Set<number> {
+function loadFavorites(userId?: number): Set<string> {
   try {
     const data = localStorage.getItem(getStorageKey(userId))
     return data ? new Set(JSON.parse(data)) : new Set()
@@ -22,13 +22,13 @@ function loadFavorites(userId?: number): Set<number> {
   }
 }
 
-function saveFavorites(ids: Set<number>, userId?: number) {
+function saveFavorites(ids: Set<string>, userId?: number) {
   localStorage.setItem(getStorageKey(userId), JSON.stringify([...ids]))
 }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const [favorites, setFavorites] = useState<Set<number>>(() => loadFavorites(user?.id))
+  const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites(user?.id))
 
   useEffect(() => {
     setFavorites(loadFavorites(user?.id))
@@ -39,12 +39,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [favorites, user?.id])
 
   const isFavorite = useCallback(
-    (id: number) => favorites.has(id),
+    (id: string) => favorites.has(id),
     [favorites]
   )
 
   const toggleFavorite = useCallback(
-    (id: number) => {
+    (id: string) => {
       setFavorites((prev) => {
         const next = new Set(prev)
         if (next.has(id)) {

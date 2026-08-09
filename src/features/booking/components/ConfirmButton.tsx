@@ -28,6 +28,8 @@ export function ConfirmButton({
     (selectedPayment === "stripe" && !stripePaymentIntentId) ||
     (selectedPayment === "khalti" && !khaltiPaymentIntentId)
 
+  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : "Razorpay"
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <label className="flex items-start gap-3 cursor-pointer mb-5">
@@ -38,7 +40,7 @@ export function ConfirmButton({
           className="mt-0.5 w-4 h-4 accent-[#0071c2] cursor-pointer"
         />
         <span className="text-sm text-gray-600 leading-relaxed">
-          I agree to receiving marketing emails from StayEasy.com, including promotions, personalized recommendations, rewards, travel experiences, and updates about StayEasy.com's products and services.
+          I agree to receiving marketing emails from ServeIQ.com, including promotions, personalized recommendations, rewards, travel experiences, and updates about ServeIQ.com's products and services.
         </span>
       </label>
 
@@ -63,7 +65,7 @@ export function ConfirmButton({
         )}
       </button>
       <p className="text-center text-xs text-gray-400 mt-3">
-        {paymentLoading ? "Please do not close this page" : "Secure payment via Razorpay"}
+        {paymentLoading ? "Please do not close this page" : `Secure payment via ${gatewayName}`}
       </p>
     </div>
   )

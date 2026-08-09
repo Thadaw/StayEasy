@@ -10,6 +10,7 @@ import PropertyPagination from '../components/properties/PropertyPagination'
 import { getAllProperties } from '../services/pmsApi'
 import { propertyKeys } from '../lib/queryKeys'
 import type { GeneralInfoResponse } from '../types/pms'
+import type { Property } from '../types/properties'
 
 export default function PropertiesPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
@@ -26,12 +27,12 @@ export default function PropertiesPage() {
     queryFn: getAllProperties,
   })
 
-  const properties = useMemo(() => {
+  const properties = useMemo<Property[]>(() => {
     return apiProperties.map((p, i) => ({
       id: i + 1,
       name: p.name,
       code: (p as any).code || `PRP-${String(i + 1).padStart(3, '0')}`,
-      type: p.type || 'Hotel',
+      type: (p.type as Property['type']) || 'Hotel',
       location: [p.city, p.state, p.country].filter(Boolean).join(', ') || (p as any).address || '',
       phone: (p as any).phone || '',
       rooms: p.total_rooms || 0,

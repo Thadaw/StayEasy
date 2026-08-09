@@ -10,7 +10,7 @@ export function HostInfo({ hotel }: HostInfoProps) {
     <div className="flex items-center gap-4 pb-6 border-b border-border mb-6">
       <img src={hotel.hostAvatar} alt={hotel.hostName} className="w-14 h-14 rounded-full object-cover border border-border" />
       <div>
-        <p className="font-semibold text-foreground">Hosted by {hotel.hostName}</p>
+        <p className="font-semibold text-foreground">Hosted by Pante Parsad</p>
         <p className="text-sm text-muted-foreground">Joined {hotel.hostJoined} · {hotel.hostReviews} reviews</p>
       </div>
       {hotel.isSuperhost && (

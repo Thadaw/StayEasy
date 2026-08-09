@@ -276,7 +276,7 @@ export default function HotelDetailPage() {
                   <span className="text-foreground">${cleaningFee}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground underline cursor-default">StayEasy service fee</span>
+                  <span className="text-muted-foreground underline cursor-default">ServeIQ service fee</span>
                   <span className="text-foreground">${serviceFee}</span>
                 </div>
                 <div className="border-t border-border pt-3 flex justify-between font-semibold text-foreground">

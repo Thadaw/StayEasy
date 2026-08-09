@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
 import api, { type AuthRequestConfig } from '../services/axios'
 import type { User } from './types'
@@ -96,8 +96,8 @@ function extractApiError(err: unknown, fallback: string): string {
   return fallback
 }
 
-function getMeEndpoint() {
-  return readRole() === 'host' ? '/auth/users/me' : '/auth/guests/me'
+function getMeEndpoint(currentRole: AuthRole) {
+  return currentRole === 'host' ? '/auth/users/me' : '/auth/guests/me'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -106,9 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AuthRole>(() => readRole())
   const [loading, setLoading] = useState(true)
 
-  const loadCurrentUser = async () => {
+  const loadCurrentUser = useCallback(async () => {
     try {
-      const response = await api.get<User>(getMeEndpoint(), { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.get<User>(getMeEndpoint(role), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
       // The session can't be confirmed right now (e.g. /me is down or the role
@@ -117,22 +117,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // surface their own errors.
       setUser(null)
     }
-  }
+  }, [role])
 
   useEffect(() => {
     if (!token) {
+      setUser(null)
       setLoading(false)
       return
     }
 
-    loadCurrentUser().finally(() => setLoading(false))
-  }, [token])
+    setLoading(true)
+
+    loadCurrentUser().finally(() => {
+      setLoading(false)
+    })
+  }, [token, loadCurrentUser])
 
   const login = async (newToken: string, remember = true, userType: AuthRole = 'host', refreshToken?: string) => {
     saveAuth(newToken, remember, userType, refreshToken)
     setRole(userType)
     setToken(newToken)
-    await loadCurrentUser()
   }
 
   const credentialLogin = async (email: string, password: string) => {
@@ -164,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     if (!token) return
     try {
-      const response = await api.get<User>(getMeEndpoint(), { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.get<User>(getMeEndpoint(role), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
       // Ignore refresh errors — the existing session and user state remain usable.
@@ -174,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const response = await api.patch<User>(getMeEndpoint(), data, { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.patch<User>(getMeEndpoint(role), data, { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
       return { success: true }
     } catch (err) {
@@ -187,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const keys = Object.keys(localStorage)
       for (const key of keys) {
-        if (key === 'stayEasyDraft' || key.startsWith('stayEasyDraft_')) {
+        if (key === 'serveIQDraft' || key.startsWith('serveIQDraft_')) {
           localStorage.removeItem(key)
         }
       }

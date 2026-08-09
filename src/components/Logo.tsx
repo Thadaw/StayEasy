@@ -42,7 +42,7 @@ export function Logo({ size = 36, showText = true, light = false }: LogoProps) {
             color: light ? "#FFFFFF" : "#1A3C5E",
           }}
         >
-          Stay<span style={{ color: light ? "rgba(255,255,255,0.75)" : "#2E86AB" }}>Easy</span>
+          Serve<span style={{ color: light ? "rgba(255,255,255,0.75)" : "#2E86AB" }}>IQ</span>
         </span>
       )}
     </div>

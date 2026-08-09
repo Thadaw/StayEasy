@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../../services/axios'
 import { normalizeBookingStatus } from '../../../shared/utils/format'
+import { resolveBookingStatus } from '../../../shared/utils/bookingHelpers'
 import { CalendarDays, Clock, X, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react'
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -47,26 +48,12 @@ interface CancelModal {
   booking: NormalizedBooking | null
 }
 
-function normalizeStatus(status: string): Tab {
-  switch ((status || '').toUpperCase()) {
-    case 'COMPLETED':
-    case 'CHECKED_OUT':
-      return 'completed'
-    case 'CANCELLED':
-    case 'CANCELED':
-    case 'CANCELLATION_REQUESTED':
-      return 'cancelled'
-    default:
-      return 'upcoming'
-  }
-}
-
 function normalizeBooking(item: ApiBookingItem): NormalizedBooking {
   const currency = item.currency || item.property?.currency || ''
   return {
     id: item.id,
     refNumber: item.ref_number,
-    status: normalizeStatus(item.status),
+    status: resolveBookingStatus(item.status, item.checkout_date),
     checkIn: item.checkin_date,
     checkOut: item.checkout_date,
     totalPrice: Number(item.total_amount) || 0,

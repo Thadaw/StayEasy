@@ -8,7 +8,7 @@ export default function Coupons() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const handleCopyCouponCode = (code: string, id: string) => {
-    navigator.clipboard.write(code)
+    navigator.clipboard.writeText(code)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }

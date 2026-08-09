@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { MapPin, Building2 } from "lucide-react";
 import { useFavorites } from "../../../context/FavoritesContext";
-import type { Property } from "../../search/hooks/useSearchProperties";
+import type { SearchProperty } from "../../../shared/types/api";
 import { FavouriteButton } from "../../../shared/components/FavouriteButton";
 
 interface PropertyCardProps {
-  property: Property;
+  property: SearchProperty;
   showDistance?: boolean;
 }
 

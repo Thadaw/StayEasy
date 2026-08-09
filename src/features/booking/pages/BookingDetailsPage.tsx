@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom"
-import { ChevronRight, Star } from "lucide-react"
+import { ChevronRight, Star, ArrowLeft, BedDouble, Phone, Mail } from "lucide-react"
 import type { RoomType } from "../../../data/hotels"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
@@ -166,15 +166,14 @@ export default function BookingDetailsPage() {
         const { today, tomorrow } = getDefaultDates()
         const checkInDate = checkIn || today
         const checkOutDate = checkOut || tomorrow
-        const roomsParamQ = searchParams.get("rooms")
         const adults = bookingParams.adults
         const children = bookingParams.children
-        const rooms = roomsParamQ ? Number(roomsParamQ) : 1
+        const roomCount = Object.values(selectedRooms).reduce((sum, qty) => sum + qty, 0) || 1
         const propRes = await api.get(`/properties/${id}/public`)
         setProperty(propRes.data?.data || null)
         try {
           const roomsRes = await api.get(`/properties/${id}/rooms/available-rooms`, {
-            params: { checkin_date: checkInDate, checkout_date: checkOutDate, adults, children, rooms },
+            params: { checkin_date: checkInDate, checkout_date: checkOutDate, adults, children, rooms: roomCount },
           })
           setAvailableRooms(roomsRes.data?.data || [])
         } catch {
@@ -268,7 +267,14 @@ export default function BookingDetailsPage() {
 
       {/* Full-width stepper */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 relative">
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+            className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:text-[#1A3C5E] hover:border-[#1A3C5E] transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <div className="flex items-center justify-center">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">1</span>
@@ -316,6 +322,20 @@ export default function BookingDetailsPage() {
                   {hotel.name}
                 </h2>
                 <p className="text-sm text-gray-500 mb-2">{hotel.location}</p>
+                {(property?.phone_number || property?.email) && (
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    {property?.phone_number && (
+                      <a href={`tel:${property.phone_number}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900">
+                        <Phone size={12} /> {property.phone_number}
+                      </a>
+                    )}
+                    {property?.email && (
+                      <a href={`mailto:${property.email}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900">
+                        <Mail size={12} /> {property.email}
+                      </a>
+                    )}
+                  </div>
+                )}
                 {hotel.rating > 0 && (
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-bold text-white bg-[#003580] px-2 py-1 rounded">
@@ -374,6 +394,39 @@ export default function BookingDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              {roomLines.length > 0 && (
+                <div className="border-t border-gray-200 p-5 hidden lg:block">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">Room details</h3>
+                  <div className="space-y-3">
+                    {roomLines.map((l, i) => {
+                      const room = l.room
+                      const cover = room.image || hotel.imageUrl || ''
+                      return (
+                        <div key={room.id || i} className="flex items-start gap-3">
+                          {cover ? (
+                            <img src={cover} alt={room.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                              <BedDouble size={20} className="text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900">{room.name}</p>
+                            <p className="text-xs text-gray-500">{room.roomTypeName || room.bedType || ''}</p>
+                            <p className="text-xs text-gray-500">Room type: Standard</p>
+                            <p className="text-xs text-gray-500">Bed type: Queen</p>
+                            <p className="text-xs text-gray-400">
+                              3 adults · 2 children
+                            </p>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.ep.toFixed(2)}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-gray-200 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Your price summary</h3>
