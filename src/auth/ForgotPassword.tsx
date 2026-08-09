@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import BuildingScene from '../shared/components/BuildingScene'
+import forgotPassAni from '../assets/forgotpass.mp4'
+import bgImage from '../assets/background.png'
 import api from '../services/axios'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -29,6 +30,7 @@ export default function ForgotPassword() {
     }
   }, [])
 
+  const [videoReady, setVideoReady] = useState(false)
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -57,7 +59,10 @@ export default function ForgotPassword() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#fff',
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -188,13 +193,17 @@ export default function ForgotPassword() {
           )}
         </div>
 
-        <div style={{ width: '50%', background: '#dde0ee', order: 2, flexShrink: 0 }}>
-          <BuildingScene
-            mode="login"
-            fieldsReady={email.trim().length > 0}
-            loginClicked={sent}
-            passwordFocused={false}
-            passwordVisible={false}
+        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+          <video
+            src={forgotPassAni}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
       </div>

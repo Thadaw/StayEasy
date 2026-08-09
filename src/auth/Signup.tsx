@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import toast from 'react-hot-toast'
 import signupAni from '../assets/signupani.mp4'
+import bgImage from '../assets/background.png'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -110,7 +111,10 @@ export default function Signup() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#fff',
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

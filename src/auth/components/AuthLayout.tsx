@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import BuildingScene from '../../shared/components/BuildingScene'
+import bgImage from '../../assets/background.png'
 
 interface AuthLayoutProps {
   mode: 'login' | 'signup'
@@ -12,7 +13,15 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ mode, children, passwordFocused = false, passwordVisible = true, fieldsReady = false, loginClicked = false }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#e8e8e8] flex items-center justify-center p-5 font-jakarta">
+    <div
+      className="min-h-screen flex items-center justify-center p-5 font-jakarta"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#e8e8e8',
+      }}
+    >
       <div className="w-[640px] h-[440px] bg-white rounded-2xl flex overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.13)]">
         <div className={`w-1/2 bg-[#dde0ee] shrink-0 ${mode === 'login' ? 'order-1' : 'order-2'}`}>
           <BuildingScene

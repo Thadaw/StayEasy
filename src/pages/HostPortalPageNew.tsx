@@ -161,8 +161,10 @@ export default function HostPortalPageNew() {
   const [propertyId, setPropertyId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [draftSaved, setDraftSaved] = useState(false)
   const hasRestoredRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const draftSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const draftKey = `stayEasyDraft_${user?.id || user?.email || 'anon'}`
 
@@ -177,8 +179,7 @@ export default function HostPortalPageNew() {
     if (raw) {
       try {
         const draft = JSON.parse(raw)
-        // Don't restore currentStep from draft — always start at step 1
-        // but pre-fill the form data so nothing is lost
+        if (draft.currentStep) setCurrentStep(draft.currentStep)
         if (draft.propertyData) setPropertyData(draft.propertyData)
         if (draft.locationData) setLocationData(draft.locationData)
         if (draft.coverIndex !== undefined) setCoverIndex(draft.coverIndex)
@@ -209,6 +210,10 @@ export default function HostPortalPageNew() {
   }, [draftKey, user])
 
   useEffect(() => {
+    hasRestoredRef.current = true
+  }, [])
+
+  useEffect(() => {
     if (!hasRestoredRef.current) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
@@ -230,12 +235,20 @@ export default function HostPortalPageNew() {
         brandData: { ...brandData, logo: null },
         propertyId,
       }
-      localStorage.setItem(draftKey, JSON.stringify(draft))
+      try { localStorage.setItem(draftKey, JSON.stringify(draft)) } catch {}
     }, 500)
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  }, [currentStep, propertyData, locationData, coverIndex, systemAmenityIds, customAmenities, starRating, localizationData, rooms, offers, brandData, propertyId])
+  }, [currentStep, propertyData, locationData, coverIndex, systemAmenityIds, customAmenities, starRating, localizationData, rooms, offers, brandData, propertyId, draftKey])
+
+  const stepChangedRef = useRef(false)
+  useEffect(() => {
+    if (!stepChangedRef.current) { stepChangedRef.current = true; return }
+    if (draftSavedTimerRef.current) clearTimeout(draftSavedTimerRef.current)
+    setDraftSaved(true)
+    draftSavedTimerRef.current = setTimeout(() => setDraftSaved(false), 2000)
+  }, [currentStep])
 
   const clearDraft = useCallback(() => {
     localStorage.removeItem(draftKey)
@@ -749,7 +762,7 @@ export default function HostPortalPageNew() {
 
   return (
     <div className="portal-page">
-      <PortalHeader />
+      <PortalHeader draftSaved={draftSaved} />
 
       <main className="portal-main">
         {currentStep === 'type' ? (

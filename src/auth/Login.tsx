@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import { useAuth } from './AuthContext'
 import loginAni from '../assets/login.mp4'
+import bgImage from '../assets/background.png'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -28,23 +29,16 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(true)
-  const [pwFocused, setPwFocused] = useState(false)
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-
-  const [loginClicked, setLoginClicked] = useState(false)
-
-  const fieldsReady = email.trim().length > 0 && password.trim().length > 0
-
   const handleLogin = async () => {
     setError('')
-    setLoginClicked(true)
 
-    if (!email.trim()) { setError('Email is required.'); setLoginClicked(false); return }
-    if (!password.trim()) { setError('Password is required.'); setLoginClicked(false); return }
-    if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); setLoginClicked(false); return }
+    if (!email.trim()) { setError('Email is required.'); return }
+    if (!password.trim()) { setError('Password is required.'); return }
+    if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); return }
 
     setLoading(true)
     try {
@@ -64,10 +58,9 @@ export default function Login() {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      setTimeout(() => navigate(isHost ? '/host/profile' : '/profile'), 800)
+      setTimeout(() => navigate(isHost ? '/host/profile' : '/'), 800)
     } catch (err) {
       setError(extractError(err))
-      setLoginClicked(false)
       setLoading(false)
     }
   }
@@ -76,7 +69,10 @@ export default function Login() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#fff',
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -195,7 +191,6 @@ export default function Login() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onFocus={() => setPwFocused(false)}
               placeholder="Enter your email"
               autoComplete="off"
               style={{
@@ -229,8 +224,6 @@ export default function Login() {
               type={showPw ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              onFocus={() => setPwFocused(true)}
-              onBlur={() => setPwFocused(false)}
               placeholder="Set your password"
               autoComplete="off"
               style={{

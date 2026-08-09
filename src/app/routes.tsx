@@ -12,6 +12,19 @@ const HostPortalPageNew = lazy(() => import('../pages/HostPortalPageNew'))
 const TenantSetupPage = lazy(() => import('../pages/TenantSetup'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
 const PropertyDashboardPage = lazy(() => import('../pages/PropertyDashboardPage'))
+const BookingsPage = lazy(() => import('../pages/BookingsPage'))
+const RoomsPage = lazy(() => import('../pages/RoomsPage'))
+const GuestsPage = lazy(() => import('../pages/GuestsPage'))
+const StaffPage = lazy(() => import('../pages/StaffPage'))
+const HousekeepingPage = lazy(() => import('../pages/HousekeepingPage'))
+const PricingPage = lazy(() => import('../pages/PricingPage'))
+const ReportsPage = lazy(() => import('../pages/ReportsPage'))
+const SettingsPage = lazy(() => import('../pages/SettingsPage'))
+const PaymentMethodsPage = lazy(() => import('../pages/PaymentMethodsPage'))
+const IntegrationsPage = lazy(() => import('../pages/IntegrationsPage'))
+const HostNotificationsPage = lazy(() => import('../pages/HostNotificationsPage'))
+const ActivityLogsPage = lazy(() => import('../pages/ActivityLogsPage'))
+const SupportPage = lazy(() => import('../pages/SupportPage'))
 const CountryPage = lazy(() => import('../features/search/pages/CountryPage'))
 const PropertyDetailPage = lazy(() => import('../features/property/pages/PropertyDetailPage'))
 const SearchResultsPage = lazy(() => import('../features/search/pages/SearchResultsPage'))
@@ -47,6 +60,19 @@ export function AppRoutes() {
       <Route path="/host/my-properties" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
       <Route path="/host/my-properties/dashboard/:propertyId" element={<ProtectedRoute><PropertyDashboardPage /></ProtectedRoute>} />
+      <Route path="/host/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
+      <Route path="/host/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
+      <Route path="/host/guests" element={<ProtectedRoute><GuestsPage /></ProtectedRoute>} />
+      <Route path="/host/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
+      <Route path="/host/housekeeping" element={<ProtectedRoute><HousekeepingPage /></ProtectedRoute>} />
+      <Route path="/host/pricing/*" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
+      <Route path="/host/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      <Route path="/host/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/host/payments" element={<ProtectedRoute><PaymentMethodsPage /></ProtectedRoute>} />
+      <Route path="/host/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
+      <Route path="/host/notifications" element={<ProtectedRoute><HostNotificationsPage /></ProtectedRoute>} />
+      <Route path="/host/activity" element={<ProtectedRoute><ActivityLogsPage /></ProtectedRoute>} />
+      <Route path="/host/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
       <Route path="/country/:code" element={<CountryPage />} />
       <Route path="/hotel/:id" element={<PropertyDetailPage />} />
       <Route path="/search" element={<SearchResultsPage />} />

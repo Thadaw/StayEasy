@@ -8,6 +8,7 @@ import PropertyCard from '../components/dashboard/PropertyCard'
 import ExpandPortfolio from '../components/dashboard/ExpandPortfolio'
 import { Plus, Loader2 } from 'lucide-react'
 import { getAllProperties, updatePropertyActivation } from '../services/pmsApi'
+import '../styles/portal.css'
 import { propertyKeys } from '../lib/queryKeys'
 import type { GeneralInfoResponse } from '../types/pms'
 

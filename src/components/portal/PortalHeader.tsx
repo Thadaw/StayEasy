@@ -2,9 +2,10 @@
 import logo1 from '../../assets/logo1.png'
 
 interface PortalHeaderProps {
+  draftSaved?: boolean
 }
 
-export default function PortalHeader({}: PortalHeaderProps) {
+export default function PortalHeader({ draftSaved }: PortalHeaderProps) {
   return (
     <header className="portal-header">
       <div className="portal-header-left">
@@ -15,6 +16,7 @@ export default function PortalHeader({}: PortalHeaderProps) {
           </span>
         </Link>
       </div>
+      {draftSaved && <span className="portal-header-draft-saved">Draft Saved</span>}
     </header>
   )
 }

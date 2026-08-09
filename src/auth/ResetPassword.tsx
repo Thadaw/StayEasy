@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import BuildingScene from '../shared/components/BuildingScene'
+import resetPassAni from '../assets/Resetpass.mp4'
+import bgImage from '../assets/background.png'
 import api from '../services/axios'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
@@ -31,7 +32,8 @@ export default function ResetPassword() {
     }
   }, [])
 
-  const [token, setToken] = useState(searchParams.get('token') || '')
+  const [videoReady, setVideoReady] = useState(false)
+  const token = searchParams.get('token') || ''
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(true)
@@ -44,7 +46,6 @@ export default function ResetPassword() {
 
   const handleReset = async () => {
     setError('')
-    if (!token.trim()) { setError('Enter the reset token from your email.'); return }
     if (!PASSWORD_RE.test(password)) { setError('Password must be 8+ characters with a number and a special character.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
     setLoading(true)
@@ -62,7 +63,10 @@ export default function ResetPassword() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#fff',
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -109,35 +113,13 @@ export default function ResetPassword() {
           }}
         >
           {!done ? (
-            <>
+            token ? (
+              <>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 3 }}>
                 Reset password
               </div>
               <div style={{ fontSize: 12, color: '#999', marginBottom: 14 }}>
-                Enter the reset token from your email and choose a new password.
-              </div>
-
-              <div style={{ position: 'relative', marginBottom: 10 }}>
-                <label
-                  style={{
-                    fontSize: 11, color: '#666', marginBottom: 3, display: 'block',
-                    textTransform: 'uppercase', letterSpacing: '0.4px',
-                  }}
-                >
-                  Reset token
-                </label>
-                <input
-                  type="text"
-                  value={token}
-                  onChange={e => setToken(e.target.value)}
-                  placeholder="Paste the token from the email"
-                  autoComplete="off"
-                  style={{
-                    width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
-                    padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
-                    fontWeight: 600,
-                  }}
-                />
+                Choose a new password for your account.
               </div>
 
               <div style={{ position: 'relative', marginBottom: 10 }}>
@@ -234,7 +216,30 @@ export default function ResetPassword() {
                   Request a new link
                 </span>
               </div>
-            </>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                  <div style={{ fontSize: 40, marginBottom: 10 }}>✕</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 4 }}>
+                    Invalid reset link
+                  </div>
+                  <p style={{ fontSize: 13, color: '#999' }}>
+                    This reset link is invalid or has expired.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => navigate(isHost ? '/host/forgot-password' : '/forgot-password')}
+                  style={{
+                    width: '100%', padding: 11, background: '#111', border: 'none', borderRadius: 8,
+                    color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 2,
+                  }}
+                >
+                  Request a new link
+                </button>
+              </>
+            )
           ) : (
             <>
               <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -260,13 +265,17 @@ export default function ResetPassword() {
           )}
         </div>
 
-        <div style={{ width: '50%', background: '#dde0ee', order: 2, flexShrink: 0 }}>
-          <BuildingScene
-            mode="login"
-            fieldsReady={token.trim().length > 0 && password.trim().length > 0}
-            loginClicked={done}
-            passwordFocused={!done && (showPw || showConfirm)}
-            passwordVisible={showPw}
+        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+          <video
+            src={resetPassAni}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           />
         </div>
       </div>
