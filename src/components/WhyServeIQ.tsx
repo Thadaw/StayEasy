@@ -42,12 +42,12 @@ const features = [
   },
 ]
 
-function WhyStayEasy() {
+function WhyServeIQ() {
   return (
     <section className="px-10 py-16 bg-white">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center" style={{ fontFamily: "'Inter', sans-serif", color: '#1A3C5E' }}>
-          Why choose StayEasy?
+          Why choose ServeIQ?
         </h2>
         <motion.div
           initial="hidden"
@@ -75,4 +75,4 @@ function WhyStayEasy() {
   )
 }
 
-export default WhyStayEasy
+export default WhyServeIQ

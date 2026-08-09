@@ -13,7 +13,7 @@ export function ReserveLayout({ leftColumn, rightColumn }: ReserveLayoutProps) {
         {rightColumn}
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-[1fr_380px] gap-8 items-start">
+      <div className="hidden lg:grid lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-5">
           {leftColumn}
         </div>

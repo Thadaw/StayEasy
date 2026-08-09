@@ -1,4 +1,4 @@
-import { Star, Heart, Share2, ShieldCheck } from "lucide-react";
+import { Star, Heart, Share2, ShieldCheck, BadgeCheck } from "lucide-react";
 import { Hotel } from "../../../data/hotels";
 
 interface HotelHeaderProps {
@@ -26,10 +26,18 @@ export function HotelHeader({ hotel, liked, onToggleFavorite }: HotelHeaderProps
               Superhost
             </span>
           )}
+          {hotel.isActive && (
+            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+              <BadgeCheck size={13} /> Active
+            </span>
+          )}
           <span className="text-muted-foreground underline cursor-pointer">{hotel.location}</span>
         </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
+        {hotel.brandLogoUrl && (
+          <img src={hotel.brandLogoUrl} alt={`${hotel.name} logo`} className="h-9 w-auto object-contain" />
+        )}
         <button className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:bg-muted px-3 py-2 rounded-xl transition-colors">
           <Share2 size={15} /> Share
         </button>

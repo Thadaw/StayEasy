@@ -89,10 +89,10 @@ export default function HostProfilePage() {
             borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}
         >
-          <img src={logo1} alt="StayEasy" style={{ height: 36, width: 'auto' }} />
+          <img src={logo1} alt="ServeIQ" style={{ height: 36, width: 'auto' }} />
           {!sidebarCollapsed && (
             <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.3px' }}>
-              StayEasy
+              ServeIQ
             </span>
           )}
         </div>

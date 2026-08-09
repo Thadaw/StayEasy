@@ -80,7 +80,7 @@ const initialIntegrations: Integration[] = [
     status: 'connected',
     lastSync: '2 Minutes Ago',
     syncFrequency: 'Every 5 Minutes',
-    calendarId: 'hotel@stayeasy.com',
+    calendarId: 'hotel@serveiq.com',
     autoSync: true,
     recentActivity: [
       { action: 'Booking #205 Synced', time: '5 min ago' },

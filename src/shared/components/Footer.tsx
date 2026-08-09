@@ -6,7 +6,7 @@ import logo1 from "../../assets/logo1.png";
 const footerLinks = {
   Support:  ["Help Center", "AirCover", "Safety information", "Supporting people with disabilities", "Cancellation options"],
   Hosting:  ["Try hosting", "AirCover for Hosts", "Explore hosting resources", "Visit our community forum", "Responsible hosting"],
-  StayEasy: ["Newsroom", "Features", "Careers", "Investors", "Pricing & Plans"],
+  ServeIQ: ["Newsroom", "Features", "Careers", "Investors", "Pricing & Plans"],
   Legal:    ["Privacy Policy", "Terms of Service", "Cookie Policy", "Sitemap", "Company details"],
 };
 
@@ -16,9 +16,9 @@ export function Footer() {
       <div className="max-w-screen-2xl mx-auto px-6 py-12">
         <div className="mb-8">
           <Link to="/" className="shrink-0 flex items-center gap-2">
-            <img src={logo1} alt="StayEasy" className="h-[34px] w-auto" />
+            <img src={logo1} alt="ServeIQ" className="h-[34px] w-auto" />
             <span className="font-brand font-extrabold text-xl tracking-tight leading-none text-brand-primary">
-              Stay<span className="text-brand-accent">Easy</span>
+              Serve<span className="text-brand-accent">IQ</span>
             </span>
           </Link>
         </div>
@@ -42,7 +42,7 @@ export function Footer() {
 
         <div className="border-t border-border pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="text-sm text-muted-foreground">© 2026 StayEasy, Inc. All rights reserved.</span>
+            <span className="text-sm text-muted-foreground">© 2026 ServeIQ, Inc. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:underline">

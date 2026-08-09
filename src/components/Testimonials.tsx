@@ -7,7 +7,7 @@ const testimonials = [
     location: 'Kathmandu, Nepal',
     avatar: './src/assets/nepman1.avif',
     rating: 5,
-    quote: 'StayEasy le mero pokhara ko trip lo lagi best hotel booking and selection dherai easy banayo. Mero pokhara ko trip eekdum ramailo vayo.',
+    quote: 'ServeIQ le mero pokhara ko trip lo lagi best hotel booking and selection dherai easy banayo. Mero pokhara ko trip eekdum ramailo vayo.',
   },
   {
     id: 2,
@@ -15,7 +15,7 @@ const testimonials = [
     location: 'Pokhara, Nepal',
     avatar: './src/assets/nepwomen3.jpg',
     rating: 5,
-    quote: 'I booked a family stay in Chitwan through StayEasy. The jungle safari package was incredible and the entire booking process was seamless.',
+    quote: 'I booked a family stay in Chitwan through ServeIQ. The jungle safari package was incredible and the entire booking process was seamless.',
   },
   {
     id: 3,
@@ -31,7 +31,7 @@ const testimonials = [
     location: 'Dharan, Nepal',
     avatar: '',
     rating: 5,
-    quote: 'StayEasy made my trip to Lumbini unforgettable. The hotel recommendations were spot on and the booking took less than a minute.',
+    quote: 'ServeIQ made my trip to Lumbini unforgettable. The hotel recommendations were spot on and the booking took less than a minute.',
   },
   {
     id: 5,
@@ -47,7 +47,7 @@ const testimonials = [
     location: 'Janakpur, Nepal',
     avatar: '',
     rating: 5,
-    quote: 'I loved the homestay experience in Bandipur that I found through StayEasy. The host was wonderful and the process was so smooth.',
+    quote: 'I loved the homestay experience in Bandipur that I found through ServeIQ. The host was wonderful and the process was so smooth.',
   },
 ]
 

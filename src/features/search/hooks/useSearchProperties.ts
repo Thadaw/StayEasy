@@ -24,29 +24,7 @@ export function useSearchProperties(destination: string, limit = 6) {
           },
         });
         const results = parseSearchResponse<SearchProperty>(data);
-        const withDetails = await Promise.all(
-          results.slice(0, limit).map(async (p) => {
-            try {
-              const { data: detail } = await api.get(`/properties/${p.property_id}/public`);
-              const prop = detail?.data;
-              return {
-                ...p,
-                description: prop?.description || "",
-                total_rooms: prop?.total_rooms || 0,
-                year_built: prop?.year_built || 0,
-                phone_number: prop?.phone_number || "",
-                email: prop?.email || "",
-                system_amenities: prop?.system_amenities || [],
-                custom_amenities: prop?.custom_amenities || [],
-                total_price: p.lowest_rate ?? p.total_price ?? 0,
-                currency: prop?.currency || p.currency,
-              };
-            } catch {
-              return p;
-            }
-          })
-        );
-        setProperties(withDetails);
+        setProperties(results.slice(0, limit));
       } catch {
         setProperties([]);
       } finally {

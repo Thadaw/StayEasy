@@ -41,7 +41,7 @@ export function useBookingActions() {
   }
 
   const shareBooking = async (shareText: string) => {
-    const shareData = { title: 'StayEasy booking details', text: shareText, url: window.location.href }
+    const shareData = { title: 'ServeIQ booking details', text: shareText, url: window.location.href }
     try {
       if (navigator.share) {
         await navigator.share(shareData)

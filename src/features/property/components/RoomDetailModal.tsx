@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Users, Bed, Bath, Maximize, Calendar, Shield } from "lucide-react";
 import { Hotel, RoomType } from "../../../data/hotels";
 
@@ -12,7 +12,12 @@ interface RoomDetailModalProps {
 
 export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailModalProps) {
   const [roomImgIndex, setRoomImgIndex] = useState(0);
-  const images = room.gallery ?? hotel.images;
+  const images = useMemo(() => {
+    const roomPhotos = [room.image, ...(room.gallery ?? [])].filter(Boolean);
+    const combined = roomPhotos.length > 0 ? roomPhotos : (hotel.images ?? []);
+    return combined.filter((src, i, arr) => arr.indexOf(src) === i);
+  }, [room.image, room.gallery, hotel.images]);
+  const safeIndex = images.length > 0 ? Math.min(roomImgIndex, images.length - 1) : 0;
 
   return (
     <div
@@ -26,11 +31,15 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
         <div className="overflow-y-auto flex-1">
           <div className="relative">
             <div className="relative h-[300px] md:h-[400px] bg-muted">
-              <img
-                src={images[roomImgIndex]}
-                alt={`${room.name} photo ${roomImgIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
+              {images.length > 0 ? (
+                <img
+                  src={images[safeIndex]}
+                  alt={`${room.name} photo ${safeIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No photos</div>
+              )}
               {images.length > 1 && (
                 <>
                   <button
@@ -51,7 +60,7 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
                         key={i}
                         onClick={() => setRoomImgIndex(i)}
                         className="w-2 h-2 rounded-full transition-all"
-                        style={{ backgroundColor: i === roomImgIndex ? '#fff' : 'rgba(255,255,255,0.5)' }}
+                        style={{ backgroundColor: i === safeIndex ? '#fff' : 'rgba(255,255,255,0.5)' }}
                       />
                     ))}
                   </div>
@@ -75,6 +84,20 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
             )}
           </div>
 
+          {images.length > 1 && (
+            <div className="flex gap-2 p-3 bg-white border-b border-border overflow-x-auto">
+              {images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setRoomImgIndex(i)}
+                  className={`shrink-0 rounded-lg overflow-hidden border-2 transition-all ${i === safeIndex ? "border-brand-accent" : "border-transparent opacity-70 hover:opacity-100"}`}
+                >
+                  <img src={img} alt={`${room.name} photo ${i + 1}`} className="w-20 h-14 object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -90,6 +113,34 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
               <div className="flex items-center gap-2">
                 <Bed size={16} className="text-muted-foreground" />
                 <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Room Type</p>
+                  <p className="text-sm font-medium text-foreground">{room.roomTypeName || 'Standard'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Bed size={16} className="text-muted-foreground" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Bed Type</p>
+                  <p className="text-sm font-medium text-foreground">{room.bedType || '—'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-muted-foreground" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Max Adults</p>
+                  <p className="text-sm font-medium text-foreground">{room.maxAdults}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-muted-foreground" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Max Children</p>
+                  <p className="text-sm font-medium text-foreground">{room.maxChildren ?? 0}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Maximize size={16} className="text-muted-foreground" />
+                <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Floor</p>
                   <p className="text-sm font-medium text-foreground">{room.floorNumber}</p>
                 </div>
@@ -102,10 +153,10 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Maximize size={16} className="text-muted-foreground" />
+                <Shield size={16} className="text-muted-foreground" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase">Capacity</p>
-                  <p className="text-sm font-medium text-foreground">{room.maxAdults} adults{room.maxChildren ? `, ${room.maxChildren} children` : ''}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Cancellation</p>
+                  <p className="text-sm font-medium text-foreground">{room.cancellationPolicy || '—'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -122,9 +173,27 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
                 <div className="flex items-start gap-3 bg-green-50 rounded-xl p-4">
                   <Calendar size={18} className="text-green-600 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-green-800">{room.cancellationTitle}</p>
-                    <p className="text-xs text-green-700 mt-1">{room.cancellationPolicy}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-green-800">{room.cancellationTitle}</p>
+                      {room.cancellationPolicy && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600 text-white font-semibold uppercase">{room.cancellationPolicy}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-green-700 mt-1">{room.cancellationDescription || room.cancellationPolicy}</p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {room.systemAmenities && room.systemAmenities.length > 0 && (
+              <div className="py-4 border-b border-border">
+                <h4 className="text-sm font-semibold text-foreground mb-3">System Amenities</h4>
+                <div className="flex flex-wrap gap-2">
+                  {room.systemAmenities.map((a, i) => (
+                    <span key={i} className="text-xs bg-gray-100 text-foreground rounded-full px-3 py-1.5">
+                      {a}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -179,16 +248,19 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
                   <span>{room.smokingPolicy}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="text-base">💳</span>
-                <span>No prepayment needed – pay at the property</span>
-              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white p-4 border-t border-border flex items-center justify-between rounded-b-2xl">
-          <div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
             <p className="text-xl font-bold text-foreground">${room.price}<span className="text-sm font-normal text-muted-foreground">/night</span></p>
           </div>
           <button

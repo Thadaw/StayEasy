@@ -195,8 +195,8 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
     selectedEntries.forEach(([roomId, qty]) => {
       const rt = hotel.roomTypes.find(r => r.id === roomId)
       if (rt) {
-        totalMaxAdults += rt.maxAdults * qty
-        totalMaxChildren += rt.maxChildren * qty
+        totalMaxAdults += (rt.maxAdults ?? rt.maxGuests) * qty
+        totalMaxChildren += (rt.maxChildren ?? 0) * qty
         totalMaxGuests += rt.maxGuests * qty
       }
     })

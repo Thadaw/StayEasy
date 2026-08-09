@@ -22,13 +22,20 @@ export function RecommendedRoom({ room, onReserve, currency = '$', roomQuantitie
               {room.availableRooms > 0 ? 'Available' : 'Sold out'}
             </span>
           </div>
+          {(room.roomTypeName || room.bedType) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+              {room.roomTypeName && (
+                <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Room Type:</span> {room.roomTypeName}</p>
+              )}
+              {room.bedType && (
+                <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Bed Type:</span> {room.bedType}</p>
+              )}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground mt-0.5">Floor {room.floorNumber}</p>
           <p className="text-xs text-muted-foreground mt-0.5">Up to {room.maxGuests} guests ({room.maxAdults} adults{room.maxChildren ? `, ${room.maxChildren} children` : ''})</p>
           {room.cancellationTitle && (
             <p className="text-xs text-green-600 mt-1">{room.cancellationTitle}</p>
-          )}
-          {room.cancellationPolicy && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{room.cancellationPolicy}</p>
           )}
           {room.customAmenities && room.customAmenities.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">

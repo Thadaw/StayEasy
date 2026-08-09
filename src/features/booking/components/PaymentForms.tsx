@@ -26,14 +26,11 @@ interface PaymentFormsProps {
   khaltiLoading: boolean
   khaltiError: string | null
   paySubMethod: 'upi' | 'card' | 'netbanking' | null
-  upiId: string
-  selectedBank: string
   onSetPaySubMethod: (method: 'upi' | 'card' | 'netbanking' | null) => void
-  onSetUpiId: (value: string) => void
-  onSetSelectedBank: (value: string) => void
   onStripeSuccess: (id: string, secret: string, createdAt: number) => void
   onStripeRetry: () => void
   onRazorpayPay: (options: RazorpayPayOptions) => void
+  onRazorpayRetry: () => void
   onSetKhaltiError: (error: string | null) => void
   onSetKhaltiLoading: (loading: boolean) => void
 }
@@ -60,14 +57,11 @@ export function PaymentForms({
   khaltiLoading,
   khaltiError,
   paySubMethod,
-  upiId,
-  selectedBank,
   onSetPaySubMethod,
-  onSetUpiId,
-  onSetSelectedBank,
   onStripeSuccess,
   onStripeRetry,
   onRazorpayPay,
+  onRazorpayRetry,
   onSetKhaltiError,
 }: PaymentFormsProps) {
   if (selectedPayment === "stripe" && !stripePaymentIntentId) {
@@ -103,6 +97,12 @@ export function PaymentForms({
           {razorpayOrderError && (
             <div className="text-center py-4">
               <p className="text-sm text-red-500 mb-2">{razorpayOrderError}</p>
+              <button
+                onClick={onRazorpayRetry}
+                className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
+              >
+                Retry
+              </button>
             </div>
           )}
 
@@ -163,20 +163,13 @@ export function PaymentForms({
 
           {paySubMethod === 'upi' && (
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-              <label className="block text-xs font-semibold text-gray-700">Enter your UPI ID</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="yourname@upi"
-                  value={upiId}
-                  onChange={e => onSetUpiId(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#0071c2] transition-colors"
-                />
-              </div>
-              <p className="text-[11px] text-gray-400">Supported: Google Pay, PhonePe, Paytm, BHIM, etc.</p>
+              <label className="block text-xs font-semibold text-gray-700">Select your UPI app</label>
+              <p className="text-[11px] text-gray-400">
+                You'll be redirected to your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.) to approve the payment.
+              </p>
               <button
-                disabled={!upiId.trim() || paymentLoading || !razorpayOrderId}
-                onClick={() => onRazorpayPay({ type: 'upi', upiId: upiId.trim() })}
+                disabled={paymentLoading || !razorpayOrderId}
+                onClick={() => onRazorpayPay({ type: 'upi' })}
                 className="w-full py-2.5 rounded-lg bg-[#0071c2] text-white text-sm font-semibold hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via UPI</>}
@@ -204,35 +197,13 @@ export function PaymentForms({
 
           {paySubMethod === 'netbanking' && (
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-              <label className="block text-xs font-semibold text-gray-700">Select your bank</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { code: "HDFC", name: "HDFC Bank" },
-                  { code: "ICICI", name: "ICICI Bank" },
-                  { code: "SBIN", name: "SBI" },
-                  { code: "KKBK", name: "Kotak Bank" },
-                  { code: "UTIB", name: "Axis Bank" },
-                  { code: "PUNB", name: "PNB" },
-                  { code: "IDFB", name: "IDFC First" },
-                  { code: "YESB", name: "Yes Bank" },
-                ].map(bank => (
-                  <button
-                    key={bank.code}
-                    onClick={() => onSetSelectedBank(bank.code)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all cursor-pointer text-xs ${
-                      selectedBank === bank.code
-                        ? 'border-[#0071c2] bg-blue-50 text-[#0071c2] font-semibold'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    {selectedBank === bank.code && <CheckCircle2 size={14} className="text-[#0071c2] shrink-0" />}
-                    {bank.name}
-                  </button>
-                ))}
-              </div>
+              <label className="block text-xs font-semibold text-gray-700">Select your bank in the secure checkout</label>
+              <p className="text-[11px] text-gray-400">
+                You'll be redirected to your bank's net banking page to complete the payment.
+              </p>
               <button
-                disabled={!selectedBank || paymentLoading || !razorpayOrderId}
-                onClick={() => onRazorpayPay({ type: 'netbanking', bank: selectedBank })}
+                disabled={paymentLoading || !razorpayOrderId}
+                onClick={() => onRazorpayPay({ type: 'netbanking' })}
                 className="w-full py-2.5 rounded-lg bg-[#0071c2] text-white text-sm font-semibold hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Net Banking</>}

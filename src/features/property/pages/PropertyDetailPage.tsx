@@ -1,12 +1,10 @@
 import { useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, BedDouble, Bath, Users } from "lucide-react";
+import { ArrowLeft, Users, Building2, DoorOpen, CalendarDays, Phone, Mail, Coins, Globe, Languages } from "lucide-react";
 import toast from "react-hot-toast";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Footer } from "../../../shared/components/Footer";
 import { PageMessage } from "../../../shared/components/PageMessage";
-import { SearchBar } from "../../../shared/components/SearchBar";
-import { StickySearchHeader } from "../../../shared/components/StickySearchHeader";
 import { useAuth } from "../../../auth/AuthContext";
 import { useFavorites } from "../../../context/FavoritesContext";
 import { HotelHeader } from "../components/HotelHeader";
@@ -54,7 +52,7 @@ export default function PropertyDetailPage() {
 
   const { createBooking } = useBookingCreation();
 
-  const liked = isFavorite(Number(id));
+  const liked = isFavorite(id ?? "");
 
   if (isLoading) {
     return <PageMessage loading title="Loading property..." />;
@@ -155,42 +153,91 @@ export default function PropertyDetailPage() {
     <div className="min-h-screen bg-background font-jakarta">
       <Navbar />
 
-      <StickySearchHeader>
-        <SearchBar />
-      </StickySearchHeader>
-
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
         <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
           <ArrowLeft size={15} /> All stays
         </button>
 
         <HotelHeader hotel={hotel} liked={liked} onToggleFavorite={() => {
-          if (!user) { navigate('/signup'); } else { toggleFavorite(Number(id)); }
+          if (!user) { navigate('/signup'); } else { toggleFavorite(id ?? ""); }
         }} />
 
         <ImageGallery hotel={hotel} />
 
-        <div>
-          <div className="flex flex-wrap gap-4 pb-6 border-b border-border mb-6">
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <BedDouble size={18} className="text-muted-foreground" />
-              <span><strong>{hotel.bedrooms}</strong> bedroom{hotel.bedrooms > 1 ? "s" : ""}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <BedDouble size={18} className="text-muted-foreground" />
-              <span><strong>{hotel.beds}</strong> bed{hotel.beds > 1 ? "s" : ""}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <Bath size={18} className="text-muted-foreground" />
-              <span><strong>{hotel.bathrooms}</strong> bathroom{hotel.bathrooms > 1 ? "s" : ""}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <Users size={18} className="text-muted-foreground" />
-              <span>Up to <strong>{hotel.maxGuests}</strong> guests</span>
-            </div>
+        <div className="flex flex-wrap gap-4 pb-6 border-b border-border mb-6">
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <DoorOpen size={18} className="text-muted-foreground" />
+            <span><strong>{hotel.totalRooms ?? hotel.roomTypes.length}</strong> room{hotel.totalRooms ? hotel.totalRooms > 1 ? "s" : "" : hotel.roomTypes.length > 1 ? "s" : ""}</span>
           </div>
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <Building2 size={18} className="text-muted-foreground" />
+            <span><strong>{hotel.numberOfFloors ?? "—"}</strong> floor{hotel.numberOfFloors != null && hotel.numberOfFloors > 1 ? "s" : ""}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <CalendarDays size={18} className="text-muted-foreground" />
+            <span>Built in <strong>{hotel.yearBuilt ?? "—"}</strong></span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <Users size={18} className="text-muted-foreground" />
+            <span>Up to <strong>{hotel.maxGuests}</strong> guests</span>
+          </div>
+        </div>
 
-          <HostInfo hotel={hotel} />
+        <HostInfo hotel={hotel} />
+
+        <div>
+          {(hotel.phoneNumber || hotel.email || hotel.currency || hotel.timezone || hotel.language) && (
+            <div className="pb-6 border-b border-border mb-6">
+              <h2 className="text-lg font-bold text-foreground mb-4 font-brand">Property details</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {hotel.phoneNumber && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <Phone size={18} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <a href={`tel:${hotel.phoneNumber}`} className="text-sm font-semibold text-foreground truncate hover:text-primary">{hotel.phoneNumber}</a>
+                    </div>
+                  </div>
+                )}
+                {hotel.email && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <Mail size={18} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <a href={`mailto:${hotel.email}`} className="text-sm font-semibold text-foreground truncate hover:text-primary">{hotel.email}</a>
+                    </div>
+                  </div>
+                )}
+                {hotel.currency && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <Coins size={18} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Currency</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{hotel.currency}</p>
+                    </div>
+                  </div>
+                )}
+                {hotel.timezone && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <Globe size={18} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Timezone</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{hotel.timezone}</p>
+                    </div>
+                  </div>
+                )}
+                {hotel.language && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <Languages size={18} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Language</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{hotel.language}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <AmenitiesSection hotel={hotel} />
 

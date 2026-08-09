@@ -83,6 +83,7 @@ export default function BookingDetailsView() {
     if (!booking && !localBooking) return
     downloadReceipt({
       refNumber,
+      shareText,
       propertyName,
       propertyLocation: propertyLocation || `${propertyCity}, ${propertyCountry}`,
       propertyPhone: propertyDetails.phone,
@@ -97,7 +98,7 @@ export default function BookingDetailsView() {
       guestNationality,
       rooms,
       specialOfferDiscount,
-      couponCode: booking?.coupon_code,
+      couponCode: booking?.coupon_code ?? undefined,
       couponDiscount,
       totalAmount,
       currency,

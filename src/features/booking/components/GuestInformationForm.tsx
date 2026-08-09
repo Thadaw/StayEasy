@@ -109,16 +109,6 @@ export function GuestInformationForm({
             <p className="text-sm font-semibold text-gray-900">
               {roomNames || "No room selected"}
             </p>
-            {roomNames && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                  <span className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                  </span>
-                  Non-refundable
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </div>

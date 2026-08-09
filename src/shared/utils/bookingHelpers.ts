@@ -1,4 +1,5 @@
 import { normalizeBookingStatus } from "./format"
+import { parseBookingDate } from "./time"
 
 export function getStatusColor(status: string): string {
   switch (normalizeBookingStatus(status)) {
@@ -13,6 +14,27 @@ export function getStatusColor(status: string): string {
   }
 }
 
+// A stay counts as past once its check-out date (anchored at midnight UTC) is
+// before today, so stale "upcoming" reservations roll over to "completed".
+function hasCheckoutPassed(checkOut?: string | null): boolean {
+  if (!checkOut) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const checkout = parseBookingDate(checkOut)
+  checkout.setHours(0, 0, 0, 0)
+  return checkout < today
+}
+
+// Combines the backend status mapping with a date check so a confirmed booking
+// whose stay has already ended is shown as "completed" instead of "upcoming".
+// Cancelled bookings are never reclassified.
+export function resolveBookingStatus(status: string, checkOut?: string | null): 'upcoming' | 'completed' | 'cancelled' {
+  const normalized = normalizeBookingStatus(status)
+  if (normalized === 'cancelled') return 'cancelled'
+  if (normalized === 'upcoming' && hasCheckoutPassed(checkOut)) return 'completed'
+  return normalized === 'unknown' ? 'upcoming' : normalized
+}
+
 // Cancellation is allowed up to 24 hours before check-in at 14:00 (the property's
 // standard check-in time). After that window, the reservation is locked.
 export function canCancelBooking(status: string, checkIn: string): boolean {
@@ -24,17 +46,29 @@ export function canCancelBooking(status: string, checkIn: string): boolean {
   return new Date() < cancelDeadline
 }
 
-// The API returns `totalAmount` as a composite (base + tax + service fee). When
-// `subtotal` is unavailable, we reverse-engineer the tax using the known 13% rate
-// and estimate the service fee at 5% of the pre-tax amount.
+// The API returns `totalAmount` as a composite (base - discounts + tax + service fee).
+// When a pre-discount base is available (`subtotal`, or the room subtotals as a
+// fallback), the combined taxes & fees are what remains of the total after reversing
+// the discounts, and the service fee is apportioned at 5/18 of that remainder (tax is
+// the rest). Otherwise both are estimated from the total using the known 13% + 5% rates.
 export function calculatePriceBreakdown(totalAmount: number, subtotal: number, specialOfferDiscount: number, couponDiscount: number, rooms: { subtotal?: number }[]) {
-  const taxAmount = subtotal > 0 ? totalAmount - subtotal : Math.round(totalAmount * 0.13 / 1.13)
-  const serviceFee = rooms.length > 0 ? rooms.reduce((s, r) => s + (r.subtotal || 0), 0) - subtotal + specialOfferDiscount : Math.round(totalAmount * 0.05 / 1.13)
-  const basePrice = subtotal > 0 ? subtotal - taxAmount : totalAmount - taxAmount - Math.abs(couponDiscount)
+  const basePrice = subtotal > 0 ? subtotal : rooms.reduce((s, r) => s + (r.subtotal || 0), 0)
+
+  if (basePrice > 0) {
+    const taxesAndFees = Math.max(0, totalAmount - basePrice + specialOfferDiscount + couponDiscount)
+    return {
+      taxAmount: taxesAndFees,
+      serviceFee: Math.round(taxesAndFees * (5 / 18)),
+      basePrice,
+    }
+  }
+
+  const estimatedBase = Math.max(0, Math.round((totalAmount + specialOfferDiscount + couponDiscount) / 1.18))
+  const taxesAndFees = Math.max(0, Math.round(estimatedBase * 0.18))
   return {
-    taxAmount,
-    serviceFee,
-    basePrice,
+    taxAmount: taxesAndFees,
+    serviceFee: Math.round(taxesAndFees * (5 / 18)),
+    basePrice: estimatedBase,
   }
 }
 
@@ -53,5 +87,5 @@ export function buildPropertyLocation(address: string, city: string, state: stri
 
 export function buildShareText(propertyName: string, refNumber: string, checkIn: string, formatDateFull: (d: string) => string): string {
   if (!propertyName) return ""
-  return `StayEasy booking confirmed for ${propertyName}. Confirmation code: ${refNumber}. Check-in ${checkIn ? formatDateFull(checkIn) : ""}.`
+  return `ServeIQ booking confirmed for ${propertyName}. Confirmation code: ${refNumber}. Check-in ${checkIn ? formatDateFull(checkIn) : ""}.`
 }

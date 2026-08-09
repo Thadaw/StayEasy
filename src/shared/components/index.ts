@@ -1,5 +1,5 @@
-export { BuildingScene } from './BuildingScene'
-export { default as DestinationCard } from './DestinationCard'
+export { default as BuildingScene } from './BuildingScene'
+export { DestinationCard } from './DestinationCard'
 export { ErrorBoundary } from './ErrorBoundary'
 export { Footer } from './Footer'
 export { LanguagePicker } from './LanguagePicker'

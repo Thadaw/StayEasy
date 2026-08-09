@@ -3,16 +3,6 @@ import { useAuth } from '../../../auth/AuthContext'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { Camera, Pencil, Check, X, Star, Calendar, Shield, Mail, Phone, User, MapPin } from 'lucide-react'
 import { StatBadge } from '../../../shared/components/StatBadge'
-import api from '../../../services/axios'
-
-interface GuestProfile {
-  full_name: string
-  email: string
-  phone: string
-  nationality: string
-  id: string
-  created_at: string
-}
 
 export default function AboutMe() {
   const { user, updateProfile } = useAuth()
@@ -26,7 +16,6 @@ export default function AboutMe() {
   const [editingBio, setEditingBio] = useState(false)
   const [aboutText, setAboutText] = useState(user?.aboutMe || '')
   const [saving, setSaving] = useState(false)
-  const [guestProfile, setGuestProfile] = useState<GuestProfile | null>(null)
 
   const [editForm, setEditForm] = useState({
     firstName: user?.firstName || '',
@@ -41,18 +30,6 @@ export default function AboutMe() {
   useEffect(() => {
     setAboutText(user?.aboutMe || '')
   }, [user?.aboutMe])
-
-  useEffect(() => {
-    const loadGuestProfile = async () => {
-      try {
-        const { data } = await api.get<GuestProfile>('/auth/guests/me')
-        setGuestProfile(data)
-      } catch (error) {
-        console.error('Failed to load guest profile:', error)
-      }
-    }
-    loadGuestProfile()
-  }, [])
 
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -115,7 +92,7 @@ export default function AboutMe() {
 
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-brand-heading mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
-                {guestProfile?.full_name || `${firstName} ${lastName}`}
+                {user?.full_name || `${firstName} ${lastName}`}
               </h1>
               <div className="flex items-center gap-3 mb-4">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-accent-light text-brand-primary">
@@ -126,12 +103,12 @@ export default function AboutMe() {
                 </span>
               </div>
 
-              {(guestProfile?.nationality || user?.country) && (
+              {user?.country && (
                 <div className="flex items-center gap-1.5 mb-4 text-sm text-brand-text-secondary">
                   {user?.countryFlag && <span>{user.countryFlag}</span>}
-                  <span>{guestProfile?.nationality || user?.country}</span>
-                  {(guestProfile?.created_at || user?.joinedDate) && (
-                    <span>· Member since {new Date(guestProfile?.created_at || user?.joinedDate || '').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
+                  <span>{user?.country}</span>
+                  {user?.joinedDate && (
+                    <span>· Member since {new Date(user.joinedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
                   )}
                 </div>
               )}
@@ -139,7 +116,7 @@ export default function AboutMe() {
               <div className="flex items-center gap-6 py-3 px-5 rounded-lg bg-brand-background border border-brand-card-border mb-5">
                 <StatBadge icon={Star} value={0} label="Reviews" />
                 <div className="w-px h-5 bg-brand-card-border" />
-                <StatBadge icon={Calendar} value={yearsOnPlatform} label={yearsOnPlatform === 1 ? 'Year on StayEasy' : 'Years on StayEasy'} />
+                <StatBadge icon={Calendar} value={yearsOnPlatform} label={yearsOnPlatform === 1 ? 'Year on ServeIQ' : 'Years on ServeIQ'} />
               </div>
 
               <div className="space-y-3">
@@ -162,13 +139,13 @@ export default function AboutMe() {
                       />
                     </div>
                   ) : (
-                    <span className="text-brand-heading font-medium">{guestProfile?.full_name || firstName} {lastName}</span>
+                    <span className="text-brand-heading font-medium">{user?.full_name || firstName} {lastName}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Mail size={15} className="text-brand-text-secondary shrink-0" />
                   <span className="w-16 text-brand-text-secondary">Email</span>
-                  <span className="text-brand-heading">{guestProfile?.email || user?.email || '—'}</span>
+                  <span className="text-brand-heading">{user?.email || '—'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Phone size={15} className="text-brand-text-secondary shrink-0" />
@@ -181,13 +158,13 @@ export default function AboutMe() {
                       className="flex-1 max-w-[220px] px-3 py-1.5 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading"
                     />
                   ) : (
-                    <span className="text-brand-heading">{guestProfile?.phone || user?.phone || <span className="text-brand-placeholder italic">Not provided</span>}</span>
+                    <span className="text-brand-heading">{user?.phone || <span className="text-brand-placeholder italic">Not provided</span>}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <MapPin size={15} className="text-brand-text-secondary shrink-0" />
                   <span className="w-16 text-brand-text-secondary">Nationality</span>
-                  <span className="text-brand-heading">{guestProfile?.nationality || <span className="text-brand-placeholder italic">Not provided</span>}</span>
+                  <span className="text-brand-heading">{user?.country || <span className="text-brand-placeholder italic">Not provided</span>}</span>
                 </div>
               </div>
 
