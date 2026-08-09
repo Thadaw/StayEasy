@@ -139,7 +139,7 @@ export default function LandingPage() {
 
       <section className="max-w-[1280px] mx-auto px-6 py-12">
         <div className="text-center mb-10">
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: "1.625rem", color: "var(--brand-dark)" }}>Why choose StayEasy?</h2>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: "1.625rem", color: "var(--brand-dark)" }}>Why choose ServeIQ?</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {trustPoints.map(({ icon: Icon, title, desc }) => (

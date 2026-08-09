@@ -46,9 +46,9 @@ export function Navbar({ compact }: { compact?: boolean }) {
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 h-[56px] sm:h-[60px] md:h-[68px] flex items-center gap-2 md:gap-4">
 
         <Link to="/" className="shrink-0 flex items-center gap-1.5 md:gap-2 group">
-          <img src={logo1} alt="StayEasy" className="h-[30px] sm:h-[34px] w-auto transition-transform duration-300 group-hover:scale-105" />
+          <img src={logo1} alt="ServeIQ" className="h-[46px] sm:h-[50px] w-auto transition-transform duration-300 group-hover:scale-105" />
           <span className="font-brand font-extrabold text-brand-primary tracking-tight leading-none" style={{ fontSize: "clamp(18px, 3vw, 26px)" }}>
-            Stay<span className="text-brand-accent">Easy</span>
+            Serve<span className="text-brand-accent">IQ</span>
           </span>
         </Link>
 

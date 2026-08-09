@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useBookings } from "../../../context/BookingContext"
 import { useAuth } from "../../../auth/AuthContext"
 import { calculateNights } from "../../../shared/utils/time"
-import { buildPropertyLocation, calculatePriceBreakdown } from "../../../shared/utils/bookingHelpers"
+import { buildPropertyLocation, calculatePriceBreakdown, resolveBookingStatus } from "../../../shared/utils/bookingHelpers"
 import api from "../../../services/axios"
 import type { ApiBooking } from "../types"
 
@@ -157,7 +157,10 @@ export function useBookingDetails(id: string | undefined) {
   const paymentGateway = booking?.payment_gateway || ""
   const refNumber = booking?.ref_number || localBooking?.refNumber || localBooking?.id || id || ""
   const createdAt = booking?.created_at || localBooking?.createdAt || new Date().toISOString()
-  const bookingStatus = booking?.status || localBooking?.status || "upcoming"
+  const bookingStatus = resolveBookingStatus(
+    booking?.status || localBooking?.status || "upcoming",
+    booking?.check_out || localBooking?.checkOut
+  )
   const statusLabel = bookingStatus.charAt(0).toUpperCase() + bookingStatus.slice(1)
 
   const guestName = guestProfile?.name || booking?.guest_name || user?.full_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Guest"

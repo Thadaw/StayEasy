@@ -23,7 +23,8 @@ export function mapPropertyToHotel(property: ApiProperty, rooms: ApiRoom[]): Hot
     totalRooms: 1,
     availableRooms: r.status === "AVAILABLE" ? 1 : 0,
     roomNumbers: [r.room_name],
-    bedType: r.bed_type_id ?? "",
+    bedType: r.bed_type || r.bed_type_id || "",
+    roomTypeName: r.room_type ?? "",
     areaSqFt: 0,
     floorNumber: r.floor_number,
     maxAdults: r.max_adults,
@@ -35,7 +36,9 @@ export function mapPropertyToHotel(property: ApiProperty, rooms: ApiRoom[]): Hot
     bathroomAmenities: [],
     roomFacilities: property.system_amenities.map((a) => a.name),
     smokingPolicy: "",
-    cancellationPolicy: r.cancellation_description ?? "",
+    cancellationPolicy: r.cancellation_policy ?? "",
+    cancellationDescription: r.cancellation_description ?? "",
+    systemAmenities: (r.system_amenities && r.system_amenities.length > 0 ? r.system_amenities : property.system_amenities).map((a) => a.name),
     breakfastIncluded: false,
   }))
   return {
@@ -68,5 +71,17 @@ export function mapPropertyToHotel(property: ApiProperty, rooms: ApiRoom[]): Hot
     maxAdults: totalAdults,
     maxChildren: totalChildren,
     roomTypes: mappedRooms,
+    numberOfFloors: property.number_of_floors,
+    totalRooms: property.total_rooms,
+    yearBuilt: property.year_built,
+    phoneNumber: property.phone_number,
+    email: property.email,
+    currency: property.currency,
+    timezone: property.timezone,
+    language: property.language,
+    brandLogoUrl: property.brand_logo_url,
+    brandColor: property.brand_color,
+    isActive: property.is_active,
+    systemAmenities: property.system_amenities.map((a) => a.name),
   }
 }

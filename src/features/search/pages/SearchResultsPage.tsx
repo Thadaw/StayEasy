@@ -83,7 +83,8 @@ export default function SearchResultsPage() {
         if (!matches) return false;
       }
 
-      if (property.total_price < priceRange[0] || property.total_price > priceRange[1]) return false;
+      const price = property.total_price ?? 0
+      if (price < priceRange[0] || price > priceRange[1]) return false;
 
       if (amenities.length > 0) {
         const matches = amenities.every((a) =>

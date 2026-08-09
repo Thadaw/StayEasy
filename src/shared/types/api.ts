@@ -39,6 +39,8 @@ export interface ApiRoom {
   room_name: string
   room_type_id: string
   bed_type_id: string
+  room_type?: string
+  bed_type?: string
   max_adults: number
   max_children: number
   base_rate: string
@@ -48,6 +50,7 @@ export interface ApiRoom {
   cancellation_description: string
   photos: { cover: string; gallery: string[] }
   system_amenity_ids: string[]
+  system_amenities?: { icon: string | null; name: string }[]
   custom_amenities: { icon: string | null; name: string }[]
 }
 

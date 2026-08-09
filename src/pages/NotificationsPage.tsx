@@ -49,7 +49,7 @@ const initialNotifications: Notification[] = [
   {
     id: '5',
     title: 'Free Trial Ending',
-    message: 'Your 14-day free trial ends in 2 days. Choose a plan to continue using StayEasy.',
+    message: 'Your 14-day free trial ends in 2 days. Choose a plan to continue using ServeIQ.',
     type: 'warning',
     time: '5 days ago',
     read: true,

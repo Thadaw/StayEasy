@@ -274,7 +274,7 @@ function HostLandingPage() {
         </div>
       </section>
 
-      {/* WHY CHOOSE STAYEASY — gold panel */}
+      {/* WHY CHOOSE SERVEIQ — gold panel */}
       <section className="py-28 bg-[#E8B84B] relative overflow-hidden">
         <div className="absolute -right-20 -bottom-24 w-72 h-72 rounded-full border-[3px] border-[#1C1B19]/10"></div>
         <div className="absolute left-10 top-10 w-24 h-24 rounded-full border-2 border-[#1C1B19]/10 max-md:hidden"></div>
@@ -284,7 +284,7 @@ function HostLandingPage() {
               For your future guests
             </span>
             <h2 className="text-[#1C1B19] text-[clamp(32px,4.6vw,48px)] font-bold tracking-tight leading-[1.08]">
-              Why choose StayEasy?
+              Why choose ServeIQ?
             </h2>
             <p className="text-[#3A3215] mt-4 text-[15.5px] leading-relaxed font-medium max-w-[480px]">
               The same trust that brings travellers to your listing is the

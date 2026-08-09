@@ -7,13 +7,11 @@ export interface Coupon {
   id: string
   code: string
   description: string
+  discount: number
   discountType: 'percentage' | 'fixed'
-  discountValue: number
-  minStay: number
-  maxDiscount?: number
-  validFrom: string
-  validUntil: string
-  isActive: boolean
+  status: 'active' | 'used' | 'expired'
+  expiresAt: string
+  usedAt?: string
 }
 
 export interface Destination {

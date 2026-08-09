@@ -31,8 +31,8 @@ export function printReceipt(params: ReceiptParams) {
         `<tr>
           <td style="padding:6px 0;border-bottom:1px solid #eee">${r.room_name}</td>
           <td style="padding:6px 0;border-bottom:1px solid #eee">${r.room_type} / ${r.bed_type}</td>
-          <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">${params.currency} ${r.base_rate.toFixed(2)} × ${r.nights}</td>
-          <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">${params.currency} ${r.subtotal.toFixed(2)}</td>
+          <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">${params.currency} ${(r.base_rate ?? 0).toFixed(2)} × ${r.nights ?? 1}</td>
+          <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">${params.currency} ${(r.subtotal ?? 0).toFixed(2)}</td>
         </tr>`
     )
     .join("")
@@ -58,7 +58,7 @@ export function printReceipt(params: ReceiptParams) {
 </style></head><body>
 <div class="receipt">
   <div class="header">
-    <h1>StayEasy</h1>
+    <h1>ServeIQ</h1>
     <p>Booking Receipt</p>
   </div>
   <div class="body">
@@ -85,7 +85,7 @@ export function printReceipt(params: ReceiptParams) {
     <div class="total-row"><span>Total</span><span>${params.currency} ${params.totalAmount.toFixed(2)}</span></div>
   </div>
   <div class="footer">
-    <p>Thank you for booking with StayEasy!</p>
+    <p>Thank you for booking with ServeIQ!</p>
     <p>Generated on ${params.createdAt || new Date().toLocaleString()}</p>
   </div>
 </div>

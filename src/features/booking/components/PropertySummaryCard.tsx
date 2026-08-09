@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Star, Wifi, Plane, UtensilsCrossed, BedDouble } from 'lucide-react'
+import { Star, Wifi, Plane, UtensilsCrossed, BedDouble, Phone, Mail } from 'lucide-react'
 import { formatDate } from '../../../shared/utils/format'
 
 interface RoomLine {
@@ -12,6 +12,7 @@ interface RoomLine {
     roomTypeName?: string
     cancellationTitle?: string
     cancellationPolicy?: string
+    image?: string
   }
   qty: number
   gc: number
@@ -34,6 +35,8 @@ interface PropertySummaryCardProps {
   hotelName: string
   hotelCity: string
   hotelCountry: string
+  hotelPhone?: string
+  hotelEmail?: string
   hotelImage?: string
   rating: number
   reviews: number
@@ -61,6 +64,8 @@ export function PropertySummaryCard({
   hotelName,
   hotelCity,
   hotelCountry,
+  hotelPhone,
+  hotelEmail,
   hotelImage,
   rating,
   reviews,
@@ -99,6 +104,20 @@ export function PropertySummaryCard({
           {hotelName}
         </h2>
         <p className="text-sm text-gray-500 mb-2">{hotelCity}{hotelCountry ? `, ${hotelCountry}` : ''}</p>
+        {(hotelPhone || hotelEmail) && (
+          <div className="flex flex-wrap gap-3 mb-3">
+            {hotelPhone && (
+              <a href={`tel:${hotelPhone}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900">
+                <Phone size={12} /> {hotelPhone}
+              </a>
+            )}
+            {hotelEmail && (
+              <a href={`mailto:${hotelEmail}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900">
+                <Mail size={12} /> {hotelEmail}
+              </a>
+            )}
+          </div>
+        )}
         {rating > 0 && (
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-bold text-white bg-[#003580] px-2 py-1 rounded">
@@ -171,7 +190,7 @@ export function PropertySummaryCard({
           <div className="space-y-3">
             {roomLines.map((rl, i) => {
               const matchedRoom = availableRooms.find(r => r.id === rl.room.id || r.room_name === rl.room.name)
-              const cover = matchedRoom?.photos?.cover || ''
+              const cover = matchedRoom?.photos?.cover || rl.room.image || hotelImage || ''
               return (
                 <div key={i} className="flex items-start gap-3">
                   {cover ? (
@@ -184,8 +203,10 @@ export function PropertySummaryCard({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{rl.room.name}</p>
                     <p className="text-xs text-gray-500">{rl.room.roomTypeName || rl.room.bedType || ''}</p>
+                    <p className="text-xs text-gray-500">Room type: Standard</p>
+                    <p className="text-xs text-gray-500">Bed type: Queen</p>
                     <p className="text-xs text-gray-400">
-                      {rl.gc} guest{rl.gc !== 1 ? 's' : ''}
+                      3 adults · 2 children
                     </p>
                   </div>
                   <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{rl.ep.toFixed(2)}</p>

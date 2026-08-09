@@ -188,10 +188,10 @@ export default function Sidebar({ simplified }: SidebarProps) {
       }}
     >
       <div style={{ padding: collapsed ? '16px 12px' : '16px 20px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--sidebar-border)' }}>
-        <img src={logo1} alt="StayEasy" style={{ height: 36, width: 'auto' }} />
+        <img src={logo1} alt="ServeIQ" style={{ height: 36, width: 'auto' }} />
         {!collapsed && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>StayEasy</div>
+            <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>ServeIQ</div>
             <div style={{ fontSize: 11, opacity: 0.6 }}>Hotel & Restaurant</div>
           </div>
         )}

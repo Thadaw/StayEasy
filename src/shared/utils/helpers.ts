@@ -10,10 +10,13 @@ export function parseJSON<T>(value: string, fallback: T): T {
 // in `data.results`, some in `data`, and some return `results` directly. This
 // parser handles all three so callers don't need to know which shape they'll get.
 export function parseSearchResponse<T>(data: unknown): T[] {
-  const d = data as Record<string, unknown>
-  if (d?.data?.results && Array.isArray(d.data.results)) return d.data.results as T[]
-  if (Array.isArray(d?.data)) return d.data as T[]
-  if (d?.results && Array.isArray(d.results)) return d.results as T[]
+  const d = data as Record<string, unknown> | undefined
+  if (!d) return []
+  const nested = d.data as Record<string, unknown> | undefined
+  if (nested?.results && Array.isArray(nested.results)) return nested.results as T[]
+  if (Array.isArray(d.data)) return d.data as T[]
+  const direct = d.results
+  if (direct && Array.isArray(direct)) return direct as T[]
   return []
 }
 

@@ -4,6 +4,7 @@ import { Hotel } from "../../../data/hotels";
 import { formatDateShort } from "../../../shared/utils/format";
 import { getDefaultDates } from "../../../shared/utils/date";
 import { CounterControl } from "../../../shared/components/CounterControl";
+import type { User } from "../../../auth/types";
 
 interface GuestCount {
   adults: number;
@@ -29,7 +30,7 @@ interface RoomSelectionPanelProps {
   onReserve: () => void;
   currency?: string;
   capacityError?: string;
-  user?: { fullName?: string } | null;
+  user?: User | null;
 }
 
 export function RoomSelectionPanel({
@@ -84,12 +85,12 @@ export function RoomSelectionPanel({
     <div id="room-selection" className="p-6 bg-white mb-10">
       <h2 className="font-semibold text-foreground mb-6" style={{ fontSize: "1.125rem" }}>Choose your room</h2>
 
-      <div className="bg-white rounded-2xl shadow-card border border-brand-primary-extra-light p-1.5 md:p-1 mb-8 w-full">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 md:items-center">
+      <div className="bg-white rounded-2xl shadow-card border border-brand-primary-extra-light mb-8 w-full">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 md:items-stretch w-full">
           <div ref={datesRef} className="relative min-w-0">
             <button
               onClick={() => { setShowDates(v => !v); setShowGuests(false); }}
-              className="w-full px-4 sm:px-5 py-2.5 md:py-2 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-l-2xl md:rounded-none"
+              className="w-full h-full px-4 sm:px-5 py-2.5 md:py-2.5 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-l-2xl md:rounded-none"
             >
               <Calendar size={13} className="text-brand-accent shrink-0" />
               <div className="min-w-0">
@@ -141,7 +142,7 @@ export function RoomSelectionPanel({
         <div ref={guestsRef} className="relative min-w-0">
           <button
             onClick={() => { setShowGuests(v => !v); setShowDates(false); }}
-            className="w-full px-4 sm:px-5 py-2.5 md:py-2 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
+            className="w-full h-full px-4 sm:px-5 py-2.5 md:py-2.5 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
           >
             <Users size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
@@ -180,7 +181,7 @@ export function RoomSelectionPanel({
 
         <button
           onClick={onSearch}
-          className="w-full h-9 rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
+          className="w-full h-full min-h-[42px] md:min-h-[48px] col-span-2 md:col-span-1 rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
         >
           <Search size={15} />
           <span className="hidden md:inline text-sm font-semibold">Search</span>
@@ -206,15 +207,19 @@ export function RoomSelectionPanel({
                         </span>
                       </div>
                       {(rt.roomTypeName || rt.bedType) && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{rt.roomTypeName}{rt.roomTypeName && rt.bedType ? ' · ' : ''}{rt.bedType}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                          {rt.roomTypeName && (
+                            <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Room Type:</span> {rt.roomTypeName}</p>
+                          )}
+                          {rt.bedType && (
+                            <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Bed Type:</span> {rt.bedType}</p>
+                          )}
+                        </div>
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5">Floor {rt.floorNumber}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Up to {rt.maxGuests} guests ({rt.maxAdults} adults{rt.maxChildren ? `, ${rt.maxChildren} children` : ''})</p>
                       {rt.cancellationTitle && (
                         <p className="text-xs text-green-600 mt-1">{rt.cancellationTitle}</p>
-                      )}
-                      {rt.cancellationPolicy && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{rt.cancellationPolicy}</p>
                       )}
                       {rt.customAmenities && rt.customAmenities.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
@@ -315,7 +320,7 @@ export function RoomSelectionPanel({
                 {capacityError && (
                   <p className="text-xs text-red-500 mt-3">{capacityError}</p>
                 )}
-                {user && (!checkIn || !checkOut || !hasSelection) && (
+                {!!user && (!checkIn || !checkOut || !hasSelection) && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
                     {!checkIn && !checkOut && 'Please select check-in and check-out dates. '}
                     {checkIn && !checkOut && 'Please select a check-out date. '}
@@ -325,8 +330,8 @@ export function RoomSelectionPanel({
                 )}
                 <button
                   onClick={onReserve}
-                  disabled={!hasSelection || !!capacityError || (user && (!checkIn || !checkOut))}
-                  className="w-full mt-4 py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed bg-[#1A3C5E] hover:bg-[#163552] disabled:hover:bg-[#1A3C5E]"
+                  disabled={!hasSelection || !!capacityError || (!!user && (!checkIn || !checkOut))}
+                  className="w-full mt-4 py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:shadow-lg hover:shadow-brand-accent/30 disabled:opacity-40 disabled:cursor-not-allowed bg-brand-accent hover:bg-brand-accent-hover"
                 >
                   Reserve
                 </button>
