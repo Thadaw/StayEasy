@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../../services/axios";
 import { getDefaultDates } from "../../../shared/utils/date";
-import { parseSearchResponse } from "../../../shared/utils/helpers";
+import { parseSearchResponse, parseSearchMeta } from "../../../shared/utils/helpers";
 import type { SearchProperty } from "../../../shared/types/api";
 
 export function useSearchResults(
@@ -9,14 +9,21 @@ export function useSearchResults(
   propertyType: string,
   checkIn: string,
   checkOut: string,
-  guests: string
+  guests: string,
+  page = 1,
+  pageSize = 10
 ) {
   const [results, setResults] = useState<SearchProperty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const loadSearchResults = useCallback(async () => {
     if (!location && !propertyType) {
       setLoading(false);
+      setResults([]);
+      setTotal(0);
+      setHasMore(false);
       return;
     }
 
@@ -39,16 +46,23 @@ export function useSearchResults(
       params.adults = guests.match(/\d+/)?.[0] || "1";
       params.children = "0";
       params.rooms = "1";
+      params.skip = String((page - 1) * pageSize);
+      params.limit = String(pageSize);
 
       const response = await api.get("/search", { params });
+      const meta = parseSearchMeta(response.data);
       setResults(parseSearchResponse<SearchProperty>(response.data));
+      setTotal(meta?.total ?? 0);
+      setHasMore(meta?.has_more ?? false);
     } catch (error) {
       console.error("Search API error:", error);
       setResults([]);
+      setTotal(0);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
-  }, [location, propertyType, checkIn, checkOut, guests]);
+  }, [location, propertyType, checkIn, checkOut, guests, page, pageSize]);
 
   useEffect(() => {
     loadSearchResults();
@@ -57,5 +71,7 @@ export function useSearchResults(
   return {
     results,
     loading,
+    total,
+    hasMore,
   };
 }

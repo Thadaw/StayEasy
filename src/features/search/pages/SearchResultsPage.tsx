@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
 import { SearchBar } from "../../../shared/components/SearchBar";
@@ -22,12 +22,17 @@ export default function SearchResultsPage() {
   const checkoutParam = searchParams.get("checkout") || "";
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const { results: searchResults, loading } = useSearchResults(
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const { results: searchResults, loading, total } = useSearchResults(
     whereParam,
     propertyTypes,
     checkinParam,
     checkoutParam,
-    guests
+    guests,
+    currentPage,
+    PAGE_SIZE
   );
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
@@ -47,7 +52,11 @@ export default function SearchResultsPage() {
     return ["All types"];
   });
   const [amenities, setAmenities] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests, priceRange, amenities]);
 
   const togglePropertyType = (type: string) => {
     if (type === "All types") {
@@ -163,11 +172,13 @@ export default function SearchResultsPage() {
               )}
             </div>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={15}
-              onPageChange={setCurrentPage}
-            />
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            )}
           </div>
         </div>
       </div>
