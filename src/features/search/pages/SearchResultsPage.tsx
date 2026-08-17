@@ -25,14 +25,12 @@ export default function SearchResultsPage() {
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { results: searchResults, loading, total } = useSearchResults(
+  const { results: searchResults, loading } = useSearchResults(
     whereParam,
     propertyTypes,
     checkinParam,
     checkoutParam,
-    guests,
-    currentPage,
-    PAGE_SIZE
+    guests
   );
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
@@ -52,11 +50,10 @@ export default function SearchResultsPage() {
     return ["All types"];
   });
   const [amenities, setAmenities] = useState<string[]>([]);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests, priceRange, amenities]);
+  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests, priceRange, amenities, propertyFilters]);
 
   const togglePropertyType = (type: string) => {
     if (type === "All types") {
@@ -80,7 +77,7 @@ export default function SearchResultsPage() {
 
   const filteredProperties = useMemo(() => {
     return searchResults.filter((property) => {
-      if (whereParam && whereParam.toLowerCase() !== (propertyTypes || "").toLowerCase()) {
+      if (whereParam) {
         const parts = whereParam.toLowerCase().split(",").map((s) => s.trim());
         const matches = parts.some((p) =>
           (property.address || "").toLowerCase().includes(p) ||
@@ -90,6 +87,12 @@ export default function SearchResultsPage() {
           (property.state || "").toLowerCase().includes(p)
         );
         if (!matches) return false;
+      }
+
+      if (!propertyFilters.includes("All types")) {
+        const type = property.type || "";
+        const matchesType = propertyFilters.some((f) => type.toLowerCase().includes(f.toLowerCase()));
+        if (!matchesType) return false;
       }
 
       const price = property.total_price ?? 0
@@ -104,7 +107,13 @@ export default function SearchResultsPage() {
 
       return true;
     });
-  }, [searchResults, whereParam, propertyTypes, priceRange, amenities]);
+  }, [searchResults, whereParam, propertyFilters, priceRange, amenities]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / PAGE_SIZE));
+  const pageResults = filteredProperties.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   const clearAll = () => {
     setPriceRange([0, 500]);
@@ -156,10 +165,10 @@ export default function SearchResultsPage() {
                 <div className="flex items-center justify-center py-20">
                   <LoadingSpinner />
                 </div>
-              ) : filteredProperties.length === 0 ? (
+              ) : pageResults.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (
-                filteredProperties.map((property) => (
+                pageResults.map((property) => (
                   <SearchResultCard
                     key={property.property_id}
                     property={property}
