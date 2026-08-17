@@ -55,8 +55,8 @@ export function PriceSummaryCard({
         </div>
         {appliedDiscount && (
           <div className="flex justify-between items-center">
-            <span className="text-sm text-[#d4111e] font-medium">Bonus savings</span>
-            <span className="text-sm text-[#d4111e] font-medium">-{currency}{discountAmount.toFixed(2)}</span>
+            <span className="text-sm text-[#C0392B] font-medium">Bonus savings</span>
+            <span className="text-sm text-[#C0392B] font-medium">-{currency}{discountAmount.toFixed(2)}</span>
           </div>
         )}
       </div>
@@ -97,11 +97,11 @@ export function PriceSummaryCard({
               onChange={e => onPromoInputChange(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Enter code"
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#0071c2] transition-colors"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1A3C5E] transition-colors"
             />
             <button
               onClick={onApplyPromo}
-              className="px-4 py-2 rounded-lg border-2 border-[#0071c2] text-[#0071c2] text-sm font-semibold hover:bg-[#0071c2] hover:text-white transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-lg border-2 border-[#1A3C5E] text-[#1A3C5E] text-sm font-semibold hover:bg-[#1A3C5E] hover:text-white transition-colors cursor-pointer"
             >
               Apply
             </button>
@@ -114,7 +114,7 @@ export function PriceSummaryCard({
 
       <div className="border-t border-gray-200 mt-4 pt-4">
         {appliedDiscount && (
-          <p className="text-sm text-[#d4111e] line-through mb-1">{currency}{subtotal.toFixed(2)}</p>
+          <p className="text-sm text-[#C0392B] line-through mb-1">{currency}{subtotal.toFixed(2)}</p>
         )}
         <p className="text-xl font-bold text-gray-900">Total {currency}{Math.max(0, total).toFixed(2)}</p>
         <p className="text-xs text-gray-500">Taxes & fees included</p>

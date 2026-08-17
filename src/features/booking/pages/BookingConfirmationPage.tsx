@@ -174,7 +174,7 @@ export default function BookingConfirmationPage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       <ReserveStepper />

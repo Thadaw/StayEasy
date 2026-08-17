@@ -71,7 +71,7 @@ export function ReserveSummaryCard({
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-5 border-b border-gray-200">
         <div className="flex gap-4">
-          <div className="w-16 h-16 rounded-xl bg-[#f0f6ff] flex items-center justify-center text-[#0071c2] font-bold text-sm shrink-0">
+          <div className="w-16 h-16 rounded-xl bg-[#EAF2F8] flex items-center justify-center text-[#1A3C5E] font-bold text-sm shrink-0">
             {propertyName.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -141,17 +141,17 @@ export function ReserveSummaryCard({
 
       <div className="px-5 py-4 border-b border-gray-200">
         <div className="flex flex-wrap gap-2">
-          <button onClick={onCopyCode} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
+          <button onClick={onCopyCode} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
             <Copy size={14} /> {copied ? 'Copied' : 'Copy'}
           </button>
-          <button onClick={onShare} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
+          <button onClick={onShare} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
             <Share2 size={14} /> Share
           </button>
-          <button onClick={onDownloadReceipt} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
+          <button onClick={onDownloadReceipt} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
             <Download size={14} /> Receipt
           </button>
         </div>
-        {shareMessage && <p className="mt-3 text-sm text-[#0071c2]">{shareMessage}</p>}
+        {shareMessage && <p className="mt-3 text-sm text-[#1A3C5E]">{shareMessage}</p>}
       </div>
 
       <div className="p-5">
@@ -170,7 +170,7 @@ export function ReserveSummaryCard({
 
         <button
           onClick={() => navigate('/')}
-          className="w-full mt-4 py-3 rounded-xl bg-[#0071c2] text-white font-semibold text-sm hover:bg-[#005fa3] transition-all flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
         >
           Back to Home <ArrowRight size={16} />
         </button>

@@ -13,7 +13,7 @@ export function NearbySection() {
       isEmpty={!loading && properties.length === 0}
       emptyMessage="No nearby properties found. Try allowing location access."
     >
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-5 gap-y-8">
         {properties.map((property) => (
           <PropertyCard key={property.property_id} property={property} showDistance />
         ))}

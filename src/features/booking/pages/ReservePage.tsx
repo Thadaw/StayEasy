@@ -197,7 +197,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
       }
     }
     loadBookingDetails()
-  }, [id, refNumber, appliedDiscount, searchParams])
+  }, [id, refNumber])
 
   useEffect(() => {
     if (selectedPayment !== "razorpay" || !refNumber) return
@@ -258,16 +258,17 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const createKhaltiIntent = async () => {
       setKhaltiState(prev => ({ ...prev, loading: true, error: null }))
       try {
+        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, {
           payment_gateway: "khalti",
-          return_url: `${window.location.origin}/reserve/${id}?ref=${refNumber}`,
+          return_url: returnToUrl,
         })
         if (cancelled) return
         const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx
         const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
         if (redirectUrl) {
           if (intentId) localStorage.setItem('khalti_payment_intent_id', intentId)
-          localStorage.setItem('khalti_return_to', window.location.href)
+          localStorage.setItem('khalti_return_to', returnToUrl)
           window.location.href = redirectUrl
           return
         }
@@ -296,7 +297,6 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const khaltiStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('khalti_status') || '').toLowerCase()
     const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
     const storedIntentId = pidx || localStorage.getItem('khalti_payment_intent_id')
-    localStorage.removeItem('khalti_return_to')
     if (khaltiStatus === 'completed' && storedIntentId) {
       setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
       setSelectedPayment("khalti")
@@ -308,7 +308,6 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const rawQuery = window.location.search
     if (/[?&](?:status|khalti_status|pidx)=/i.test(rawQuery)) return
     localStorage.removeItem('khalti_payment_intent_id')
-    localStorage.removeItem('khalti_return_to')
   }, [searchParams])
 
   const handleApplyPromo = async () => {
@@ -455,7 +454,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
           contact: guestPhone,
           method: options.type,
         },
-        theme: { color: "#0071c2" },
+        theme: { color: "#1A3C5E" },
       }
 
       if (options.type === 'upi') {
@@ -675,7 +674,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       <ReserveStepper currentStep={2} />

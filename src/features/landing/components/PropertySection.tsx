@@ -13,7 +13,7 @@ interface PropertySectionProps {
 
 export function PropertySection({ title, linkTo, linkLabel = "View all", loading, isEmpty, emptyMessage, children }: PropertySectionProps) {
   return (
-    <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+    <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 md:py-8">
       <div className="flex items-center justify-between mb-6 md:mb-8">
         <h2 className="text-xl md:text-2xl font-bold font-display text-brand-heading">
           {title}
@@ -26,7 +26,7 @@ export function PropertySection({ title, linkTo, linkLabel = "View all", loading
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-5 gap-y-8">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
               <div className="h-[130px] md:h-[150px] bg-gray-200" />

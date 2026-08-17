@@ -4,6 +4,7 @@ import { PROPERTY_TYPES, AMENITIES_LIST } from "../../../constants/searchFilters
 interface FilterSidebarProps {
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
+  maxPrice: number;
   propertyFilters: string[];
   onTogglePropertyType: (type: string) => void;
   amenities: string[];
@@ -14,6 +15,7 @@ interface FilterSidebarProps {
 export function FilterSidebar({
   priceRange,
   onPriceRangeChange,
+  maxPrice,
   propertyFilters,
   onTogglePropertyType,
   amenities,
@@ -36,7 +38,7 @@ export function FilterSidebar({
           <input
             type="range"
             min={0}
-            max={500}
+            max={maxPrice}
             value={priceRange[1]}
             onChange={(e) => onPriceRangeChange([priceRange[0], Number(e.target.value)])}
             className="w-full accent-brand-primary"

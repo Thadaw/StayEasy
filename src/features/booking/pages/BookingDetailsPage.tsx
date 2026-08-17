@@ -262,7 +262,7 @@ export default function BookingDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       {/* Full-width stepper */}
@@ -300,8 +300,8 @@ export default function BookingDetailsPage() {
 
       <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
 
-        <div className="bg-[#e8f5e9] border border-[#c8e6c9] rounded-lg px-5 py-3 mb-6 text-center">
-          <p className="text-sm font-medium text-[#2e7d32]">Great choice! You're almost done.</p>
+        <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
+          <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
@@ -338,7 +338,7 @@ export default function BookingDetailsPage() {
                 )}
                 {hotel.rating > 0 && (
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-bold text-white bg-[#003580] px-2 py-1 rounded">
+                    <span className="text-xs font-bold text-white bg-[#1A3C5E] px-2 py-1 rounded">
                       {hotel.rating.toFixed(1)}
                     </span>
                     <span className="text-sm font-semibold text-gray-900">
@@ -447,7 +447,7 @@ export default function BookingDetailsPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:order-2">
+          <div className="order-2 lg:order-2 lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
               onGuestChange={setGuest}
@@ -456,7 +456,7 @@ export default function BookingDetailsPage() {
 
             <button
               onClick={handleNext}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#0071c2] text-white font-semibold text-sm hover:bg-[#005fa3] transition-all flex items-center justify-center gap-2"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
             >
               Next: Final details
               <ChevronRight size={16} />

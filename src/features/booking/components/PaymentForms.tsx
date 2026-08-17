@@ -90,7 +90,7 @@ export function PaymentForms({
         <div className="space-y-4">
           {razorpayOrderLoading && (
             <div className="flex items-center justify-center gap-2 py-4">
-              <Loader2 size={16} className="animate-spin text-[#0071c2]" />
+              <Loader2 size={16} className="animate-spin text-[#1A3C5E]" />
               <span className="text-sm text-gray-500">Initializing Razorpay...</span>
             </div>
           )}
@@ -99,7 +99,7 @@ export function PaymentForms({
               <p className="text-sm text-red-500 mb-2">{razorpayOrderError}</p>
               <button
                 onClick={onRazorpayRetry}
-                className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
+                className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
               >
                 Retry
               </button>
@@ -112,12 +112,12 @@ export function PaymentForms({
                 onClick={() => onSetPaySubMethod(paySubMethod === 'upi' ? null : 'upi')}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
                   paySubMethod === 'upi'
-                    ? 'border-[#0071c2] bg-blue-50'
+                    ? 'border-[#1A3C5E] bg-blue-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  paySubMethod === 'upi' ? 'bg-[#0071c2] text-white' : 'bg-gray-100 text-gray-600'
+                  paySubMethod === 'upi' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
                 }`}>
                   <Smartphone size={18} />
                 </div>
@@ -129,12 +129,12 @@ export function PaymentForms({
                 onClick={() => onSetPaySubMethod(paySubMethod === 'card' ? null : 'card')}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
                   paySubMethod === 'card'
-                    ? 'border-[#0071c2] bg-blue-50'
+                    ? 'border-[#1A3C5E] bg-blue-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  paySubMethod === 'card' ? 'bg-[#0071c2] text-white' : 'bg-gray-100 text-gray-600'
+                  paySubMethod === 'card' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
                 }`}>
                   <CreditCard size={18} />
                 </div>
@@ -146,12 +146,12 @@ export function PaymentForms({
                 onClick={() => onSetPaySubMethod(paySubMethod === 'netbanking' ? null : 'netbanking')}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
                   paySubMethod === 'netbanking'
-                    ? 'border-[#0071c2] bg-blue-50'
+                    ? 'border-[#1A3C5E] bg-blue-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  paySubMethod === 'netbanking' ? 'bg-[#0071c2] text-white' : 'bg-gray-100 text-gray-600'
+                  paySubMethod === 'netbanking' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
                 }`}>
                   <Building2 size={18} />
                 </div>
@@ -170,7 +170,7 @@ export function PaymentForms({
               <button
                 disabled={paymentLoading || !razorpayOrderId}
                 onClick={() => onRazorpayPay({ type: 'upi' })}
-                className="w-full py-2.5 rounded-lg bg-[#0071c2] text-white text-sm font-semibold hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via UPI</>}
               </button>
@@ -188,7 +188,7 @@ export function PaymentForms({
               <button
                 disabled={paymentLoading || !razorpayOrderId}
                 onClick={() => onRazorpayPay({ type: 'card' })}
-                className="w-full py-2.5 rounded-lg bg-[#0071c2] text-white text-sm font-semibold hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Card</>}
               </button>
@@ -204,7 +204,7 @@ export function PaymentForms({
               <button
                 disabled={paymentLoading || !razorpayOrderId}
                 onClick={() => onRazorpayPay({ type: 'netbanking' })}
-                className="w-full py-2.5 rounded-lg bg-[#0071c2] text-white text-sm font-semibold hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Net Banking</>}
               </button>
@@ -246,7 +246,7 @@ export function PaymentForms({
               <p className="text-sm text-red-500 mb-2">{khaltiError}</p>
               <button
                 onClick={() => onSetKhaltiError(null)}
-                className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
+                className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
               >
                 Tap to retry
               </button>

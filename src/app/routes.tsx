@@ -32,6 +32,7 @@ const ComingSoon = lazy(() => import('../features/misc/pages/ComingSoon'))
 const BookingPage = lazy(() => import('../features/booking/pages/BookingDetailsPage'))
 const BookingViewPage = lazy(() => import('../features/booking/pages/BookingDetailsView'))
 const ReservePage = lazy(() => import('../features/booking/pages/ReservePage'))
+const KhaltiCallbackPage = lazy(() => import('../features/booking/pages/KhaltiCallbackPage'))
 const BookingConfirmationPage = lazy(() => import('../features/booking/pages/BookingConfirmationPage'))
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'))
 const AboutMe = lazy(() => import('../features/profile/components/AboutMe'))
@@ -90,7 +91,9 @@ export function AppRoutes() {
       <Route path="/language-currency" element={<ComingSoon />} />
       <Route path="/booking-details/:id" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
       <Route path="/booking-view/:id" element={<ProtectedRoute><BookingViewPage /></ProtectedRoute>} />
+      <Route path="/reserve" element={<KhaltiCallbackPage />} />
       <Route path="/reserve/:id" element={<ProtectedRoute><ReservePage /></ProtectedRoute>} />
+      <Route path="/payment/khalti/callback" element={<KhaltiCallbackPage />} />
       <Route path="/booking-confirmation/:refNumber?" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

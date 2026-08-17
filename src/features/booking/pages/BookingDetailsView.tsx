@@ -134,7 +134,7 @@ export default function BookingDetailsView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       <div className="bg-white border-b border-gray-200">
