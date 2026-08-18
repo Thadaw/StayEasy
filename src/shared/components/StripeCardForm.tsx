@@ -3,7 +3,6 @@ import { loadStripe } from "@stripe/stripe-js"
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import { Loader2, ShieldCheck, AlertTriangle } from "lucide-react"
 import toast from "react-hot-toast"
-import api from "../../services/axios"
 import type { StripeCardFormProps } from "../types/stripe"
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "")
@@ -16,62 +15,33 @@ const INTENT_WARNING_MS = 22 * 60 * 60 * 1000
 function StripeCardFormInner({ refNumber, amount, currency, guestName, guestEmail, guestPhone, clientSecret: externalSecret, intentLoading, intentError, onRetry, onSuccess }: StripeCardFormProps) {
   const stripe = useStripe()
   const elements = useElements()
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [loadingIntent, setLoadingIntent] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [intentExpired, setIntentExpired] = useState(false)
   const [intentExpiringSoon, setIntentExpiringSoon] = useState(false)
   const intentCreatedAtRef = useRef<number>(Date.now())
 
   const CUR = currency || "USD"
 
-  // Prevents state updates after unmount when async API calls or timers resolve late.
+  // Prevents state updates after unmount when async timers resolve late.
   const cancelledRef = useRef(false)
 
   useEffect(() => () => { cancelledRef.current = true }, [])
 
-  const createIntent = useCallback(async () => {
-    if (!refNumber) { setLoadingIntent(false); return }
-    setLoadingIntent(true)
-    setError(null)
-    setClientSecret(null)
+  const resolvedLoading = intentLoading ?? false
+  const resolvedError = intentError
+  const resolvedSecret = externalSecret
+
+  useEffect(() => {
+    if (!resolvedSecret) return
+    intentCreatedAtRef.current = Date.now()
     setIntentExpired(false)
     setIntentExpiringSoon(false)
-    intentCreatedAtRef.current = Date.now()
-    try {
-      const { data } = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_gateway: "stripe" })
-      if (cancelledRef.current) return
-      const secret = data?.client_secret || data?.data?.client_secret
-      if (!secret) {
-        setError("Failed to initialize payment")
-        return
-      }
-      setClientSecret(secret)
-      intentCreatedAtRef.current = Date.now()
-    } catch (err: unknown) {
-      if (cancelledRef.current) return
-      const msg = err instanceof Error ? err.message : "Failed to initialize payment"
-      setError(msg)
-    } finally {
-      if (!cancelledRef.current) setLoadingIntent(false)
-    }
-  }, [refNumber])
-
-  useEffect(() => {
-    if (externalSecret !== undefined) return
-    createIntent()
-  }, [createIntent, externalSecret])
-
-  useEffect(() => {
-    if (!clientSecret) return
     const warningTimer = setTimeout(() => {
       if (!cancelledRef.current) setIntentExpiringSoon(true)
     }, INTENT_WARNING_MS)
     const expiryTimer = setTimeout(() => {
       if (!cancelledRef.current) {
         setIntentExpired(true)
-        setClientSecret(null)
         toast.error("Payment session expired. Please retry.")
       }
     }, INTENT_EXPIRY_MS)
@@ -79,7 +49,7 @@ function StripeCardFormInner({ refNumber, amount, currency, guestName, guestEmai
       clearTimeout(warningTimer)
       clearTimeout(expiryTimer)
     }
-  }, [clientSecret])
+  }, [resolvedSecret])
 
   const handleConfirmPayment = async () => {
     if (!stripe || !elements || !resolvedSecret) return
@@ -113,17 +83,9 @@ function StripeCardFormInner({ refNumber, amount, currency, guestName, guestEmai
       const msg = err instanceof Error ? err.message : "Payment failed"
       toast.error(msg)
     } finally {
-      setLoading(false)
+      if (!cancelledRef.current) setLoading(false)
     }
   }
-
-  // The component operates in two modes: it can either create its own payment
-  // intent internally, or accept a client secret from the parent (externalSecret).
-  // These resolved values abstract over both modes so the rest of the component
-  // doesn't need to know which mode it's in.
-  const resolvedLoading = externalSecret !== undefined ? (intentLoading ?? false) : loadingIntent
-  const resolvedError = externalSecret !== undefined ? intentError : error
-  const resolvedSecret = externalSecret !== undefined ? externalSecret : clientSecret
 
   if (resolvedLoading) {
     return (
@@ -143,7 +105,7 @@ function StripeCardFormInner({ refNumber, amount, currency, guestName, guestEmai
         </div>
         <p className="text-xs text-gray-500 mb-3">The payment session has timed out. Please retry to start a new session.</p>
         <button
-          onClick={() => { if (externalSecret !== undefined) onRetry?.(); else createIntent() }}
+          onClick={() => onRetry?.()}
           className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
         >
           Retry
@@ -157,7 +119,7 @@ function StripeCardFormInner({ refNumber, amount, currency, guestName, guestEmai
       <div className="text-center py-4">
         <p className="text-sm text-red-500 mb-2">{resolvedError}</p>
         <button
-          onClick={() => { if (externalSecret !== undefined) onRetry?.(); else createIntent() }}
+          onClick={() => onRetry?.()}
           className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
         >
           Retry

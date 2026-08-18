@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../../../services/axios";
 import { getDefaultDates } from "../../../shared/utils/date";
 import { parseSearchResponse, parseSearchMeta } from "../../../shared/utils/helpers";
@@ -21,7 +21,7 @@ function resolveSearchTerms(location: string, propertyType: string) {
   const trimmed = location.trim();
   const lower = trimmed.toLowerCase();
 
-  const detectedType = propertyType || PROPERTY_TYPE_ALIASES[lower] || "";
+  const detectedType = PROPERTY_TYPE_ALIASES[propertyType.toLowerCase()] || PROPERTY_TYPE_ALIASES[lower] || propertyType || "";
 
   if (detectedType && !propertyType) {
     const destination = trimmed.replace(new RegExp(`^${trimmed.split(/\s/)[0]}\\s*$`, "i"), "").trim();
@@ -71,50 +71,31 @@ export function useSearchResults(
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const totalRef = useRef(0);
-  const prevSearchRef = useRef("");
-
   useEffect(() => {
     if (!location && !propertyType) {
       setLoading(false);
       setResults([]);
       setTotal(0);
-      totalRef.current = 0;
-      prevSearchRef.current = "";
       return;
     }
-
-    const searchKey = [location, propertyType, checkIn, checkOut, guests].join("|");
-    const searchChanged = searchKey !== prevSearchRef.current;
 
     let cancelled = false;
 
     async function run() {
       try {
         setLoading(true);
-
-        if (searchChanged) {
-          prevSearchRef.current = searchKey;
-          const countParams = buildParams(location, propertyType, checkIn, checkOut, guests, 100, 0);
-          const countRes = await api.get("/search", { params: countParams });
-          if (cancelled) return;
-          const countMeta = parseSearchMeta(countRes.data);
-          const countParsed = parseSearchResponse<SearchProperty>(countRes.data);
-          totalRef.current = countMeta?.total ?? countParsed.length;
-        }
-
         const skip = (page - 1) * PAGE_SIZE;
         const pageParams = buildParams(location, propertyType, checkIn, checkOut, guests, PAGE_SIZE, skip);
         const pageRes = await api.get("/search", { params: pageParams });
         if (cancelled) return;
         setResults(parseSearchResponse<SearchProperty>(pageRes.data));
-        setTotal(totalRef.current);
+        const pageMeta = parseSearchMeta(pageRes.data);
+        setTotal(pageMeta?.total ?? parseSearchResponse<SearchProperty>(pageRes.data).length);
       } catch (error) {
         if (!cancelled) {
           console.error("Search API error:", error);
           setResults([]);
           setTotal(0);
-          totalRef.current = 0;
         }
       } finally {
         if (!cancelled) setLoading(false);

@@ -23,10 +23,16 @@ export function SearchResultCard({
 
   const description = truncateWords(property.description || '');
 
+  const handleCardClick = () => {
+    const params = new URLSearchParams(filterParams);
+    params.set("where", property.city || property.state || "");
+    navigate(`/search?${params.toString()}`);
+  };
+
   return (
     <div
       className="flex bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 h-[200px]"
-      onClick={() => navigate(`/hotel/${property.property_id}?${filterParams}`)}
+      onClick={handleCardClick}
     >
       <div className="relative w-[280px] h-[200px] shrink-0 overflow-hidden">
         {property.cover_photo ? (

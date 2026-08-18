@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { MapPin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SearchBar } from "../../../shared/components/SearchBar";
@@ -34,10 +34,27 @@ export function HeroSection() {
   const [activeVibe, setActiveVibe] = useState("All");
   const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [nearbyProperties, setNearbyProperties] = useState<NearbyProperty[]>([]);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
 
   useEffect(() => {
+    const CACHE_KEY = "heroNearbyCache";
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
     const loadNearbyProperties = async () => {
       try {
+        // Check cache first
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL && Array.isArray(data) && data.length > 0) {
+            setNearbyProperties(data);
+            return;
+          }
+        }
+
         let lat: number | null = null;
         let lon: number | null = null;
 
@@ -46,7 +63,7 @@ export function HeroSection() {
         if (match) {
           lat = parseFloat(match[1]);
           lon = parseFloat(match[2]);
-        } else {
+        } else if (!localStorage.getItem("locationPopupSeen")) {
           try {
             const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
               navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
@@ -58,20 +75,52 @@ export function HeroSection() {
           }
         }
 
-        if (lat == null || lon == null) return;
-
         const { today, tomorrow } = getDefaultDates();
-        const { data } = await api.get("/search/nearby", {
-          params: { lat, lon, limit: 10, check_in: today, check_out: tomorrow, adults: 2, children: 0, rooms: 1 },
-        });
-        const results: NearbyProperty[] = data?.data || [];
-        const sorted = results
-          .filter((p) => p.lowest_rate != null)
-          .sort((a, b) => a.lowest_rate - b.lowest_rate)
-          .slice(0, 3);
-        if (sorted.length > 0) setNearbyProperties(sorted);
+
+        let results: NearbyProperty[] = [];
+
+        if (lat != null && lon != null) {
+          const { data } = await api.get("/search/nearby", {
+            params: { lat, lon, limit: 10, check_in: today, check_out: tomorrow, adults: 2, children: 0, rooms: 1 },
+          });
+          const raw: NearbyProperty[] = data?.data || [];
+          results = raw
+            .filter((p) => p.lowest_rate != null)
+            .sort((a, b) => {
+              const distA = a.distance_km ?? Infinity;
+              const distB = b.distance_km ?? Infinity;
+              if (distA !== distB) return distA - distB;
+              return a.lowest_rate - b.lowest_rate;
+            })
+            .slice(0, 3);
+        }
+
+        if (results.length === 0) {
+          const { data } = await api.get("/search", {
+            params: { destination: "Nepal", limit: 3, check_in: today, check_out: tomorrow, adults: 2, children: 0, rooms: 1 },
+          });
+          const rawResults = data?.data?.results || data?.data || data?.results || [];
+          results = rawResults
+            .filter((p: any) => p.total_price != null || p.lowest_rate != null || p.price != null)
+            .map((p: any) => ({
+              property_id: p.property_id || p.id || "",
+              name: p.name || "",
+              city: p.city || "",
+              country: p.country || "",
+              cover_photo: p.cover_photo || p.image || "",
+              lowest_rate: p.lowest_rate || p.total_price || p.price || 0,
+              currency: p.currency || "$",
+              distance_km: p.distance_km,
+            }))
+            .slice(0, 3);
+        }
+
+        if (results.length > 0) {
+          setNearbyProperties(results);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: results, timestamp: Date.now() }));
+        }
     } catch {
-      // Geolocation or API failure — nearby section stays hidden.
+      // API failure — nearby section stays hidden.
     }
   };
   loadNearbyProperties();
@@ -126,7 +175,43 @@ export function HeroSection() {
     setShowLocationPopup(false);
   };
 
-  const heroCardData = nearbyProperties.length >= 3
+  const handleCardEnter = (index: number) => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setHoveredCard(index);
+  };
+
+  const handleCardLeave = () => {
+    hoverTimeout.current = setTimeout(() => setHoveredCard(null), 100);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    };
+  }, []);
+
+  const getCardWrapperStyle = (cardIndex: number): CSSProperties => {
+    let tx = -50;
+    let ty = -50;
+    if (hoveredCard !== null && hoveredCard !== cardIndex) {
+      const shiftMap: Record<number, [number, number][]> = {
+        0: [[0, 0], [-15, 10], [15, 10]],
+        1: [[15, -10], [0, 0], [15, 0]],
+        2: [[-15, -10], [-15, 0], [0, 0]],
+      };
+      const [sx, sy] = shiftMap[hoveredCard][cardIndex];
+      tx += sx;
+      ty += sy;
+    }
+    return { transform: `translate(${tx}%, ${ty}%)`, transition: 'transform 300ms ease-out' };
+  };
+
+  const getCardStyle = (cardIndex: number, defaultRotation: number): CSSProperties => {
+    const isHovered = hoveredCard === cardIndex;
+    return { transform: isHovered ? 'rotate(0deg) scale(1.05)' : `rotate(${defaultRotation}deg)` };
+  };
+
+  const heroCardData = nearbyProperties.length > 0
     ? nearbyProperties.slice(0, 3).map((p) => ({
         id: p.property_id,
         name: p.name,
@@ -219,7 +304,9 @@ export function HeroSection() {
           </div>
         </div>
 
-        <div className="hidden lg:flex relative w-[380px] h-[340px] xl:w-[480px] xl:h-[430px] shrink-0 items-center justify-center mx-auto">
+        <div
+          className="hidden lg:flex relative w-[380px] h-[340px] xl:w-[480px] xl:h-[430px] shrink-0 items-center justify-center mx-auto"
+        >
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 480 430" fill="none">
             <path d="M50 8 Q120 40 180 80 T260 120" stroke="var(--brand-accent)" strokeWidth="1.5" strokeDasharray="8 6" fill="none" opacity="0.5" strokeLinecap="round" />
             <path d="M260 120 C180 160 120 220 130 300" stroke="var(--brand-accent)" strokeWidth="1.5" strokeDasharray="8 6" fill="none" opacity="0.45" strokeLinecap="round" />
@@ -230,31 +317,85 @@ export function HeroSection() {
             </g>
           </svg>
 
-          <div className="absolute left-[200px] top-[100px] xl:left-[260px] xl:top-[120px] -translate-x-1/2 -translate-y-1/2 w-[210px] xl:w-[260px] z-20 rotate-[4deg]">
-            <HeroCard
-              data={heroCardData ? heroCardData[0] : { id: String(heroHotels[0].id), name: heroHotels[0].location, city: "", country: "", price: heroHotels[0].price, currency: "$", image: heroHotels[0].image }}
-              fallbackName={heroHotels[0].location}
-              fallbackLocation={heroHotels[0].location}
-              fallbackPrice={heroHotels[0].price}
-            />
+          <div
+            onMouseEnter={() => handleCardEnter(0)}
+            onMouseLeave={handleCardLeave}
+            className="absolute left-[200px] top-[100px] xl:left-[260px] xl:top-[120px] w-[210px] xl:w-[260px]"
+            style={getCardWrapperStyle(0)}
+          >
+            {heroCardData?.[0] ? (
+              <HeroCard
+                data={heroCardData[0]}
+                fallbackName={heroCardData[0].name}
+                fallbackLocation={heroCardData[0].city ? `${heroCardData[0].city}, ${heroCardData[0].country}` : heroCardData[0].name}
+                fallbackPrice={heroCardData[0].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 0 ? 'z-50' : 'z-20'}`}
+                style={getCardStyle(0, 4)}
+              />
+            ) : (
+              <HeroCard
+                data={{ id: String(heroHotels[0].id), name: heroHotels[0].location, city: "", country: "", price: heroHotels[0].price, currency: "$", image: heroHotels[0].image }}
+                fallbackName={heroHotels[0].location}
+                fallbackLocation={heroHotels[0].location}
+                fallbackPrice={heroHotels[0].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 0 ? 'z-50' : 'z-20'}`}
+                style={getCardStyle(0, 4)}
+              />
+            )}
           </div>
 
-          <div className="absolute left-[100px] top-[240px] xl:left-[130px] xl:top-[300px] -translate-x-1/2 -translate-y-1/2 w-[210px] xl:w-[260px] z-10 -rotate-[3deg]">
-            <HeroCard
-              data={heroCardData ? heroCardData[1] : { id: String(heroHotels[1].id), name: heroHotels[1].location, city: "", country: "", price: heroHotels[1].price, currency: "$", image: heroHotels[1].image }}
-              fallbackName={heroHotels[1].location}
-              fallbackLocation={heroHotels[1].location}
-              fallbackPrice={heroHotels[1].price}
-            />
+          <div
+            onMouseEnter={() => handleCardEnter(1)}
+            onMouseLeave={handleCardLeave}
+            className="absolute left-[100px] top-[240px] xl:left-[130px] xl:top-[300px] w-[210px] xl:w-[260px]"
+            style={getCardWrapperStyle(1)}
+          >
+            {heroCardData?.[1] ? (
+              <HeroCard
+                data={heroCardData[1]}
+                fallbackName={heroCardData[1].name}
+                fallbackLocation={heroCardData[1].city ? `${heroCardData[1].city}, ${heroCardData[1].country}` : heroCardData[1].name}
+                fallbackPrice={heroCardData[1].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 1 ? 'z-50' : 'z-10'}`}
+                style={getCardStyle(1, -3)}
+              />
+            ) : (
+              <HeroCard
+                data={{ id: String(heroHotels[1].id), name: heroHotels[1].location, city: "", country: "", price: heroHotels[1].price, currency: "$", image: heroHotels[1].image }}
+                fallbackName={heroHotels[1].location}
+                fallbackLocation={heroHotels[1].location}
+                fallbackPrice={heroHotels[1].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 1 ? 'z-50' : 'z-10'}`}
+                style={getCardStyle(1, -3)}
+              />
+            )}
           </div>
 
-          <div className="absolute left-[280px] top-[270px] xl:left-[350px] xl:top-[340px] -translate-x-1/2 -translate-y-1/2 w-[210px] xl:w-[260px] z-15 rotate-[2deg]">
-            <HeroCard
-              data={heroCardData ? heroCardData[2] : { id: String(heroHotels[2].id), name: heroHotels[2].location, city: "", country: "", price: heroHotels[2].price, currency: "$", image: heroHotels[2].image }}
-              fallbackName={heroHotels[2].location}
-              fallbackLocation={heroHotels[2].location}
-              fallbackPrice={heroHotels[2].price}
-            />
+          <div
+            onMouseEnter={() => handleCardEnter(2)}
+            onMouseLeave={handleCardLeave}
+            className="absolute left-[280px] top-[270px] xl:left-[350px] xl:top-[340px] w-[210px] xl:w-[260px]"
+            style={getCardWrapperStyle(2)}
+          >
+            {heroCardData?.[2] ? (
+              <HeroCard
+                data={heroCardData[2]}
+                fallbackName={heroCardData[2].name}
+                fallbackLocation={heroCardData[2].city ? `${heroCardData[2].city}, ${heroCardData[2].country}` : heroCardData[2].name}
+                fallbackPrice={heroCardData[2].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 2 ? 'z-50' : 'z-15'}`}
+                style={getCardStyle(2, 2)}
+              />
+            ) : (
+              <HeroCard
+                data={{ id: String(heroHotels[2].id), name: heroHotels[2].location, city: "", country: "", price: heroHotels[2].price, currency: "$", image: heroHotels[2].image }}
+                fallbackName={heroHotels[2].location}
+                fallbackLocation={heroHotels[2].location}
+                fallbackPrice={heroHotels[2].price}
+                className={`transition-all duration-300 ease-out ${hoveredCard === 2 ? 'z-50' : 'z-15'}`}
+                style={getCardStyle(2, 2)}
+              />
+            )}
           </div>
         </div>
       </div>

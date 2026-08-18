@@ -8,7 +8,6 @@ export function NearbySection() {
   return (
     <PropertySection
       title="Stays nearby"
-      linkTo="/search?where=Nearby"
       loading={loading}
       isEmpty={!loading && properties.length === 0}
       emptyMessage="No nearby properties found. Try allowing location access."

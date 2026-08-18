@@ -46,8 +46,8 @@ export default function SearchResultsPage() {
     if (fromUrl && fromUrl.length > 0) {
       const mapped = fromUrl.map((t) => {
         const lower = t.toLowerCase();
-        if (lower === "hotel" || lower === "hostel") return "Hotels";
-        if (lower === "apartment") return "Apartments";
+        if (lower === "hotel" || lower === "hostel") return "Hotel";
+        if (lower === "apartment") return "Apartment";
         if (lower === "villa") return "Villa";
         if (lower === "resort") return "Resort";
         return "Others";
@@ -60,7 +60,11 @@ export default function SearchResultsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests, priceRange, amenities, propertyFilters]);
+  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   const togglePropertyType = (type: string) => {
     if (type === "All types") {
@@ -89,14 +93,15 @@ export default function SearchResultsPage() {
   const pageResults = useMemo(() => {
     return results.filter((property) => {
       if (!propertyFilters.includes("All types")) {
-        const type = (property.type || "").toLowerCase();
+        const type = (property.type || "").toLowerCase().trim();
         const matchesType = propertyFilters.some((f) => {
           if (f === "Others") {
             const knownTypes = ["hotel", "hostel", "apartment", "villa", "resort"];
             return !knownTypes.some((kt) => type.includes(kt));
           }
-          const fLower = f.toLowerCase();
-          return type.includes(fLower) || fLower.includes(type);
+          const fLower = f.toLowerCase().replace(/s$/, "");
+          const tNorm = type.replace(/s$/, "");
+          return type.includes(fLower) || fLower.includes(type) || tNorm === fLower;
         });
         if (!matchesType) return false;
       }
@@ -145,16 +150,18 @@ export default function SearchResultsPage() {
 
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex gap-6">
-          <FilterSidebar
-            priceRange={priceRange}
-            onPriceRangeChange={setPriceRange}
-            maxPrice={maxPrice}
-            propertyFilters={propertyFilters}
-            onTogglePropertyType={togglePropertyType}
-            amenities={amenities}
-            onToggleAmenity={toggleAmenity}
-            onClearAll={clearAll}
-          />
+          <div className="sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+            <FilterSidebar
+              priceRange={priceRange}
+              onPriceRangeChange={setPriceRange}
+              maxPrice={maxPrice}
+              propertyFilters={propertyFilters}
+              onTogglePropertyType={togglePropertyType}
+              amenities={amenities}
+              onToggleAmenity={toggleAmenity}
+              onClearAll={clearAll}
+            />
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="mb-6">
@@ -168,10 +175,10 @@ export default function SearchResultsPage() {
                 <div className="flex items-center justify-center py-20">
                   <LoadingSpinner />
                 </div>
-              ) : pageResults.length === 0 ? (
+              ) : results.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (
-                pageResults.map((property) => (
+                results.map((property) => (
                   <SearchResultCard
                     key={property.property_id}
                     property={property}

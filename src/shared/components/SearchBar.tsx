@@ -39,6 +39,7 @@ export function SearchBar() {
   const propertyTypesParam = urlParams.get("propertyTypes");
   const [where, setWhere] = useState(() => {
     if (urlParams.get("where")) return urlParams.get("where")!;
+    if (propertyTypesParam) return propertyTypesParam;
     return localStorage.getItem("nearbyLocation") || "";
   });
   const [checkIn, setCheckIn] = useState(() => urlParams.get("checkin") || "");

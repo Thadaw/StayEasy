@@ -18,7 +18,7 @@ export function PropertyTypesSection() {
   };
 
   return (
-    <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 md:py-8">
+    <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 pt-6 md:pt-8 pb-2 md:pb-3">
       <h2 className="text-xl md:text-2xl font-bold mb-6 md:mb-8 font-display text-brand-heading">
         Browse by property type
       </h2>

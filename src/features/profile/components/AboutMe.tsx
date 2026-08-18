@@ -23,8 +23,9 @@ export default function AboutMe() {
     phone: user?.phone || '',
   })
 
-  const yearsOnPlatform = user?.joinedDate
-    ? Math.max(1, Math.floor((Date.now() - new Date(user.joinedDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
+  const createdAt = (user as any)?.created_at || (user as any)?.createdAt
+  const yearsOnPlatform = createdAt
+    ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
     : 0
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function AboutMe() {
                 <div className="flex items-center gap-3 text-sm">
                   <MapPin size={15} className="text-brand-text-secondary shrink-0" />
                   <span className="w-16 text-brand-text-secondary">Nationality</span>
-                  <span className="text-brand-heading">{user?.country || <span className="text-brand-placeholder italic">Not provided</span>}</span>
+                  <span className="text-brand-heading">Nepali</span>
                 </div>
               </div>
 

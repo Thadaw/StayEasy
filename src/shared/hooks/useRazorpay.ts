@@ -3,7 +3,7 @@ import type { RazorpayCheckoutOptions, RazorpayPaymentResponse } from '../types/
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js'
 
-export function useRazorpay() {
+export function useRazorpay(enabled = true) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scriptRef = useRef<HTMLScriptElement | null>(null)
@@ -13,6 +13,7 @@ export function useRazorpay() {
   // checkout overlay that must be available at runtime. Bundling it would bloat
   // the initial bundle for users who never make a payment.
   useEffect(() => {
+    if (!enabled) return
     if (window.Razorpay) {
       setIsLoaded(true)
       return
@@ -34,7 +35,7 @@ export function useRazorpay() {
         scriptRef.current.parentNode.removeChild(scriptRef.current)
       }
     }
-  }, [])
+  }, [enabled])
 
   const openCheckout = useCallback(
     (options: Omit<RazorpayCheckoutOptions, 'handler' | 'modal'>): Promise<RazorpayPaymentResponse> => {

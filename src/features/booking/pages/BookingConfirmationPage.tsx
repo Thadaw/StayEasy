@@ -13,7 +13,7 @@ import { InfoCards } from '../components/InfoCards'
 import { useBookingDetails } from '../hooks/useBookingDetails'
 import { useBookingActions } from '../../../shared/hooks/useBookingActions'
 import { formatDateFull } from '../../../shared/utils/format'
-import { buildShareText } from '../../../shared/utils/bookingHelpers'
+import { buildShareText, buildQrData } from '../../../shared/utils/bookingHelpers'
 
 interface ConfirmationState {
   propertyImages?: string[]
@@ -45,6 +45,7 @@ export default function BookingConfirmationPage() {
     rooms,
     roomNames,
     totalGuests,
+    nights,
     checkIn,
     checkOut,
     refNumber: confirmationCode,
@@ -99,6 +100,9 @@ export default function BookingConfirmationPage() {
       propertyName,
       shareText,
       propertyLocation: `${propertyCity}, ${propertyCountry}`,
+      propertyPhone: propertyDetails.phone,
+      propertyEmail: propertyDetails.email,
+      propertyImage,
       checkIn,
       checkOut,
       roomNames,
@@ -119,6 +123,31 @@ export default function BookingConfirmationPage() {
     confirmationState?.propertyImages?.[0] ?? coverImage
   const cancellationTitle = rooms[0]?.cancellation_title
   const cancellationDescription = rooms[0]?.cancellation_description
+
+  const qrData = buildQrData({
+    confirmationCode,
+    propertyName,
+    propertyLocation: `${propertyCity}, ${propertyCountry}`,
+    propertyPhone: propertyDetails.phone,
+    propertyEmail: propertyDetails.email,
+    checkIn,
+    checkOut,
+    nights,
+    totalGuests,
+    rooms: roomNames,
+    roomTypes: rooms.map(r => r.room_type).join(", "),
+    bedTypes: rooms.map(r => r.bed_type).join(", "),
+    guestName: guestName ?? 'Guest',
+    guestEmail,
+    guestPhone,
+    roomPrice: basePrice,
+    taxes: taxAmount,
+    totalAmount,
+    currency,
+    paymentMethod: paymentGateway || 'Online',
+    cancellationPolicy: cancellationDescription || cancellationTitle || '',
+    bookedOn: new Date().toISOString(),
+  })
 
   const leftContent = (
     <>
@@ -164,6 +193,7 @@ export default function BookingConfirmationPage() {
       <BookingActions
         refNumber={confirmationCode}
         shareText={shareText}
+        qrData={qrData}
         copied={copied}
         onCopyCode={handleCopyCode}
         onShare={handleShareBooking}
