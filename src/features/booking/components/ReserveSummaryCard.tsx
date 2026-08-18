@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Copy, Download, Share2, QrCode, ArrowRight } from 'lucide-react'
+import QRCodeLib from 'qrcode'
 import { parseBookingDate } from '../../../shared/utils/time'
 
 interface BookingRoom {
@@ -26,6 +28,7 @@ interface ReserveSummaryCardProps {
   totalAmount: number
   paymentStatus?: string | null
   shareText: string
+  qrData: string
   copied: boolean
   shareMessage: string
   onCopyCode: () => void
@@ -35,10 +38,6 @@ interface ReserveSummaryCardProps {
 
 function fmtShort(d: string) {
   return parseBookingDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function buildQrUrl(text: string) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`
 }
 
 export function ReserveSummaryCard({
@@ -59,6 +58,7 @@ export function ReserveSummaryCard({
   totalAmount,
   paymentStatus,
   shareText,
+  qrData,
   copied,
   shareMessage,
   onCopyCode,
@@ -66,12 +66,52 @@ export function ReserveSummaryCard({
   onDownloadReceipt,
 }: ReserveSummaryCardProps) {
   const navigate = useNavigate()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [localCopied, setLocalCopied] = useState(false)
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      QRCodeLib.toCanvas(canvasRef.current, qrData || confirmationCode, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      })
+    }
+  }, [qrData, confirmationCode])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(qrData || confirmationCode)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = qrData || confirmationCode
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    setLocalCopied(true)
+    setTimeout(() => setLocalCopied(false), 2000)
+  }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: qrData || shareText })
+      } catch {}
+    } else {
+      onShare()
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-5 border-b border-gray-200">
         <div className="flex gap-4">
-          <div className="w-16 h-16 rounded-xl bg-[#f0f6ff] flex items-center justify-center text-[#0071c2] font-bold text-sm shrink-0">
+          <div className="w-16 h-16 rounded-xl bg-[#EAF2F8] flex items-center justify-center text-[#1A3C5E] font-bold text-sm shrink-0">
             {propertyName.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -141,17 +181,17 @@ export function ReserveSummaryCard({
 
       <div className="px-5 py-4 border-b border-gray-200">
         <div className="flex flex-wrap gap-2">
-          <button onClick={onCopyCode} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
-            <Copy size={14} /> {copied ? 'Copied' : 'Copy'}
+          <button onClick={handleCopy} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
+            <Copy size={14} /> {localCopied ? 'Copied' : 'Copy'}
           </button>
-          <button onClick={onShare} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
+          <button onClick={handleShare} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
             <Share2 size={14} /> Share
           </button>
-          <button onClick={onDownloadReceipt} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#0071c2] transition">
+          <button onClick={onDownloadReceipt} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition">
             <Download size={14} /> Receipt
           </button>
         </div>
-        {shareMessage && <p className="mt-3 text-sm text-[#0071c2]">{shareMessage}</p>}
+        {shareMessage && <p className="mt-3 text-sm text-[#1A3C5E]">{shareMessage}</p>}
       </div>
 
       <div className="p-5">
@@ -160,17 +200,16 @@ export function ReserveSummaryCard({
             <QrCode size={20} className="text-gray-400" />
             <p className="text-sm font-semibold text-gray-700">Booking QR Code</p>
           </div>
-          <img
-            src={buildQrUrl(shareText)}
-            alt="Booking QR Code"
-            className="w-40 h-40 mx-auto rounded-lg"
+          <canvas
+            ref={canvasRef}
+            className="w-[200px] h-[200px] mx-auto rounded-lg"
           />
           <p className="text-[11px] text-gray-400 text-center mt-3">Scan to view booking details</p>
         </div>
 
         <button
           onClick={() => navigate('/')}
-          className="w-full mt-4 py-3 rounded-xl bg-[#0071c2] text-white font-semibold text-sm hover:bg-[#005fa3] transition-all flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
         >
           Back to Home <ArrowRight size={16} />
         </button>

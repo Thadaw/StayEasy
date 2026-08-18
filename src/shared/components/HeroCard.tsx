@@ -16,6 +16,7 @@ interface HeroCardProps {
   fallbackLocation: string;
   fallbackPrice: number;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export function HeroCard({
@@ -24,6 +25,7 @@ export function HeroCard({
   fallbackLocation,
   fallbackPrice,
   className = "",
+  style,
 }: HeroCardProps) {
   const name = data.name || fallbackName;
   const location = data.city ? `${data.city}, ${data.country}` : fallbackLocation;
@@ -31,7 +33,8 @@ export function HeroCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl shadow-modal overflow-hidden hover:scale-[1.03] hover:rotate-0 hover:z-30 transition-all duration-300 cursor-pointer ${className}`}
+      className={`bg-white rounded-2xl shadow-modal overflow-hidden cursor-pointer ${className}`}
+      style={style}
       onClick={() => { window.location.href = `/hotel/${data.id}`; }}
     >
       <div className="relative h-[120px] xl:h-[150px] overflow-hidden">

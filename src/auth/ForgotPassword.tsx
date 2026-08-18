@@ -130,6 +130,7 @@ export default function ForgotPassword() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
                   placeholder="Enter your email"
                   autoComplete="off"
                   style={{

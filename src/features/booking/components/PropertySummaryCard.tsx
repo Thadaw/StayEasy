@@ -120,7 +120,7 @@ export function PropertySummaryCard({
         )}
         {rating > 0 && (
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold text-white bg-[#003580] px-2 py-1 rounded">
+            <span className="text-xs font-bold text-white bg-[#1A3C5E] px-2 py-1 rounded">
               {rating.toFixed(1)}
             </span>
             <span className="text-sm font-semibold text-gray-900">
@@ -223,7 +223,7 @@ export function PropertySummaryCard({
             <h3 className="text-sm font-bold text-gray-900">Guest details</h3>
             <button
               onClick={() => navigate(-1)}
-              className="text-xs font-semibold text-[#0071c2] hover:underline cursor-pointer"
+              className="text-xs font-semibold text-[#1A3C5E] hover:underline cursor-pointer"
             >
               Edit
             </button>

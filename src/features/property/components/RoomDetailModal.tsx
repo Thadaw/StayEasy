@@ -13,10 +13,10 @@ interface RoomDetailModalProps {
 export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailModalProps) {
   const [roomImgIndex, setRoomImgIndex] = useState(0);
   const images = useMemo(() => {
-    const roomPhotos = [room.image, ...(room.gallery ?? [])].filter(Boolean);
-    const combined = roomPhotos.length > 0 ? roomPhotos : (hotel.images ?? []);
+    const roomGallery = (room.gallery ?? []).filter(Boolean);
+    const combined = roomGallery.length > 0 ? roomGallery : (hotel.images ?? []);
     return combined.filter((src, i, arr) => arr.indexOf(src) === i);
-  }, [room.image, room.gallery, hotel.images]);
+  }, [room.gallery, hotel.images]);
   const safeIndex = images.length > 0 ? Math.min(roomImgIndex, images.length - 1) : 0;
 
   return (

@@ -15,25 +15,18 @@ import { PriceSummaryCard } from "../components/PriceSummaryCard"
 import { PaymentMethodTabs } from "../components/PaymentMethodTabs"
 import { PaymentForms } from "../components/PaymentForms"
 import { ConfirmButton } from "../components/ConfirmButton"
-import type { ApiProperty, ApiRoom } from "../../../shared/types/api"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { allCountries } from "../../../data/countries"
 import { parseJSON } from "../../../shared/utils/helpers"
 import { calculateNights } from "../../../shared/utils/time"
 import api from "../../../services/axios"
-import type { PaymentMethod, ApiBooking } from "../types"
+import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "../hooks/useBookingQueries"
+import type { PaymentMethod } from "../types"
 
 interface AppliedDiscount {
   type: 'percentage' | 'fixed'
   amount: number
   code: string
-}
-
-interface GuestProfile {
-  name: string
-  email: string
-  phone: string
-  nationality: string
 }
 
 const paymentOptions: { key: PaymentMethod; label: string; sub: string; logo: JSX.Element }[] = [
@@ -92,10 +85,26 @@ export default function ReservePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [property, setProperty] = useState<ApiProperty | null>(null)
-  const [availableRooms, setAvailableRooms] = useState<ApiRoom[]>([])
-  const [loading, setLoading] = useState(true)
-  const [booking, setBookingData] = useState<ApiBooking | null>(null)
+
+  const refNumber = searchParams.get('ref') || ''
+
+  // React Query hooks — automatically cached, deduplicated, and abortable
+  const { data: booking, isLoading: bookingLoading } = useBookingQuery(refNumber)
+  const propertyId = booking?.property?.id || id || ''
+  const { data: property, isLoading: propertyLoading } = usePropertyQuery(propertyId)
+
+  const bookingAdults = booking?.number_of_adults || 2
+  const bookingChildren = booking?.number_of_children || 0
+  const { data: availableRooms = [], isLoading: roomsLoading } = useAvailableRoomsQuery(
+    propertyId,
+    booking?.check_in || searchParams.get('checkIn') || '',
+    booking?.check_out || searchParams.get('checkOut') || '',
+    bookingAdults,
+    bookingChildren,
+    1,
+  )
+
+  const loading = bookingLoading || (refNumber ? false : propertyLoading)
 
   const hotel = useMemo(() => {
     if (!property) return null
@@ -135,69 +144,21 @@ export default function ReservePage() {
     loading: false,
     error: null as string | null,
   })
-const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
+  const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
+  const [confirmingBooking, setConfirmingBooking] = useState(false)
 
-  const refNumber = searchParams.get('ref') || ''
-  const { isLoaded: razorpayLoaded } = useRazorpay()
+  const { isLoaded: razorpayLoaded } = useRazorpay(selectedPayment === "razorpay")
 
+  // Apply coupon from booking response if present
   useEffect(() => {
-    if (!refNumber) return
-    const loadBookingDetails = async () => {
-      setLoading(true)
-      try {
-        const response = await api.get(`/bookings/${refNumber}`)
-        const booking = response.data?.data || response.data
-        setBookingData(booking)
-
-        if (booking?.coupon_code && booking.coupon_discount > 0 && !appliedDiscount) {
-          setAppliedDiscount({
-            code: booking.coupon_code,
-            type: 'fixed',
-            amount: booking.coupon_discount,
-          })
-        }
-
-        const propertyId = booking?.property?.id || id
-        try {
-          const propResponse = await api.get(`/properties/${propertyId}/public`)
-          setProperty(propResponse.data?.data || null)
-        } catch {
-          setProperty(null)
-        }
-        try {
-          const roomsResponse = await api.get(`/properties/${propertyId}/rooms/available-rooms`, {
-            params: { checkin_date: booking?.check_in, checkout_date: booking?.check_out, adults: 2, children: 0, rooms: 1 },
-          })
-          setAvailableRooms(roomsResponse.data?.data || [])
-        } catch {
-          try {
-            const allRoomsResponse = await api.get(`/properties/${propertyId}/rooms`)
-            setAvailableRooms(allRoomsResponse.data?.data || [])
-          } catch {
-            setAvailableRooms([])
-          }
-        }
-      } catch {
-        setBookingData(null)
-        if (id) {
-          try {
-            const propResponse = await api.get(`/properties/${id}/public`)
-            setProperty(propResponse.data?.data || null)
-            const roomsResponse = await api.get(`/properties/${id}/rooms/available-rooms`, {
-              params: { checkin_date: searchParams.get('checkIn'), checkout_date: searchParams.get('checkOut'), adults: 2, children: 0, rooms: 1 },
-            })
-            setAvailableRooms(roomsResponse.data?.data || [])
-          } catch {
-            setProperty(null)
-            setAvailableRooms([])
-          }
-        }
-      } finally {
-        setLoading(false)
-      }
+    if (booking?.coupon_code && booking.coupon_discount > 0 && !appliedDiscount) {
+      setAppliedDiscount({
+        code: booking.coupon_code,
+        type: 'fixed',
+        amount: booking.coupon_discount,
+      })
     }
-    loadBookingDetails()
-  }, [id, refNumber, appliedDiscount, searchParams])
+  }, [booking])
 
   useEffect(() => {
     if (selectedPayment !== "razorpay" || !refNumber) return
@@ -258,16 +219,17 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const createKhaltiIntent = async () => {
       setKhaltiState(prev => ({ ...prev, loading: true, error: null }))
       try {
+        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, {
           payment_gateway: "khalti",
-          return_url: `${window.location.origin}/reserve/${id}?ref=${refNumber}`,
+          return_url: returnToUrl,
         })
         if (cancelled) return
         const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx
         const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
         if (redirectUrl) {
           if (intentId) localStorage.setItem('khalti_payment_intent_id', intentId)
-          localStorage.setItem('khalti_return_to', window.location.href)
+          localStorage.setItem('khalti_return_to', returnToUrl)
           window.location.href = redirectUrl
           return
         }
@@ -296,7 +258,6 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const khaltiStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('khalti_status') || '').toLowerCase()
     const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
     const storedIntentId = pidx || localStorage.getItem('khalti_payment_intent_id')
-    localStorage.removeItem('khalti_return_to')
     if (khaltiStatus === 'completed' && storedIntentId) {
       setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
       setSelectedPayment("khalti")
@@ -308,7 +269,6 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
     const rawQuery = window.location.search
     if (/[?&](?:status|khalti_status|pidx)=/i.test(rawQuery)) return
     localStorage.removeItem('khalti_payment_intent_id')
-    localStorage.removeItem('khalti_return_to')
   }, [searchParams])
 
   const handleApplyPromo = async () => {
@@ -351,37 +311,13 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
 
   const { addBooking } = useBookings()
 
-  const [guestProfile, setGuestProfile] = useState<GuestProfile | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    api.get('/bookings/me').then((response) => {
-      if (cancelled) return
-      const items = response.data?.data?.items ?? response.data?.data ?? response.data?.items ?? []
-      const match = Array.isArray(items) ? items.find((it: Record<string, unknown>) => {
-        const ref = it.ref_number || it.id
-        return ref === refNumber || ref === id
-      }) : null
-      if (match) {
-        const g = match.guest || match.guest_details || {}
-        setGuestProfile({
-          name: match.full_name || match.guest_name || g.full_name || g.name || '',
-          email: match.email || match.guest_email || g.email || '',
-          phone: match.phone || match.guest_phone || g.phone || g.phone_number || '',
-          nationality: match.nationality || g.nationality || '',
-        })
-      }
-    }).catch(() => {})
-    return () => { cancelled = true }
-  }, [refNumber, id])
-
   const checkIn = booking?.check_in || searchParams.get('checkIn') || ''
   const checkOut = booking?.check_out || searchParams.get('checkOut') || ''
 
-  const guestName = searchParams.get('guestName') || guestProfile?.name || booking?.guest_name || ''
-  const guestEmail = searchParams.get('guestEmail') || guestProfile?.email || booking?.guest_email || ''
-  const guestPhone = searchParams.get('guestPhone') || guestProfile?.phone || booking?.guest_phone || ''
-  const guestNationality = guestProfile?.nationality || (searchParams.get('guestCountry') ? allCountries.find(c => c.code === searchParams.get('guestCountry'))?.name || '' : '')
+  const guestName = searchParams.get('guestName') || booking?.guest_name || ''
+  const guestEmail = searchParams.get('guestEmail') || booking?.guest_email || ''
+  const guestPhone = searchParams.get('guestPhone') || booking?.guest_phone || ''
+  const guestNationality = searchParams.get('guestCountry') ? allCountries.find(c => c.code === searchParams.get('guestCountry'))?.name || '' : ''
 
   const hotelName = booking?.property?.name || hotel?.name || ''
   const hotelCity = booking?.property?.city || hotel?.city || ''
@@ -455,7 +391,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
           contact: guestPhone,
           method: options.type,
         },
-        theme: { color: "#0071c2" },
+        theme: { color: "#1A3C5E" },
       }
 
       if (options.type === 'upi') {
@@ -504,7 +440,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
   }
 
   const handleConfirmBooking = async () => {
-    if (!selectedPayment) return
+    if (!selectedPayment || confirmingBooking) return
 
     if (selectedPayment === "stripe" && !stripeState.paymentIntentId) {
       toast.error("Please complete payment first")
@@ -521,6 +457,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
       return
     }
 
+    setConfirmingBooking(true)
     setPaymentLoading(true)
     try {
       if (selectedPayment === "razorpay" && razorpayState.response && refNumber) {
@@ -611,6 +548,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
       toast.error("Booking confirmation failed: " + msg)
     } finally {
       setPaymentLoading(false)
+      setConfirmingBooking(false)
     }
   }
 
@@ -675,7 +613,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       <ReserveStepper currentStep={2} />
@@ -730,7 +668,7 @@ const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' |
 
             <ConfirmButton
               selectedPayment={selectedPayment}
-              paymentLoading={paymentLoading}
+              paymentLoading={paymentLoading || confirmingBooking}
               marketingOptIn={marketingOptIn}
               razorpayResponse={razorpayState.response}
               stripePaymentIntentId={stripeState.paymentIntentId}

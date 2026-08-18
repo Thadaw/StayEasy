@@ -7,6 +7,8 @@ export const roomKeys = {
   all: ['rooms'] as const,
   byProperty: (propertyId: string) => ['rooms', propertyId] as const,
   detail: (propertyId: string, roomId: string) => ['rooms', propertyId, roomId] as const,
+  available: (propertyId: string, checkin: string, checkout: string, adults: number, children: number, rooms: number) =>
+    ['rooms', 'available', propertyId, checkin, checkout, adults, children, rooms] as const,
 }
 
 export const roomTypeKeys = {

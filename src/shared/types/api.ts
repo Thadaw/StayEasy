@@ -26,6 +26,7 @@ export interface ApiProperty {
   language: string
   brand_logo_url: string
   brand_color: string
+  owner_name: string
   is_active: boolean
   system_amenities: { id: string; name: string; icon: string }[]
   custom_amenities: { icon: string | null; name: string }[]

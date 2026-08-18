@@ -24,7 +24,7 @@ export function PaymentMethodTabs({ paymentOptions, selectedPayment, onSelect }:
             onClick={() => onSelect(key)}
             className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition-colors cursor-pointer ${
               selectedPayment === key
-                ? "border-[#0071c2] text-[#0071c2]"
+                ? "border-[#1A3C5E] text-[#1A3C5E]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >

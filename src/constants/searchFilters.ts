@@ -2,10 +2,10 @@ import { Utensils, Home, Building2, Waves, Wifi, Castle, TreePine, X } from "luc
 
 export const PROPERTY_TYPES = [
   { label: "All types", icon: Home },
-  { label: "Hotels", icon: Building2 },
-  { label: "Apartments", icon: Building2 },
+  { label: "Hotel", icon: Building2 },
+  { label: "Apartment", icon: Building2 },
   { label: "Villa", icon: Castle },
-  { label: "Resorts", icon: Waves },
+  { label: "Resort", icon: Waves },
   { label: "Others", icon: TreePine },
 ];
 

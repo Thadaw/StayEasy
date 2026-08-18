@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useBookings } from "../../../context/BookingContext"
 import { useAuth } from "../../../auth/AuthContext"
 import { calculateNights } from "../../../shared/utils/time"
@@ -38,6 +38,10 @@ export function useBookingDetails(id: string | undefined) {
   })
   const [guestProfile, setGuestProfile] = useState<GuestProfile | null>(null)
 
+  // Track the last fetched id to prevent unnecessary re-fetches when
+  // the bookings context array changes (e.g. addBooking in ReservePage).
+  const lastFetchedIdRef = useRef<string | undefined>(undefined)
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
@@ -47,11 +51,19 @@ export function useBookingDetails(id: string | undefined) {
       setLoading(false)
       return
     }
+
+    // Skip re-fetch if we already loaded this exact booking
+    if (lastFetchedIdRef.current === id && booking) {
+      setLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
     const localMatch = bookings.find((b) => b.refNumber === id || b.id === id)
 
     const loadBookingDetails = async () => {
       try {
-        const response = await api.get(`/bookings/${localMatch?.refNumber || id}`)
+        const response = await api.get(`/bookings/${localMatch?.refNumber || id}`, { signal: controller.signal })
         const result = response.data?.data || response.data
         setBooking(result)
         if (result?.guest_name || result?.guest_email || result?.guest_phone) {
@@ -64,7 +76,7 @@ export function useBookingDetails(id: string | undefined) {
         }
         if (result?.property?.id) {
           try {
-            const propResponse = await api.get(`/properties/${result.property.id}/public`)
+            const propResponse = await api.get(`/properties/${result.property.id}/public`, { signal: controller.signal })
             const prop = propResponse.data?.data
             const photos = prop?.photos
             if (photos?.cover) setCoverPhoto(photos.cover)
@@ -87,33 +99,9 @@ export function useBookingDetails(id: string | undefined) {
       }
     }
 
-    const loadBookingsList = async () => {
-      try {
-        const response = await api.get("/bookings/me")
-        const items = response.data?.data?.items ?? response.data?.data ?? response.data?.items ?? []
-        if (Array.isArray(items)) {
-          const targetRef = localMatch?.refNumber || id
-          const match = items.find(
-            (it: { ref_number?: string; id?: string }) => it.ref_number === targetRef || it.id === targetRef
-          )
-          if (match) {
-            const guest = match.guest || match.guest_details || {}
-            setGuestProfile((prev) => ({
-              name: prev?.name ?? match.full_name ?? match.guest_name ?? guest.full_name ?? guest.name ?? "",
-              email: prev?.email ?? match.email ?? match.guest_email ?? guest.email ?? "",
-              phone: prev?.phone ?? match.phone ?? match.guest_phone ?? guest.phone ?? guest.phone_number ?? "",
-              nationality: prev?.nationality ?? match.nationality ?? guest.nationality ?? "",
-            }))
-          }
-        }
-      } catch {
-        // /bookings/me is a secondary source — guest profile falls back to other endpoints.
-      }
-    }
-
     const loadGuestProfile = async () => {
       try {
-        const response = await api.get("/auth/guests/me")
+        const response = await api.get("/auth/guests/me", { signal: controller.signal })
         if (response.data) {
           setGuestProfile((prev) => ({
             name: prev?.name ?? response.data.full_name ?? "",
@@ -127,11 +115,17 @@ export function useBookingDetails(id: string | undefined) {
       }
     }
 
-    // Three independent data sources fetched in parallel — any one can fail without
-    // blocking the others. Guest profile is progressively enriched from the booking
-    // response → /me list → guest profile endpoint.
-    Promise.allSettled([loadBookingDetails(), loadBookingsList(), loadGuestProfile()]).finally(() => setLoading(false))
-  }, [id, bookings])
+    // Two independent data sources fetched in parallel — any one can fail without
+    // blocking the other. Guest profile is progressively enriched from the booking
+    // response → guest profile endpoint.
+    Promise.allSettled([loadBookingDetails(), loadGuestProfile()]).finally(() => {
+      lastFetchedIdRef.current = id
+      setLoading(false)
+    })
+
+    return () => { controller.abort() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   const localBooking = bookings.find((b) => b.refNumber === id || b.id === id)
 
