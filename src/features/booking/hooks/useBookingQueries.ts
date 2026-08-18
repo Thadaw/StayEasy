@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../../services/axios'
 import { bookingKeys, propertyKeys, roomKeys } from '../../../lib/queryKeys'
-import type { ApiBooking, ApiProperty, ApiRoom } from '../types'
+import type { ApiBooking } from '../types'
+import type { ApiProperty, ApiRoom } from '../../../shared/types/api'
 
 // -- Booking by refNumber --
 export function useBookingQuery(refNumber: string | null | undefined) {
