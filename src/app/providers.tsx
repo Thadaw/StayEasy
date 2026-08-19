@@ -5,6 +5,7 @@ import { AuthProvider } from '../auth/AuthContext'
 import { FavoritesProvider } from '../context/FavoritesContext'
 import { BookingProvider } from '../context/BookingContext'
 import { CouponProvider } from '../context/CouponContext'
+import { NotificationProvider } from '../context/NotificationContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,8 +25,10 @@ export function Providers({ children }: { children: ReactNode }) {
         <FavoritesProvider>
           <BookingProvider>
             <CouponProvider>
-              {children}
-              <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+              <NotificationProvider>
+                {children}
+                <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+              </NotificationProvider>
             </CouponProvider>
           </BookingProvider>
         </FavoritesProvider>

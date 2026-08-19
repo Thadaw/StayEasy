@@ -1,78 +1,8 @@
-import { useState } from 'react'
-import { Bell, CalendarDays, TicketPercent, Shield, Check, Trash2, Circle } from 'lucide-react'
-
-interface Notification {
-  id: string
-  icon: typeof Bell
-  color: string
-  bgColor: string
-  title: string
-  message: string
-  timestamp: string
-  read: boolean
-}
-
-const initialNotifications: Notification[] = [
-  {
-    id: '1',
-    icon: CalendarDays,
-    color: 'var(--brand-accent)',
-    bgColor: 'var(--brand-accent-light)',
-    title: 'Booking Confirmed',
-    message: 'Your booking at Himalaya Paradise has been confirmed. Check-in is on Jul 15, 2026.',
-    timestamp: '2 hours ago',
-    read: false,
-  },
-  {
-    id: '2',
-    icon: TicketPercent,
-    color: 'var(--brand-warning)',
-    bgColor: 'var(--brand-warning-light)',
-    title: 'Special Offer',
-    message: 'Get 20% off on your next booking with code WELCOME20. Offer valid until Aug 31.',
-    timestamp: '1 day ago',
-    read: false,
-  },
-  {
-    id: '3',
-    icon: Shield,
-    color: 'var(--brand-success)',
-    bgColor: 'var(--brand-success-light)',
-    title: 'Account Verified',
-    message: 'Your identity has been verified successfully. You can now book with confidence.',
-    timestamp: '3 days ago',
-    read: true,
-  },
-  {
-    id: '4',
-    icon: Bell,
-    color: 'var(--brand-text-secondary)',
-    bgColor: 'var(--brand-secondary-surface)',
-    title: 'Welcome to ServeIQ',
-    message: 'Thank you for joining ServeIQ! Start exploring thousands of properties worldwide.',
-    timestamp: '1 week ago',
-    read: true,
-  },
-]
+import { Bell, Check, Trash2, Circle } from 'lucide-react'
+import { useNotifications } from '../../../context/NotificationContext'
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
-
-  const unreadCount = notifications.filter(n => !n.read).length
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    )
-  }
-
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-  }
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
 
   if (notifications.length === 0) {
     return (
@@ -129,14 +59,21 @@ export default function Notifications() {
                       {notification.title}
                     </h3>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {!notification.read ? (
+                      {!notification.read && (
                         <Circle size={8} className="text-brand-accent" fill="#2E86AB" />
-                      ) : null}
+                      )}
                     </div>
                   </div>
                   <p className="text-xs text-brand-text-secondary mt-0.5">{notification.message}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-brand-placeholder">{notification.timestamp}</span>
+                    <span className="text-[10px] text-brand-placeholder">
+                      {new Date(notification.timestamp).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
                     <div className="flex gap-1.5">
                       {!notification.read && (
                         <button

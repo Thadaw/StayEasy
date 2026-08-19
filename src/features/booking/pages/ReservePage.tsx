@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
+import { CalendarDays } from "lucide-react"
 import { useRazorpay } from "../../../shared/hooks/useRazorpay"
 import type { RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse } from "../../../shared/types/razorpay"
 import type { RoomType } from "../../../data/hotels"
 import { useBookings } from "../../../context/BookingContext"
+import { useNotifications } from "../../../context/NotificationContext"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
@@ -88,6 +90,8 @@ export default function ReservePage() {
 
   const refNumber = searchParams.get('ref') || ''
 
+  const { addNotification } = useNotifications()
+
   // React Query hooks — automatically cached, deduplicated, and abortable
   const { data: booking, isLoading: bookingLoading } = useBookingQuery(refNumber)
   const propertyId = booking?.property?.id || id || ''
@@ -144,6 +148,7 @@ export default function ReservePage() {
     loading: false,
     error: null as string | null,
   })
+  const [khaltiRetryCount, setKhaltiRetryCount] = useState(0)
   const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
   const [confirmingBooking, setConfirmingBooking] = useState(false)
 
@@ -225,8 +230,8 @@ export default function ReservePage() {
           return_url: returnToUrl,
         })
         if (cancelled) return
-        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx
-        const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
+        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx || response.data?.id || response.data?.data?.id
+        const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url || response.data?.checkout_url || response.data?.data?.checkout_url || response.data?.payment_link || response.data?.data?.payment_link
         if (redirectUrl) {
           if (intentId) localStorage.setItem('khalti_payment_intent_id', intentId)
           localStorage.setItem('khalti_return_to', returnToUrl)
@@ -248,7 +253,7 @@ export default function ReservePage() {
     }
     createKhaltiIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId])
+  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId, khaltiRetryCount])
 
   useEffect(() => {
     const rawQuery = window.location.search
@@ -257,11 +262,10 @@ export default function ReservePage() {
     if (!statusMatch && !pidxMatch) return
     const khaltiStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('khalti_status') || '').toLowerCase()
     const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
-    const storedIntentId = pidx || localStorage.getItem('khalti_payment_intent_id')
-    if (khaltiStatus === 'completed' && storedIntentId) {
+    const storedIntentId = localStorage.getItem('khalti_payment_intent_id') || pidx
+    if (storedIntentId) {
       setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
       setSelectedPayment("khalti")
-      toast.success("Payment successful!")
     }
   }, [searchParams])
 
@@ -530,6 +534,13 @@ export default function ReservePage() {
         createdAt: bookingTimestamp,
       }
       toast.success("Booking confirmed!")
+      addNotification({
+        icon: CalendarDays,
+        color: 'var(--brand-accent)',
+        bgColor: 'var(--brand-accent-light)',
+        title: 'Booking Confirmed',
+        message: `Your booking at ${hotel?.name ?? 'the property'} has been confirmed. Check-in is on ${checkIn}.`,
+      })
       localStorage.removeItem('khalti_payment_intent_id')
       navigate(`/booking-confirmation/${refNumber || newBooking.id}`, {
         state: {
@@ -664,6 +675,10 @@ export default function ReservePage() {
               onRazorpayRetry={() => setRazorpayRetryCount(count => count + 1)}
               onSetKhaltiError={(error) => setKhaltiState(prev => ({ ...prev, error }))}
               onSetKhaltiLoading={(loading) => setKhaltiState(prev => ({ ...prev, loading }))}
+              onKhaltiRetry={() => {
+                setKhaltiState({ paymentIntentId: null, loading: false, error: null })
+                setKhaltiRetryCount(c => c + 1)
+              }}
             />
 
             <ConfirmButton

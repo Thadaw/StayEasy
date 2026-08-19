@@ -1,4 +1,5 @@
 import { Heart, MapPin } from "lucide-react";
+import { useFavorites } from "../../context/FavoritesContext";
 
 interface HeroCardData {
   id: string;
@@ -27,9 +28,11 @@ export function HeroCard({
   className = "",
   style,
 }: HeroCardProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
   const name = data.name || fallbackName;
   const location = data.city ? `${data.city}, ${data.country}` : fallbackLocation;
   const price = data.price || fallbackPrice;
+  const liked = isFavorite(data.id);
 
   return (
     <div
@@ -39,8 +42,26 @@ export function HeroCard({
     >
       <div className="relative h-[120px] xl:h-[150px] overflow-hidden">
         <img src={data.image} alt="" className="w-full h-full object-cover" />
-        <button onClick={(e) => e.stopPropagation()} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors">
-          <Heart size={14} className="text-gray-600" />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFavorite(data.id, {
+              property_id: data.id,
+              name: data.name,
+              type: "Hotel",
+              country: data.country,
+              state: "",
+              city: data.city,
+              address: location,
+              currency: data.currency,
+              cover_photo: data.image,
+              total_price: data.price,
+              lowest_rate: data.price,
+            });
+          }}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+        >
+          <Heart size={14} className={liked ? "fill-red-500 stroke-red-500" : "text-gray-600"} />
         </button>
       </div>
       <div className="px-3 py-2">

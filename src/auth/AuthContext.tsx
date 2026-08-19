@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const credentialLogin = async (email: string, password: string) => {
     try {
-      // The API uses OAuth2 password grant with form-urlencoded body, not JSON.
       const params = new URLSearchParams()
       params.append('grant_type', 'password')
       params.append('username', email)
@@ -149,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      await login(response.data.access_token)
+      await login(response.data.access_token, true, 'host', response.data.refresh_token)
       return { success: true }
     } catch (err) {
       return { success: false, error: extractApiError(err, 'Incorrect email or password.') }

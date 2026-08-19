@@ -5,9 +5,10 @@ interface HotelHeaderProps {
   hotel: Hotel;
   liked: boolean;
   onToggleFavorite: () => void;
+  onShare?: () => void;
 }
 
-export function HotelHeader({ hotel, liked, onToggleFavorite }: HotelHeaderProps) {
+export function HotelHeader({ hotel, liked, onToggleFavorite, onShare }: HotelHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-4 gap-4">
       <div>
@@ -33,11 +34,11 @@ export function HotelHeader({ hotel, liked, onToggleFavorite }: HotelHeaderProps
         {hotel.brandLogoUrl && (
           <img src={hotel.brandLogoUrl} alt={`${hotel.name} logo`} className="h-9 w-auto object-contain" />
         )}
-        <button className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:bg-muted px-3 py-2 rounded-xl transition-colors">
+        <button onClick={onShare} className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:bg-muted px-3 py-2 rounded-xl transition-colors">
           <Share2 size={15} /> Share
         </button>
         <button onClick={onToggleFavorite} className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:bg-muted px-3 py-2 rounded-xl transition-colors">
-          <Heart size={15} className={liked ? "fill-primary stroke-primary" : ""} /> Save
+          <Heart size={15} className={liked ? "fill-red-500 stroke-red-500" : "text-gray-600"} /> Save
         </button>
       </div>
     </div>

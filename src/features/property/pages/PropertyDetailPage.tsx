@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, Building2, DoorOpen, CalendarDays, Phone, Mail, Coins, Globe, Languages } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,6 +7,7 @@ import { Footer } from "../../../shared/components/Footer";
 import { PageMessage } from "../../../shared/components/PageMessage";
 import { useAuth } from "../../../auth/AuthContext";
 import { useFavorites } from "../../../context/FavoritesContext";
+import type { SearchProperty } from "../../../shared/types/api";
 import { HotelHeader } from "../components/HotelHeader";
 import { ImageGallery } from "../components/ImageGallery";
 import { HostInfo } from "../components/HostInfo";
@@ -53,6 +54,43 @@ export default function PropertyDetailPage() {
   const { createBooking, isCreating } = useBookingCreation();
 
   const liked = isFavorite(id ?? "");
+
+  const hotelToSearchProperty = useCallback((h: NonNullable<typeof hotel>): SearchProperty => ({
+    property_id: String(h.id),
+    name: h.name,
+    type: h.category || "Hotel",
+    country: h.country,
+    state: "",
+    city: h.city || "",
+    address: h.location,
+    currency: h.currency || "USD",
+    cover_photo: h.imageUrl || h.images?.[0] || "",
+    total_price: h.price,
+    lowest_rate: h.price,
+    description: h.description,
+    total_rooms: h.totalRooms,
+    amenities: h.amenities,
+  }), [hotel]);
+
+  const handleShare = useCallback(async () => {
+    const url = window.location.href;
+    const shareData = {
+      title: hotel?.name ?? "Check out this property",
+      text: `Stay at ${hotel?.name} in ${hotel?.location}`,
+      url,
+    };
+    try {
+      await navigator.share(shareData);
+      toast.success("Shared successfully");
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied to clipboard");
+      } catch {
+        toast.error("Could not copy link");
+      }
+    }
+  }, [hotel]);
 
   if (isLoading) {
     return <PageMessage loading title="Loading property..." />;
@@ -159,8 +197,8 @@ export default function PropertyDetailPage() {
         </button>
 
         <HotelHeader hotel={hotel} liked={liked} onToggleFavorite={() => {
-          if (!user) { navigate('/signup'); } else { toggleFavorite(id ?? ""); }
-        }} />
+          if (!user) { navigate('/signup'); } else { toggleFavorite(id ?? "", hotelToSearchProperty(hotel)); }
+        }} onShare={handleShare} />
 
         <ImageGallery hotel={hotel} />
 

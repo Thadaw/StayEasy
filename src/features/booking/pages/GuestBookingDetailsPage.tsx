@@ -215,8 +215,8 @@ export default function BookingDetailsPage() {
       <Navbar />
 
       {/* Full-width stepper */}
-      <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 relative">
+      <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
+        <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
@@ -230,14 +230,14 @@ export default function BookingDetailsPage() {
               <span className="text-sm font-semibold text-[#1A3C5E]">Your selection</span>
             </div>
 
-            <div className="flex-1 h-[2px] bg-[#1A3C5E] mx-4 min-w-[60px] max-w-[120px]" />
+            <div className="flex-1 h-0.5 bg-[#1A3C5E] mx-4 min-w-15 max-w-30" />
 
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">2</span>
               <span className="text-sm font-semibold text-[#1A3C5E]">Enter your details</span>
             </div>
 
-            <div className="flex-1 h-[2px] bg-gray-200 mx-4 min-w-[60px] max-w-[120px]" />
+            <div className="flex-1 h-0.5 bg-gray-200 mx-4 min-w-15 max-w-30" />
 
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-bold">3</span>
@@ -247,7 +247,7 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-275 mx-auto px-4 sm:px-6 py-6">
 
         <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
           <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>

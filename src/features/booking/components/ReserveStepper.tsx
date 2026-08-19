@@ -14,8 +14,8 @@ const steps = [
 export function ReserveStepper({ currentStep = 3 }: ReserveStepperProps) {
   const navigate = useNavigate()
   return (
-    <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 relative">
+    <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
+      <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
         <button
           onClick={() => navigate(-1)}
           aria-label="Go back"
@@ -44,7 +44,7 @@ export function ReserveStepper({ currentStep = 3 }: ReserveStepperProps) {
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-[2px] mx-4 min-w-[60px] max-w-[120px] ${
+                  <div className={`flex-1 h-0.5 mx-4 min-w-15 max-w-30 ${
                     step.number < currentStep ? 'bg-[#1A3C5E]' : 'bg-gray-200'
                   }`} />
                 )}
