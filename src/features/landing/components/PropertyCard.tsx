@@ -39,7 +39,7 @@ export function PropertyCard({ property, showDistance }: PropertyCardProps) {
             <Building2 size={40} className="text-gray-300" />
           </div>
         )}
-        <FavouriteButton isFavourite={isFavorite(property.property_id)} onToggle={() => toggleFavorite(property.property_id)} />
+        <FavouriteButton isFavourite={isFavorite(property.property_id)} onToggle={() => toggleFavorite(property.property_id, property)} />
         <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full text-[9px] font-semibold text-brand-heading">{property.type}</span>
       </div>
       <div className="px-3 py-2 relative">

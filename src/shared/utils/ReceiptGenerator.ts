@@ -75,7 +75,7 @@ export function printReceipt(params: ReceiptParams) {
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;padding:0;color:#222}
-  .receipt{max-width:680px;margin:0 auto;background:#fff}
+  .receipt{max-width:680px;margin:0 auto;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden}
   .header{background:#4A3882;padding:24px 28px;color:#fff}
   .header .brand{font-size:16px;font-weight:700;letter-spacing:.5px}
   .header h1{font-size:20px;font-weight:700;margin-top:10px}

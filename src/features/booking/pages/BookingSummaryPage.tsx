@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Copy, Share2, Download, QrCode, ArrowRight, Heart } from "lucide-react"
+import QRCodeLib from "qrcode"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
@@ -9,7 +10,7 @@ import { StayInformation } from "../components/StayInformation"
 import { BookingRoomDetails } from "../components/BookingRoomDetails"
 import { BookingGuestInfo } from "../components/BookingGuestInfo"
 import { CancellationCard } from "../components/CancellationCard"
-import { ReserveSummaryCard } from "../components/ReserveSummaryCard"
+import { BookingPaymentSummary } from "../components/BookingPaymentSummary"
 import { useBookingActions } from "../../../shared/hooks/useBookingActions"
 import { useBookingDetails } from "../hooks/useBookingDetails"
 import { getStatusColor, canCancelBooking, buildShareText, buildQrData } from "../../../shared/utils/bookingHelpers"
@@ -33,6 +34,8 @@ export default function BookingDetailsView() {
   const confirmationState =
     (location.state as ConfirmationState | null) ?? null
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [localCopied, setLocalCopied] = useState(false)
 
   const {
     booking,
@@ -100,6 +103,16 @@ export default function BookingDetailsView() {
     bookedOn: createdAt || new Date().toISOString(),
   })
 
+  useEffect(() => {
+    if (qrCanvasRef.current) {
+      QRCodeLib.toCanvas(qrCanvasRef.current, qrData || refNumber, {
+        width: 180,
+        margin: 2,
+        color: { dark: "#000000", light: "#FFFFFF" },
+      })
+    }
+  }, [qrData, refNumber])
+
   const [shareMessage, setShareMessage] = useState("")
 
   const handleCopyCode = () => {
@@ -112,6 +125,31 @@ export default function BookingDetailsView() {
     shareBooking(shareText)
     setShareMessage("Booking shared!")
     setTimeout(() => setShareMessage(""), 3000)
+  }
+
+  const handleCopyQR = async () => {
+    try {
+      await navigator.clipboard.writeText(qrData || refNumber)
+    } catch {
+      const textarea = document.createElement("textarea")
+      textarea.value = qrData || refNumber
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+    }
+    setLocalCopied(true)
+    setTimeout(() => setLocalCopied(false), 2000)
+  }
+
+  const handleShareQR = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: qrData || shareText })
+      } catch {}
+    } else {
+      handleShareBooking()
+    }
   }
 
   const viewOnMap = () => {
@@ -181,7 +219,7 @@ export default function BookingDetailsView() {
     <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-4 grid grid-cols-3 items-center">
           <button
             onClick={() => navigate("/profile/bookings")}
@@ -239,32 +277,74 @@ export default function BookingDetailsView() {
             />
           </div>
 
-          <div className="space-y-6">
-            <ReserveSummaryCard
-              propertyName={propertyName}
-              roomNames={roomNames}
-              propertyCity={propertyCity}
-              propertyCountry={propertyCountry}
-              confirmationCode={refNumber}
-              checkIn={checkIn}
-              checkOut={checkOut}
-              nights={nights}
-              totalGuests={adults + children}
-              rooms={rooms}
+          <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+            <BookingPaymentSummary
               currency={currency}
-              couponCode={booking?.coupon_code}
-              couponDiscount={couponDiscount}
+              basePrice={basePrice}
+              taxAmount={taxAmount}
               specialOfferDiscount={specialOfferDiscount}
+              couponDiscount={couponDiscount}
+              couponCode={booking?.coupon_code}
               totalAmount={totalAmount}
-              paymentStatus={paymentStatus}
-              shareText={shareText}
-              qrData={qrData}
-              copied={copied}
-              shareMessage={shareMessage}
-              onCopyCode={handleCopyCode}
-              onShare={handleShareBooking}
-              onDownloadReceipt={handleDownloadReceipt}
+              paymentGateway={paymentGateway || undefined}
+              refNumber={refNumber}
             />
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleCopyQR}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition cursor-pointer"
+                >
+                  <Copy size={14} /> {localCopied ? "Copied" : "Copy"}
+                </button>
+                <button
+                  onClick={handleShareQR}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition cursor-pointer"
+                >
+                  <Share2 size={14} /> Share
+                </button>
+                <button
+                  onClick={handleDownloadReceipt}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:border-[#1A3C5E] transition cursor-pointer"
+                >
+                  <Download size={14} /> Receipt
+                </button>
+              </div>
+              {shareMessage && <p className="mt-2 text-sm text-[#1A3C5E]">{shareMessage}</p>}
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <QrCode size={18} className="text-gray-600" />
+                <h3 className="text-sm font-bold text-gray-900">Reservation QR</h3>
+              </div>
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                <canvas
+                  ref={qrCanvasRef}
+                  className="w-[180px] h-[180px] mx-auto rounded-lg"
+                />
+                <p className="text-xs text-gray-400 text-center mt-3">Scan to view booking details.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate("/")}
+              className="w-full py-3 rounded-xl bg-brand-primary text-white font-semibold text-sm hover:bg-brand-primary-hover transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Done <ArrowRight size={16} />
+            </button>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-1">Book Again</h3>
+              <p className="text-xs text-gray-500 mb-3">Love this property?</p>
+              <button
+                onClick={() => navigate(`/hotel/${booking?.property?.id || localBooking?.hotelId}`)}
+                className="w-full py-3 rounded-xl bg-brand-primary text-white font-semibold text-sm hover:bg-brand-primary-hover transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Heart size={14} /> Book Again
+              </button>
+            </div>
           </div>
         </div>
       </div>

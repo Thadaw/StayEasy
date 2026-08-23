@@ -33,6 +33,7 @@ interface PaymentFormsProps {
   onRazorpayRetry: () => void
   onSetKhaltiError: (error: string | null) => void
   onSetKhaltiLoading: (loading: boolean) => void
+  onKhaltiRetry: () => void
 }
 
 export function PaymentForms({
@@ -63,6 +64,7 @@ export function PaymentForms({
   onRazorpayPay,
   onRazorpayRetry,
   onSetKhaltiError,
+  onKhaltiRetry,
 }: PaymentFormsProps) {
   if (selectedPayment === "stripe" && !stripePaymentIntentId) {
     return (
@@ -245,7 +247,7 @@ export function PaymentForms({
             <div className="text-center py-4">
               <p className="text-sm text-red-500 mb-2">{khaltiError}</p>
               <button
-                onClick={() => onSetKhaltiError(null)}
+                onClick={onKhaltiRetry}
                 className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
               >
                 Tap to retry

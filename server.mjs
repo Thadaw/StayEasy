@@ -93,13 +93,18 @@ app.post('/api/v1/payments/verify', (req, res) => {
 app.all('/api/{*path}', async (req, res) => {
   try {
     const url = `${BACKEND_URL}${req.originalUrl}`
-    const headers = {}
+    const headers = {
+      'Content-Type': 'application/json',
+    }
     if (req.headers.authorization) {
       headers.authorization = req.headers.authorization
     }
+    if (req.headers.origin) {
+      headers.origin = req.headers.origin
+    }
     const fetchOptions = {
       method: req.method,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers,
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       fetchOptions.body = JSON.stringify(req.body)

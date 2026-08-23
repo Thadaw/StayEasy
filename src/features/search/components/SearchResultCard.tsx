@@ -23,16 +23,9 @@ export function SearchResultCard({
 
   const description = truncateWords(property.description || '');
 
-  const handleCardClick = () => {
-    const params = new URLSearchParams(filterParams);
-    params.set("where", property.city || property.state || "");
-    navigate(`/search?${params.toString()}`);
-  };
-
   return (
     <div
       className="flex bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 h-[200px]"
-      onClick={handleCardClick}
     >
       <div className="relative w-[280px] h-[200px] shrink-0 overflow-hidden">
         {property.cover_photo ? (
@@ -70,7 +63,7 @@ export function SearchResultCard({
 
         <div className="text-right flex flex-col justify-between">
           <div className="mt-4">
-            <p className="text-[10px]" style={{ color: "var(--brand-text-secondary)" }}>{property.nights} night{property.nights && property.nights > 1 ? "s" : ""}, {guests}</p>
+            <p className="text-[10px]" style={{ color: "var(--brand-text-secondary)" }}>{property.nights} night{property.nights && property.nights > 1 ? "s" : ""}, {guests} guest{guests !== "1" ? "s" : ""}</p>
             <p className="text-lg font-bold mt-0.5" style={{ color: "var(--brand-heading)" }}><span className="font-normal" style={{ fontSize: "12px" }}>Starting from</span> {property.currency} {property.total_price}</p>
             <p className="text-[10px]" style={{ color: "var(--brand-text-secondary)" }}>Includes taxes and charges</p>
           </div>

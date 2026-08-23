@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { LayoutList, LayoutGrid } from "lucide-react";
 import { Navbar } from "../../../shared/components/Navbar";
 import { SearchBar } from "../../../shared/components/SearchBar";
 import { StickySearchHeader } from "../../../shared/components/StickySearchHeader";
@@ -10,6 +11,7 @@ import { useSearchResults } from "../hooks/useSearchResults";
 
 import { FilterSidebar } from "../components/FilterSidebar";
 import { SearchResultCard } from "../components/SearchResultCard";
+import { SearchResultGridCard } from "../components/SearchResultGridCard";
 import { Pagination } from "../components/Pagination";
 import { EmptySearch } from "../components/EmptySearch";
 
@@ -23,6 +25,7 @@ export default function SearchResultsPage() {
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const { results, loading, total, pageSize } = useSearchResults(
     whereParam,
@@ -164,13 +167,29 @@ export default function SearchResultsPage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="mb-6">
+            <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold font-brand text-brand-heading">
                 {loading ? "Searching..." : `${total} stays${whereParam ? ` in ${whereParam}` : propertyTypes ? ` - ${propertyTypes}` : ""}`}
               </h2>
+              <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-brand-accent text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                  title="List view"
+                >
+                  <LayoutList size={16} />
+                </button>
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-brand-accent text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                  title="Grid view"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
+            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"}>
               {loading ? (
                 <div className="flex items-center justify-center py-20">
                   <LoadingSpinner />
@@ -178,16 +197,27 @@ export default function SearchResultsPage() {
               ) : results.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (
-                results.map((property) => (
-                  <SearchResultCard
-                    key={property.property_id}
-                    property={property}
-                    isFavorite={isFavorite(property.property_id)}
-                    onToggleFavorite={toggleFavorite}
-                    filterParams={buildFilterParams()}
-                    guests={guests}
-                  />
-                ))
+                results.map((property) =>
+                  viewMode === "list" ? (
+                    <SearchResultCard
+                      key={property.property_id}
+                      property={property}
+                      isFavorite={isFavorite(property.property_id)}
+                      onToggleFavorite={toggleFavorite}
+                      filterParams={buildFilterParams()}
+                      guests={guests}
+                    />
+                  ) : (
+                    <SearchResultGridCard
+                      key={property.property_id}
+                      property={property}
+                      isFavorite={isFavorite(property.property_id)}
+                      onToggleFavorite={toggleFavorite}
+                      filterParams={buildFilterParams()}
+                      guests={guests}
+                    />
+                  )
+                )
               )}
             </div>
 

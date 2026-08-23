@@ -1,6 +1,7 @@
 export * from './bookingHelpers'
 export * from './currency'
 export * from './date'
+export * from './fetchWithAuth'
 export * from './format'
 export * from './geo'
 export * from './helpers'
