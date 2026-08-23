@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ChevronRight, Star, Shield, Globe } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
-import { HeroSection } from "../components/HeroSection";
+import { HeroSection } from "../guestfeatures/landing/components/HeroSection";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { HotelCard } from "../components/HotelCard";
 import { DestinationCard } from "../components/DestinationCard";
