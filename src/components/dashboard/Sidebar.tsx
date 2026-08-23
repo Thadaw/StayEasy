@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
+import logo1 from '../../assets/logo1.png'
 import { useUIStore } from '../../stores/uiStore'
 import { usePropertyStore } from '../../stores/propertyStore'
 import {
@@ -187,21 +188,17 @@ export default function Sidebar({ simplified }: SidebarProps) {
     >
       {/* Logo */}
       <div style={{ padding: collapsed ? '20px 12px' : '20px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>SE</span>
-        </div>
+        <img src={logo1} alt="StayEasy" style={{ height: 34, width: 'auto', flexShrink: 0 }} />
         {!collapsed && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: '#111827', lineHeight: 1.2 }}>StayEasy</div>
+            <div style={{
+              fontFamily: "'Sora', 'Inter', sans-serif",
+              fontWeight: 800,
+              fontSize: 18,
+              letterSpacing: '-0.5px',
+              color: '#111827',
+              lineHeight: 1.2,
+            }}>StayEasy</div>
           </div>
         )}
       </div>
