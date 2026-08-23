@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
 import { SearchBar } from "../../../shared/components/SearchBar";
@@ -22,13 +22,23 @@ export default function SearchResultsPage() {
   const checkoutParam = searchParams.get("checkout") || "";
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const { results: searchResults, loading } = useSearchResults(
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const { results, loading, total, pageSize } = useSearchResults(
     whereParam,
     propertyTypes,
     checkinParam,
     checkoutParam,
-    guests
+    guests,
+    currentPage
   );
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const maxPrice = useMemo(() => {
+    if (results.length === 0) return 500;
+    return Math.ceil(Math.max(...results.map((p) => p.total_price ?? 0)));
+  }, [results]);
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [propertyFilters, setPropertyFilters] = useState<string[]>(() => {
@@ -36,8 +46,8 @@ export default function SearchResultsPage() {
     if (fromUrl && fromUrl.length > 0) {
       const mapped = fromUrl.map((t) => {
         const lower = t.toLowerCase();
-        if (lower === "hotel" || lower === "hostel") return "Hotels";
-        if (lower === "apartment") return "Apartments";
+        if (lower === "hotel" || lower === "hostel") return "Hotel";
+        if (lower === "apartment") return "Apartment";
         if (lower === "villa") return "Villa";
         if (lower === "resort") return "Resort";
         return "Others";
@@ -47,7 +57,14 @@ export default function SearchResultsPage() {
     return ["All types"];
   });
   const [amenities, setAmenities] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   const togglePropertyType = (type: string) => {
     if (type === "All types") {
@@ -69,36 +86,44 @@ export default function SearchResultsPage() {
     );
   };
 
-  const filteredProperties = useMemo(() => {
-    return searchResults.filter((property) => {
-      if (whereParam && whereParam.toLowerCase() !== (propertyTypes || "").toLowerCase()) {
-        const parts = whereParam.toLowerCase().split(",").map((s) => s.trim());
-        const matches = parts.some((p) =>
-          (property.address || "").toLowerCase().includes(p) ||
-          property.city.toLowerCase().includes(p) ||
-          property.name.toLowerCase().includes(p) ||
-          property.country.toLowerCase().includes(p) ||
-          (property.state || "").toLowerCase().includes(p)
-        );
-        if (!matches) return false;
+  useEffect(() => {
+    setPriceRange(([, prevMax]) => [0, maxPrice]);
+  }, [maxPrice]);
+
+  const pageResults = useMemo(() => {
+    return results.filter((property) => {
+      if (!propertyFilters.includes("All types")) {
+        const type = (property.type || "").toLowerCase().trim();
+        const matchesType = propertyFilters.some((f) => {
+          if (f === "Others") {
+            const knownTypes = ["hotel", "hostel", "apartment", "villa", "resort"];
+            return !knownTypes.some((kt) => type.includes(kt));
+          }
+          const fLower = f.toLowerCase().replace(/s$/, "");
+          const tNorm = type.replace(/s$/, "");
+          return type.includes(fLower) || fLower.includes(type) || tNorm === fLower;
+        });
+        if (!matchesType) return false;
       }
 
-      const price = property.total_price ?? 0
+      const price = property.total_price ?? 0;
       if (price < priceRange[0] || price > priceRange[1]) return false;
 
       if (amenities.length > 0) {
         const matches = amenities.every((a) =>
-          (property.amenities || []).some((amenity) => amenity.toLowerCase().includes(a.toLowerCase()))
+          (property.amenities || []).some((amenity) =>
+            amenity.toLowerCase().includes(a.toLowerCase())
+          )
         );
         if (!matches) return false;
       }
 
       return true;
     });
-  }, [searchResults, whereParam, propertyTypes, priceRange, amenities]);
+  }, [results, propertyFilters, priceRange, amenities]);
 
   const clearAll = () => {
-    setPriceRange([0, 500]);
+    setPriceRange([0, maxPrice]);
     setPropertyFilters(["All types"]);
     setAmenities([]);
   };
@@ -125,20 +150,23 @@ export default function SearchResultsPage() {
 
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex gap-6">
-          <FilterSidebar
-            priceRange={priceRange}
-            onPriceRangeChange={setPriceRange}
-            propertyFilters={propertyFilters}
-            onTogglePropertyType={togglePropertyType}
-            amenities={amenities}
-            onToggleAmenity={toggleAmenity}
-            onClearAll={clearAll}
-          />
+          <div className="sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+            <FilterSidebar
+              priceRange={priceRange}
+              onPriceRangeChange={setPriceRange}
+              maxPrice={maxPrice}
+              propertyFilters={propertyFilters}
+              onTogglePropertyType={togglePropertyType}
+              amenities={amenities}
+              onToggleAmenity={toggleAmenity}
+              onClearAll={clearAll}
+            />
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="mb-6">
               <h2 className="text-xl font-bold font-brand text-brand-heading">
-                {loading ? "Searching..." : `${filteredProperties.length} stays${whereParam ? ` in ${whereParam}` : propertyTypes ? ` - ${propertyTypes}` : ""}`}
+                {loading ? "Searching..." : `${total} stays${whereParam ? ` in ${whereParam}` : propertyTypes ? ` - ${propertyTypes}` : ""}`}
               </h2>
             </div>
 
@@ -147,10 +175,10 @@ export default function SearchResultsPage() {
                 <div className="flex items-center justify-center py-20">
                   <LoadingSpinner />
                 </div>
-              ) : filteredProperties.length === 0 ? (
+              ) : results.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (
-                filteredProperties.map((property) => (
+                results.map((property) => (
                   <SearchResultCard
                     key={property.property_id}
                     property={property}
@@ -163,11 +191,13 @@ export default function SearchResultsPage() {
               )}
             </div>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={15}
-              onPageChange={setCurrentPage}
-            />
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            )}
           </div>
         </div>
       </div>

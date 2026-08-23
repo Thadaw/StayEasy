@@ -135,6 +135,7 @@ export default function ResetPassword() {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleReset()}
                   placeholder="••••••••"
                   autoComplete="off"
                   style={{
@@ -168,6 +169,7 @@ export default function ResetPassword() {
                   type={showConfirm ? 'text' : 'password'}
                   value={confirm}
                   onChange={e => setConfirm(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleReset()}
                   placeholder="Repeat new password"
                   autoComplete="off"
                   style={{

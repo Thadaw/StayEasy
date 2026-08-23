@@ -191,6 +191,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
               placeholder="Enter your email"
               autoComplete="off"
               style={{
@@ -224,6 +225,7 @@ export default function Login() {
               type={showPw ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
               placeholder="Set your password"
               autoComplete="off"
               style={{

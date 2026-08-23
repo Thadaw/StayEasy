@@ -1,6 +1,6 @@
-import { useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, ChevronRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
@@ -9,16 +9,29 @@ import { StayInformation } from "../components/StayInformation"
 import { BookingRoomDetails } from "../components/BookingRoomDetails"
 import { BookingGuestInfo } from "../components/BookingGuestInfo"
 import { CancellationCard } from "../components/CancellationCard"
-import { BookingPaymentSummary } from "../components/BookingPaymentSummary"
-import { BookingActions } from "../components/BookingActions"
+import { ReserveSummaryCard } from "../components/ReserveSummaryCard"
 import { useBookingActions } from "../../../shared/hooks/useBookingActions"
 import { useBookingDetails } from "../hooks/useBookingDetails"
-import { getStatusColor, canCancelBooking, buildShareText } from "../../../shared/utils/bookingHelpers"
+import { getStatusColor, canCancelBooking, buildShareText, buildQrData } from "../../../shared/utils/bookingHelpers"
 import { formatDateFull } from "../../../shared/utils/format"
+
+interface ConfirmationState {
+  propertyImages?: string[]
+  amenities?: string[]
+  guestName?: string
+  guestEmail?: string
+  guestPhone?: string
+  totalGuests?: number
+  rating?: number
+  reviews?: number
+}
 
 export default function BookingDetailsView() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const confirmationState =
+    (location.state as ConfirmationState | null) ?? null
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
 
   const {
@@ -29,7 +42,6 @@ export default function BookingDetailsView() {
     propertyName,
     propertyCity,
     propertyCountry,
-    propertyId,
     propertyLocation,
     propertyDetails,
     currency,
@@ -63,12 +75,43 @@ export default function BookingDetailsView() {
 
   const shareText = buildShareText(propertyName, refNumber, checkIn, formatDateFull)
 
+  const qrData = buildQrData({
+    confirmationCode: refNumber,
+    propertyName,
+    propertyLocation: propertyLocation || `${propertyCity}, ${propertyCountry}`,
+    propertyPhone: propertyDetails.phone,
+    propertyEmail: propertyDetails.email,
+    checkIn,
+    checkOut,
+    nights,
+    totalGuests: adults + children,
+    rooms: roomNames,
+    roomTypes: rooms.map(r => r.room_type).join(", "),
+    bedTypes: rooms.map(r => r.bed_type).join(", "),
+    guestName,
+    guestEmail,
+    guestPhone,
+    roomPrice: basePrice,
+    taxes: taxAmount,
+    totalAmount,
+    currency,
+    paymentMethod: paymentGateway || 'Online',
+    cancellationPolicy: rooms[0]?.cancellation_description || rooms[0]?.cancellation_title || '',
+    bookedOn: createdAt || new Date().toISOString(),
+  })
+
+  const [shareMessage, setShareMessage] = useState("")
+
   const handleCopyCode = () => {
     copyCode(refNumber)
+    setShareMessage("Booking details copied!")
+    setTimeout(() => setShareMessage(""), 3000)
   }
 
   const handleShareBooking = () => {
     shareBooking(shareText)
+    setShareMessage("Booking shared!")
+    setTimeout(() => setShareMessage(""), 3000)
   }
 
   const viewOnMap = () => {
@@ -88,6 +131,7 @@ export default function BookingDetailsView() {
       propertyLocation: propertyLocation || `${propertyCity}, ${propertyCountry}`,
       propertyPhone: propertyDetails.phone,
       propertyEmail: propertyDetails.email,
+      propertyImage: coverImage,
       checkIn,
       checkOut,
       roomNames,
@@ -134,7 +178,7 @@ export default function BookingDetailsView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       <div className="bg-white border-b border-gray-200">
@@ -196,39 +240,31 @@ export default function BookingDetailsView() {
           </div>
 
           <div className="space-y-6">
-            <BookingPaymentSummary
+            <ReserveSummaryCard
+              propertyName={propertyName}
+              roomNames={roomNames}
+              propertyCity={propertyCity}
+              propertyCountry={propertyCountry}
+              confirmationCode={refNumber}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              nights={nights}
+              totalGuests={adults + children}
+              rooms={rooms}
               currency={currency}
-              basePrice={basePrice}
-              taxAmount={taxAmount}
-              specialOfferDiscount={specialOfferDiscount}
-              couponDiscount={couponDiscount}
               couponCode={booking?.coupon_code}
+              couponDiscount={couponDiscount}
+              specialOfferDiscount={specialOfferDiscount}
               totalAmount={totalAmount}
-              paymentGateway={paymentGateway}
-              refNumber={refNumber}
-            />
-
-            <BookingActions
-              refNumber={refNumber}
+              paymentStatus={paymentStatus}
               shareText={shareText}
+              qrData={qrData}
               copied={copied}
+              shareMessage={shareMessage}
               onCopyCode={handleCopyCode}
               onShare={handleShareBooking}
               onDownloadReceipt={handleDownloadReceipt}
-              onDone={() => navigate("/profile/bookings")}
             />
-
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h3 className="text-sm font-bold text-gray-900 mb-1">Book Again</h3>
-              <p className="text-xs text-gray-500 mb-3">Love this property?</p>
-              <button
-                onClick={() => navigate(`/hotel/${propertyId}`)}
-                className="w-full py-2.5 rounded-lg bg-brand-accent text-white text-sm font-semibold hover:bg-brand-accent-hover transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ChevronRight size={14} />
-                Book Again
-              </button>
-            </div>
           </div>
         </div>
       </div>

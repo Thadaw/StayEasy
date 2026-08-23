@@ -13,7 +13,7 @@ const footerLinks = {
 export function Footer() {
   return (
     <footer className="border-t border-border mt-16 bg-secondary">
-      <div className="max-w-screen-2xl mx-auto px-6 py-12">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="mb-8">
           <Link to="/" className="shrink-0 flex items-center gap-2">
             <img src={logo1} alt="ServeIQ" className="h-[34px] w-auto" />

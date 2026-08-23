@@ -54,8 +54,8 @@ export function RoomDetailsCard({ roomLines, nights, currency }: RoomDetailsCard
             </div>
             {(rl.cancellationTitle || rl.cancellationPolicy) && (
               <div className="mt-2 flex items-start gap-1.5">
-                <Info size={12} className="text-[#008009] shrink-0 mt-0.5" />
-                <p className="text-[11px] text-[#008009]">
+                <Info size={12} className="text-[#1E8449] shrink-0 mt-0.5" />
+                <p className="text-[11px] text-[#1E8449]">
                   {rl.cancellationTitle || 'Free cancellation'}
                 </p>
               </div>

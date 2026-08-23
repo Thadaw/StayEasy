@@ -26,9 +26,12 @@ export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
   });
 
   return (
-    <div className="md:grid md:grid-cols-2 md:gap-8 pb-6 border-b border-border mb-6">
+    <div className="md:grid md:grid-cols-[2fr_1fr] md:gap-8 pb-6 border-b border-border mb-6">
       <div className="space-y-6">
-        <p className="text-foreground leading-relaxed text-sm">{hotel.description}</p>
+        <div>
+          <h2 className="font-semibold text-foreground mb-3" style={{ fontSize: "1.125rem" }}>Property description</h2>
+          <p className="text-foreground leading-relaxed text-sm">{hotel.description}</p>
+        </div>
         <div>
           <h2 className="font-semibold text-foreground mb-4" style={{ fontSize: "1.125rem" }}>What this place offers</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -52,7 +55,7 @@ export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
       <div>
         <h2 className="font-semibold text-foreground mb-4" style={{ fontSize: "1.125rem" }}>Location</h2>
         <p className="text-sm text-muted-foreground mb-3">{hotel.location}, {hotel.city}, {hotel.country}</p>
-        <div className="rounded-xl overflow-hidden border border-border h-[200px]">
+        <div className="rounded-xl overflow-hidden border border-border h-[250px]">
           {mapUrl ? (
             <iframe
               title="Property location"

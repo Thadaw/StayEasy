@@ -50,7 +50,7 @@ export default function PropertyDetailPage() {
     handleSelectRoom,
   } = usePropertyDetails(id);
 
-  const { createBooking } = useBookingCreation();
+  const { createBooking, isCreating } = useBookingCreation();
 
   const liked = isFavorite(id ?? "");
 
@@ -183,100 +183,81 @@ export default function PropertyDetailPage() {
           </div>
         </div>
 
+        {(hotel.phoneNumber || hotel.email || hotel.currency || hotel.timezone || hotel.language) && (
+          <div className="flex flex-wrap gap-x-6 gap-y-3 pb-6 border-b border-border mb-6">
+            {hotel.phoneNumber && (
+              <a href={`tel:${hotel.phoneNumber}`} className="flex items-center gap-2 group">
+                <Phone size={16} className="text-brand-accent" />
+                <span className="text-sm font-medium text-foreground group-hover:text-brand-accent transition-colors">{hotel.phoneNumber}</span>
+              </a>
+            )}
+            {hotel.email && (
+              <a href={`mailto:${hotel.email}`} className="flex items-center gap-2 group">
+                <Mail size={16} className="text-brand-accent" />
+                <span className="text-sm font-medium text-foreground group-hover:text-brand-accent transition-colors">{hotel.email}</span>
+              </a>
+            )}
+            {hotel.currency && (
+              <div className="flex items-center gap-2">
+                <Coins size={16} className="text-brand-accent" />
+                <span className="text-sm font-medium text-foreground">{hotel.currency}</span>
+              </div>
+            )}
+            {hotel.timezone && (
+              <div className="flex items-center gap-2">
+                <Globe size={16} className="text-brand-accent" />
+                <span className="text-sm font-medium text-foreground">{hotel.timezone}</span>
+              </div>
+            )}
+            {hotel.language && (
+              <div className="flex items-center gap-2">
+                <Languages size={16} className="text-brand-accent" />
+                <span className="text-sm font-medium text-foreground">{hotel.language}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <HostInfo hotel={hotel} />
 
-        <div>
-          {(hotel.phoneNumber || hotel.email || hotel.currency || hotel.timezone || hotel.language) && (
-            <div className="pb-6 border-b border-border mb-6">
-              <h2 className="text-lg font-bold text-foreground mb-4 font-brand">Property details</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {hotel.phoneNumber && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <Phone size={18} className="text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <a href={`tel:${hotel.phoneNumber}`} className="text-sm font-semibold text-foreground truncate hover:text-primary">{hotel.phoneNumber}</a>
-                    </div>
-                  </div>
-                )}
-                {hotel.email && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <Mail size={18} className="text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <a href={`mailto:${hotel.email}`} className="text-sm font-semibold text-foreground truncate hover:text-primary">{hotel.email}</a>
-                    </div>
-                  </div>
-                )}
-                {hotel.currency && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <Coins size={18} className="text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">Currency</p>
-                      <p className="text-sm font-semibold text-foreground truncate">{hotel.currency}</p>
-                    </div>
-                  </div>
-                )}
-                {hotel.timezone && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <Globe size={18} className="text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">Timezone</p>
-                      <p className="text-sm font-semibold text-foreground truncate">{hotel.timezone}</p>
-                    </div>
-                  </div>
-                )}
-                {hotel.language && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <Languages size={18} className="text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">Language</p>
-                      <p className="text-sm font-semibold text-foreground truncate">{hotel.language}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+        <AmenitiesSection hotel={hotel} />
+
+        {hotelMatchesFilters && recommendedRooms.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-foreground mb-3 font-brand">
+              Recommended for {guestCount} guest{guestCount > 1 ? "s" : ""}
+            </h3>
+            <div className="space-y-3">
+              {recommendedRooms.map((rt) => (
+                <RecommendedRoom key={rt.id} room={rt} onReserve={handleSelectRoom} currency={currency} roomQuantities={roomQuantities} />
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          <AmenitiesSection hotel={hotel} />
+        <RoomSelectionPanel
+          hotel={hotel}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          onCheckInChange={setCheckIn}
+          onCheckOutChange={setCheckOut}
+          guests={guests}
+          onGuestsChange={setGuests}
+          onSearch={handleSearch}
+          roomQuantities={roomQuantities}
+          roomGuestCounts={roomGuestCounts}
+          selectedRoomId={selectedRoomId}
+          nights={nights}
+          onQtyChange={handleQtyChange}
+          onOpenDetail={handleOpenDetail}
+          onReserve={handleReserve}
+          currency={currency}
+          capacityError={capacityError}
+          user={user}
+          isCreating={isCreating}
+        />
 
-          {hotelMatchesFilters && recommendedRooms.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-foreground mb-3 font-brand">
-                Recommended for {guestCount} guest{guestCount > 1 ? "s" : ""}
-              </h3>
-              <div className="space-y-3">
-                {recommendedRooms.map((rt) => (
-                  <RecommendedRoom key={rt.id} room={rt} onReserve={handleSelectRoom} currency={currency} roomQuantities={roomQuantities} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <RoomSelectionPanel
-            hotel={hotel}
-            checkIn={checkIn}
-            checkOut={checkOut}
-            onCheckInChange={setCheckIn}
-            onCheckOutChange={setCheckOut}
-            guests={guests}
-            onGuestsChange={setGuests}
-            onSearch={handleSearch}
-            roomQuantities={roomQuantities}
-            roomGuestCounts={roomGuestCounts}
-            selectedRoomId={selectedRoomId}
-            nights={nights}
-            onQtyChange={handleQtyChange}
-            onOpenDetail={handleOpenDetail}
-            onReserve={handleReserve}
-            currency={currency}
-            capacityError={capacityError}
-            user={user}
-          />
-
-          <ReviewSection hotel={hotel} />
-        </div>
+        <ReviewSection hotel={hotel} />
 
         <ThingsToKnow />
       </div>

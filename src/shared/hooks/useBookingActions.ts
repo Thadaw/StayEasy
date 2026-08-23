@@ -14,7 +14,7 @@ interface BookingActionParams {
   guestEmail?: string
   guestPhone?: string
   guestNationality?: string
-  rooms: { room_name: string; room_type: string; bed_type: string; base_rate: number; nights: number; subtotal: number }[]
+  rooms: { room_name: string; room_type: string; bed_type: string; base_rate: number; nights: number; subtotal: number; photo?: string }[]
   specialOfferDiscount?: number
   couponCode?: string
   couponDiscount?: number
@@ -23,6 +23,7 @@ interface BookingActionParams {
   propertyLocation?: string
   propertyPhone?: string
   propertyEmail?: string
+  propertyImage?: string
   createdAt?: string
 }
 
@@ -61,6 +62,7 @@ export function useBookingActions() {
       propertyLocation: params.propertyLocation || `${params.propertyLocation || ''}`,
       propertyPhone: params.propertyPhone,
       propertyEmail: params.propertyEmail,
+      propertyImage: params.propertyImage,
       checkIn: params.checkIn,
       checkOut: params.checkOut,
       roomNames: params.roomNames,

@@ -8,35 +8,17 @@ import { PageMessage } from "../../../shared/components/PageMessage"
 import { GuestInformationForm } from "../components/GuestInformationForm"
 import { useGuestProfile } from "../../profile/hooks/useGuestProfile"
 import { formatDate } from "../../../shared/utils/format"
-import type { ApiProperty, ApiRoom } from "../../../shared/types/api"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { useBookingCreation } from "../hooks/useBookingCreation"
+import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "../hooks/useBookingQueries"
 import { parseJSON } from "../../../shared/utils/helpers"
 import { getDefaultDates } from "../../../shared/utils/date"
 import { allCountries } from "../../../data/countries"
 import { calculateNights } from "../../../shared/utils/time"
-import api from "../../../services/axios"
 
 const HOTEL_IMAGE_HEIGHT = "h-56"
 const MAX_AMENITIES_DISPLAY = 5
 const DEFAULT_PHONE_CODE = "+977"
-
-interface ReservedRoom {
-  room_id: string
-  room_name: string
-  room_type: string
-  bed_type: string
-  max_adults: number
-  max_children: number
-  base_rate: number
-  nights: number
-  subtotal: number
-}
-
-interface BookingGuests {
-  adults: number
-  children: number
-}
 
 export default function BookingDetailsPage() {
   const { id } = useParams()
@@ -61,11 +43,29 @@ export default function BookingDetailsPage() {
   const selectedRooms: Record<string, number> = parseJSON(roomsParam, {})
   const guestAllocation: Record<string, number> = parseJSON(guestCountsParam, {})
 
-  const [property, setProperty] = useState<ApiProperty | null>(null)
-  const [availableRooms, setAvailableRooms] = useState<ApiRoom[]>([])
-  const [loading, setLoading] = useState(true)
-  const [reservedRooms, setReservedRooms] = useState<ReservedRoom[]>([])
-  const [bookingGuests, setBookingGuests] = useState<BookingGuests | null>(null)
+  // React Query hooks — cached, deduplicated, abortable
+  const { data: bookingData, isLoading: bookingLoading } = useBookingQuery(refNumber || null)
+
+  const resolvedPropertyId = bookingData?.property?.id || id || ''
+  const { data: property, isLoading: propertyLoading } = usePropertyQuery(resolvedPropertyId || null)
+
+  const bookingAdults = bookingData?.number_of_adults || bookingParams.adults
+  const bookingChildren = bookingData?.number_of_children || bookingParams.children
+  const { data: availableRooms = [], isLoading: roomsLoading } = useAvailableRoomsQuery(
+    resolvedPropertyId || null,
+    checkIn || bookingData?.check_in || getDefaultDates().today,
+    checkOut || bookingData?.check_out || getDefaultDates().tomorrow,
+    bookingAdults,
+    bookingChildren,
+    Object.values(selectedRooms).reduce((sum, qty) => sum + qty, 0) || 1,
+  )
+
+  const reservedRooms = bookingData?.rooms || []
+  const bookingGuests = (bookingData?.number_of_adults != null || bookingData?.number_of_children != null)
+    ? { adults: bookingData.number_of_adults || 0, children: bookingData.number_of_children || 0 }
+    : null
+
+  const loading = (refNumber ? bookingLoading : false) || propertyLoading
 
   const totalGuests = (bookingGuests ? bookingGuests.adults + bookingGuests.children : null)
     || Object.values(guestAllocation).reduce((s, c) => s + c, 0)
@@ -137,57 +137,6 @@ export default function BookingDetailsPage() {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, refNumber, roomsParam, checkIn, checkOut])
-
-  useEffect(() => {
-    if (!refNumber) return
-    const loadBookingDetails = async () => {
-      try {
-        const { data } = await api.get(`/bookings/${refNumber}`)
-        const booking = data?.data || data
-        if (booking?.rooms) setReservedRooms(booking.rooms)
-        if (booking?.number_of_adults != null || booking?.number_of_children != null) {
-          setBookingGuests({
-            adults: booking.number_of_adults || 0,
-            children: booking.number_of_children || 0,
-          })
-        }
-      } catch {
-        // fallback to URL params
-      }
-    }
-    loadBookingDetails()
-  }, [refNumber])
-
-  useEffect(() => {
-    if (!id) return
-    const loadPropertyDetails = async () => {
-      setLoading(true)
-      try {
-        const { today, tomorrow } = getDefaultDates()
-        const checkInDate = checkIn || today
-        const checkOutDate = checkOut || tomorrow
-        const adults = bookingParams.adults
-        const children = bookingParams.children
-        const roomCount = Object.values(selectedRooms).reduce((sum, qty) => sum + qty, 0) || 1
-        const propRes = await api.get(`/properties/${id}/public`)
-        setProperty(propRes.data?.data || null)
-        try {
-          const roomsRes = await api.get(`/properties/${id}/rooms/available-rooms`, {
-            params: { checkin_date: checkInDate, checkout_date: checkOutDate, adults, children, rooms: roomCount },
-          })
-          setAvailableRooms(roomsRes.data?.data || [])
-        } catch {
-          setAvailableRooms([])
-        }
-      } catch {
-        setProperty(null)
-        setAvailableRooms([])
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadPropertyDetails()
-  }, [id, searchParams, checkIn, checkOut])
 
   const hotel = useMemo(() => {
     if (!property) return null
@@ -262,11 +211,11 @@ export default function BookingDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-jakarta">
+    <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
 
       {/* Full-width stepper */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 relative">
           <button
             onClick={() => navigate(-1)}
@@ -300,8 +249,8 @@ export default function BookingDetailsPage() {
 
       <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
 
-        <div className="bg-[#e8f5e9] border border-[#c8e6c9] rounded-lg px-5 py-3 mb-6 text-center">
-          <p className="text-sm font-medium text-[#2e7d32]">Great choice! You're almost done.</p>
+        <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
+          <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
@@ -338,7 +287,7 @@ export default function BookingDetailsPage() {
                 )}
                 {hotel.rating > 0 && (
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-bold text-white bg-[#003580] px-2 py-1 rounded">
+                    <span className="text-xs font-bold text-white bg-[#1A3C5E] px-2 py-1 rounded">
                       {hotel.rating.toFixed(1)}
                     </span>
                     <span className="text-sm font-semibold text-gray-900">
@@ -447,7 +396,7 @@ export default function BookingDetailsPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:order-2">
+          <div className="order-2 lg:order-2 lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
               onGuestChange={setGuest}
@@ -456,7 +405,7 @@ export default function BookingDetailsPage() {
 
             <button
               onClick={handleNext}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#0071c2] text-white font-semibold text-sm hover:bg-[#005fa3] transition-all flex items-center justify-center gap-2"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
             >
               Next: Final details
               <ChevronRight size={16} />

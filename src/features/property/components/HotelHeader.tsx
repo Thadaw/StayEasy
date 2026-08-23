@@ -15,11 +15,6 @@ export function HotelHeader({ hotel, liked, onToggleFavorite }: HotelHeaderProps
           {hotel.name}
         </h1>
         <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
-          <span className="flex items-center gap-1">
-            <Star size={13} className="fill-foreground stroke-foreground" />
-            <span className="font-semibold">{hotel.rating}</span>
-            <span className="text-muted-foreground">({hotel.reviews} reviews)</span>
-          </span>
           {hotel.isSuperhost && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <ShieldCheck size={13} className="text-primary" />

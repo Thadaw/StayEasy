@@ -37,7 +37,7 @@ export function ConfirmButton({
           type="checkbox"
           checked={marketingOptIn}
           onChange={e => onSetMarketingOptIn(e.target.checked)}
-          className="mt-0.5 w-4 h-4 accent-[#0071c2] cursor-pointer"
+          className="mt-0.5 w-4 h-4 accent-[#1A3C5E] cursor-pointer"
         />
         <span className="text-sm text-gray-600 leading-relaxed">
           I agree to receiving marketing emails from ServeIQ.com, including promotions, personalized recommendations, rewards, travel experiences, and updates about ServeIQ.com's products and services.
@@ -47,7 +47,7 @@ export function ConfirmButton({
       <button
         disabled={isDisabled}
         onClick={onConfirm}
-        className="w-full py-3.5 rounded-xl bg-[#0071c2] text-white font-semibold text-sm hover:bg-[#005fa3] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {paymentLoading ? (
           <>

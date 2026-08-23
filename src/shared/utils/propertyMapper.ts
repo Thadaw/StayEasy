@@ -59,7 +59,7 @@ export function mapPropertyToHotel(property: ApiProperty, rooms: ApiRoom[]): Hot
     category: property.type.toLowerCase(),
     description: property.description ?? "",
     amenities: allAmenities,
-    hostName: "",
+    hostName: property.owner_name ?? "",
     hostAvatar: property.brand_logo_url ?? "",
     hostJoined: "",
     hostReviews: 0,

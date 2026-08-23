@@ -89,3 +89,59 @@ export function buildShareText(propertyName: string, refNumber: string, checkIn:
   if (!propertyName) return ""
   return `ServeIQ booking confirmed for ${propertyName}. Confirmation code: ${refNumber}. Check-in ${checkIn ? formatDateFull(checkIn) : ""}.`
 }
+
+export interface QrBookingData {
+  confirmationCode: string
+  propertyName: string
+  propertyLocation: string
+  propertyPhone?: string
+  propertyEmail?: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  totalGuests: number
+  rooms: string
+  roomTypes: string
+  bedTypes: string
+  guestName: string
+  guestEmail?: string
+  guestPhone?: string
+  roomPrice: number
+  taxes: number
+  totalAmount: number
+  currency: string
+  paymentMethod: string
+  cancellationPolicy: string
+  bookedOn: string
+}
+
+export function buildQrData(params: QrBookingData): string {
+  const lines = [
+    'Booking Verification',
+    '─────────────────────────',
+    params.propertyName,
+    params.propertyLocation,
+    '',
+    `Booking ID: ${params.confirmationCode}`,
+    'Status: Paid',
+    '',
+    `Check-in: ${params.checkIn} (after 12:00)`,
+    `Check-out: ${params.checkOut} (till 12:00)`,
+    `Nights: ${params.nights}`,
+    `Guests: ${params.totalGuests}`,
+    `Room: ${params.rooms}`,
+    `Room Type: ${params.roomTypes}`,
+    '',
+    `Guest: ${params.guestName}`,
+    params.guestPhone ? `Phone: ${params.guestPhone}` : '',
+    params.guestEmail ? `Email: ${params.guestEmail}` : '',
+    '',
+    `Total Cost: ${params.currency} ${params.totalAmount.toLocaleString()}`,
+    `Payment: ${params.paymentMethod}`,
+    '',
+    params.propertyPhone ? `Property Phone: ${params.propertyPhone}` : '',
+    params.propertyEmail ? `Property Email: ${params.propertyEmail}` : '',
+    params.cancellationPolicy ? `Cancellation: ${params.cancellationPolicy}` : '',
+  ].filter(Boolean)
+  return lines.join('\n')
+}

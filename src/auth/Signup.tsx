@@ -306,6 +306,7 @@ export default function Signup() {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSignup()}
                   onFocus={() => setPwFocused(true)}
                   onBlur={() => setPwFocused(false)}
                   placeholder="••••••••"
@@ -382,6 +383,7 @@ export default function Signup() {
                       type="text"
                       value={otp}
                       onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
                       placeholder="Enter 6-digit code"
                       autoComplete="off"
                       style={{

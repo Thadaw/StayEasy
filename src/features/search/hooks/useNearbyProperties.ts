@@ -30,8 +30,16 @@ function writeCache(entry: NearbyCache) {
   }
 }
 
-function hasPermissionApi(): boolean {
-  return typeof navigator !== "undefined" && "permissions" in navigator;
+function getStoredCoords(): { lat: number; lon: number } | null {
+  try {
+    const stored = localStorage.getItem("nearbyLocation");
+    if (!stored) return null;
+    const match = stored.match(/([\d.-]+),\s*([\d.-]+)/);
+    if (!match) return null;
+    return { lat: parseFloat(match[1]), lon: parseFloat(match[2]) };
+  } catch {
+    return null;
+  }
 }
 
 export function useNearbyProperties(limit = 6) {
@@ -53,17 +61,14 @@ export function useNearbyProperties(limit = 6) {
     // Fresh cache — skip network + geolocation entirely, render instantly.
     if (isFresh) return;
 
-    const loadNearbyProperties = async () => {
+    const fetchNearby = async (lat: number, lon: number) => {
       if (!cacheValid) setLoading(true);
       try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
-        });
         const { today, tomorrow } = getDefaultDates();
         const response = await api.get("/search/nearby", {
           params: {
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
+            lat,
+            lon,
             limit,
             check_in: today,
             check_out: tomorrow,
@@ -80,32 +85,35 @@ export function useNearbyProperties(limit = 6) {
           }
         }
       } catch {
-        // Geolocation or API failure — show empty state.
         if (!cancelled) setProperties([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    const maybeFetchNearby = async () => {
-      if (!hasPermissionApi()) {
-        setLoading(false);
-        return;
-      }
+    // 1. Use coordinates saved by HeroSection popup (no permission prompt needed).
+    const stored = getStoredCoords();
+    if (stored) {
+      fetchNearby(stored.lat, stored.lon);
+      return () => { cancelled = true; };
+    }
+
+    // 2. Fall back to live geolocation.
+    const tryGeolocation = async () => {
       try {
-        const status = await navigator.permissions.query({ name: "geolocation" });
-        if (status.state === "granted") {
-          await     loadNearbyProperties();
-        } else {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+        });
+        await fetchNearby(pos.coords.latitude, pos.coords.longitude);
+      } catch {
+        if (!cancelled) {
+          setProperties([]);
           setLoading(false);
         }
-      } catch {
-        // Permissions API not supported or query failed — skip nearby results.
-        setLoading(false);
       }
     };
 
-    maybeFetchNearby();
+    tryGeolocation();
 
     return () => {
       cancelled = true;

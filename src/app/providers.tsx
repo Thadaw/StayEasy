@@ -6,7 +6,16 @@ import { FavoritesProvider } from '../context/FavoritesContext'
 import { BookingProvider } from '../context/BookingContext'
 import { CouponProvider } from '../context/CouponContext'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+})
 
 export function Providers({ children }: { children: ReactNode }) {
   return (

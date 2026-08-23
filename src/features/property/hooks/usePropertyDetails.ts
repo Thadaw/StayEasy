@@ -57,8 +57,8 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
   const [availableRooms, setAvailableRooms] = useState<ApiRoom[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const [checkIn, setCheckIn] = useState(checkinParam || "")
-  const [checkOut, setCheckOut] = useState(checkoutParam || "")
+  const [checkIn, setCheckIn] = useState(checkinParam || getDefaultDates().today)
+  const [checkOut, setCheckOut] = useState(checkoutParam || getDefaultDates().tomorrow)
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
   const [detailRoomId, setDetailRoomId] = useState<string | null>(null)
   const [roomQuantities, setRoomQuantities] = useState<Record<string, number>>({})

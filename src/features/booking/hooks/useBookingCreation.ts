@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import api from "../../../services/axios"
 
 interface CreateBookingPayload {
@@ -19,8 +19,14 @@ interface UseBookingCreationReturn {
 export function useBookingCreation(): UseBookingCreationReturn {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const createBooking = async (payload: CreateBookingPayload): Promise<string> => {
+    // Cancel any in-flight request
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setIsCreating(true)
     setError(null)
 
@@ -29,14 +35,15 @@ export function useBookingCreation(): UseBookingCreationReturn {
       const { data } = await api.post("/bookings/", {
         idempotency_key: idempotencyKey,
         ...payload,
-      })
+      }, { signal: controller.signal })
       return data?.data?.ref_number || data?.ref_number || ""
     } catch (err) {
+      if (controller.signal.aborted) return ""
       const message = err instanceof Error ? err.message : "Failed to create booking"
       setError(message)
       throw err
     } finally {
-      setIsCreating(false)
+      if (!controller.signal.aborted) setIsCreating(false)
     }
   }
 
