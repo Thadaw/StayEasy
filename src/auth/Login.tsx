@@ -58,7 +58,7 @@ export default function Login() {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      setTimeout(() => navigate(isHost ? '/host/profile' : '/'), 800)
+      setTimeout(() => navigate(isHost ? '/host/overall-dashboard' : '/'), 800)
     } catch (err) {
       setError(extractError(err))
       setLoading(false)

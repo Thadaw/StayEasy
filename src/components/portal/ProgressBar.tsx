@@ -3,11 +3,13 @@
   totalSteps: number
   percentage: number
   title: string
+  onStepClick?: (stepNumber: number) => void
+  clickableSteps?: number[]
 }
 
 const STEP_LABELS = ['Property Details', 'Room Details', 'Pricing & Offers']
 
-export default function ProgressBar({ currentStep, totalSteps, percentage, title }: ProgressBarProps) {
+export default function ProgressBar({ currentStep, totalSteps, percentage, title, onStepClick, clickableSteps = [] }: ProgressBarProps) {
   return (
     <div className="progress-bar-wrapper">
       <div className="progress-header">
@@ -28,9 +30,17 @@ export default function ProgressBar({ currentStep, totalSteps, percentage, title
           const isCompleted = currentStep > stepNum
           const isCurrent = currentStep === stepNum
           const isUpcoming = currentStep < stepNum
+          const isClickable = clickableSteps.includes(stepNum)
 
           return (
-            <div key={label} className={`progress-step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''} ${isUpcoming ? 'upcoming' : ''}`}>
+            <div
+              key={label}
+              className={`progress-step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''} ${isUpcoming ? 'upcoming' : ''} ${isClickable ? 'clickable' : ''}`}
+              onClick={isClickable && onStepClick ? () => onStepClick(stepNum) : undefined}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              onKeyDown={isClickable && onStepClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onStepClick(stepNum) } : undefined}
+            >
               <div className="progress-step-circle">
                 {isCompleted ? (
                   <span className="check-icon">&#10003;</span>

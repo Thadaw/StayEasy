@@ -1,34 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
+import logo1 from '../../assets/logo1.png'
 import { useUIStore } from '../../stores/uiStore'
 import { usePropertyStore } from '../../stores/propertyStore'
-import logo1 from '../../assets/logo1.png'
 import {
   LayoutDashboard,
+  Building2,
   CalendarDays,
-  BedDouble,
   Users,
   UserCog,
-  Sparkles,
-  Tag,
-  Calendar,
-  Percent,
-  Package,
   BarChart3,
-  Building2,
   Settings,
-  CreditCard,
-  Plug,
-  Bell,
-  Activity,
-  HelpCircle,
+  Search,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Wifi,
+  Sparkles,
+  Tag,
+  CreditCard,
+  Plug,
+  HelpCircle,
+  BedDouble,
   Receipt,
+  Wifi,
   Image,
 } from 'lucide-react'
 
@@ -49,28 +45,34 @@ const sections: NavSection[] = [
   {
     label: 'MAIN',
     items: [
-      { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/host/my-properties/dashboard' },
-      { label: 'Bookings', icon: <CalendarDays size={18} />, path: '/host/bookings' },
-      { label: 'Rooms', icon: <BedDouble size={18} />, path: '/host/rooms' },
-      { label: 'Guests', icon: <Users size={18} />, path: '/host/guests' },
-      { label: 'Staff', icon: <UserCog size={18} />, path: '/host/staff' },
-      { label: 'Housekeeping', icon: <Sparkles size={18} />, path: '/host/housekeeping' },
+      { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/host/overall-dashboard' },
       {
-        label: 'Pricing & Discounts',
-        icon: <Tag size={18} />,
-        path: '/host/pricing',
+        label: 'Property Management',
+        icon: <Building2 size={18} />,
+        path: '/host/my-properties',
         children: [
-          { label: 'Overview', icon: <LayoutDashboard size={16} />, path: '/host/pricing' },
-          { label: 'Seasonal Pricing', icon: <Calendar size={16} />, path: '/host/pricing/seasonal' },
-          { label: 'Discounts & Offers', icon: <Percent size={16} />, path: '/host/pricing/discounts' },
-          { label: 'Packages', icon: <Package size={16} />, path: '/host/pricing/packages' },
+          { label: 'Overview', icon: <LayoutDashboard size={16} />, path: '/host/my-properties' },
+          { label: 'Room Management', icon: <Building2 size={16} />, path: '/host/rooms' },
+          { label: 'Pricing & Discount', icon: <Tag size={16} />, path: '/host/pricing' },
         ],
       },
-      { label: 'Reports', icon: <BarChart3 size={18} />, path: '/host/reports' },
+      { label: 'Bookings', icon: <CalendarDays size={18} />, path: '/host/bookings' },
+      { label: 'Guests', icon: <Users size={18} />, path: '/host/guests' },
+      {
+        label: 'Staff Management',
+        icon: <UserCog size={18} />,
+        path: '/host/staff',
+        children: [
+          { label: 'Staffs', icon: <Users size={16} />, path: '/host/staff' },
+          { label: 'Shift & Attendance', icon: <CalendarDays size={16} />, path: '/host/staff/shifts' },
+        ],
+      },
+      { label: 'Housekeeping', icon: <Sparkles size={18} />, path: '/host/housekeeping' },
+      { label: 'Reports & Analytics', icon: <BarChart3 size={18} />, path: '/host/reports' },
     ],
   },
   {
-    label: 'PROPERTY',
+    label: 'SYSTEM',
     items: [
       {
         label: 'Settings',
@@ -79,22 +81,13 @@ const sections: NavSection[] = [
         children: [
           { label: 'Company Profile', icon: <Building2 size={16} />, path: '/host/settings?tab=company' },
           { label: 'General Settings', icon: <Settings size={16} />, path: '/host/settings?tab=general' },
-          { label: 'Booking Settings', icon: <Calendar size={16} />, path: '/host/settings?tab=booking' },
+          { label: 'Booking Settings', icon: <CalendarDays size={16} />, path: '/host/settings?tab=booking' },
           { label: 'Room & Rate Settings', icon: <BedDouble size={16} />, path: '/host/settings?tab=room' },
           { label: 'Taxes & Policies', icon: <Receipt size={16} />, path: '/host/settings?tab=taxes' },
           { label: 'Amenities', icon: <Wifi size={16} />, path: '/host/settings?tab=amenities' },
           { label: 'Gallery', icon: <Image size={16} />, path: '/host/settings?tab=gallery' },
         ],
       },
-      { label: 'Payment Methods', icon: <CreditCard size={18} />, path: '/host/payments' },
-      { label: 'Integrations', icon: <Plug size={18} />, path: '/host/integrations' },
-    ],
-  },
-  {
-    label: 'SYSTEM',
-    items: [
-      { label: 'Notifications', icon: <Bell size={18} />, path: '/host/notifications', badge: 5 },
-      { label: 'Activity Logs', icon: <Activity size={18} />, path: '/host/activity' },
       { label: 'Support Tickets', icon: <HelpCircle size={18} />, path: '/host/support' },
     ],
   },
@@ -112,6 +105,7 @@ export default function Sidebar({ simplified }: SidebarProps) {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const [searchQuery, setSearchQuery] = useState('')
   const navRef = useRef<HTMLElement>(null)
   const scrollPositionRef = useRef(0)
 
@@ -156,9 +150,6 @@ export default function Sidebar({ simplified }: SidebarProps) {
     }
     if (item.children) {
       toggleExpand(item.label)
-    } else if (item.label === 'Dashboard' && item.path === '/host/my-properties/dashboard') {
-      const id = currentPropertyId || localStorage.getItem('currentPropertyId')
-      navigate(id ? `/host/my-properties/dashboard/${id}` : '/host/my-properties')
     } else {
       navigate(item.path)
     }
@@ -170,12 +161,19 @@ export default function Sidebar({ simplified }: SidebarProps) {
     }
   }, [location.pathname])
 
+  const filteredSections = sections.map((section) => ({
+    ...section,
+    items: section.items.filter((item) =>
+      item.label.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+  }))
+
   return (
     <aside
       style={{
-        width: collapsed ? 72 : 240,
-        background: 'var(--sidebar)',
-        color: 'var(--sidebar-foreground)',
+        width: collapsed ? 72 : 260,
+        background: '#fff',
+        color: '#1f2937',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.2s ease',
@@ -185,196 +183,207 @@ export default function Sidebar({ simplified }: SidebarProps) {
         position: 'sticky',
         top: 0,
         zIndex: 30,
+        borderRight: '1px solid #e5e7eb',
       }}
     >
-      <div style={{ padding: collapsed ? '16px 12px' : '16px 20px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--sidebar-border)' }}>
-        <img src={logo1} alt="ServeIQ" style={{ height: 36, width: 'auto' }} />
+      {/* Logo */}
+      <div style={{ padding: collapsed ? '20px 12px' : '20px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <img src={logo1} alt="StayEasy" style={{ height: 34, width: 'auto', flexShrink: 0 }} />
         {!collapsed && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>ServeIQ</div>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>Hotel & Restaurant</div>
+            <div style={{
+              fontFamily: "'Sora', 'Inter', sans-serif",
+              fontWeight: 800,
+              fontSize: 18,
+              letterSpacing: '-0.5px',
+              color: '#111827',
+              lineHeight: 1.2,
+            }}>StayEasy</div>
           </div>
         )}
       </div>
 
-      <nav ref={navRef} style={{ flex: 1, overflowY: 'auto', padding: collapsed ? '12px 8px' : '12px 12px' }} className="sidebar-scrollbar">
+      {/* Search Bar */}
+      {!collapsed && (
+        <div style={{ padding: '0 16px', marginBottom: 16 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            background: '#f3f4f6',
+            borderRadius: 8,
+            border: '1px solid #e5e7eb',
+          }}>
+            <Search size={16} color="#9ca3af" />
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                color: '#374151',
+                outline: 'none',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <nav ref={navRef} style={{ flex: 1, overflowY: 'auto', padding: collapsed ? '12px 8px' : '0 12px' }} className="sidebar-scrollbar">
         {simplified ? (
           <>
-          <button
-            onClick={() => navigate('/host/my-properties')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              width: '100%',
-              padding: collapsed ? '10px 0' : '10px 12px',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              background: location.pathname === '/host/my-properties' ? 'var(--sidebar-accent)' : 'transparent',
-              border: 'none',
-              borderRadius: 8,
-              color: location.pathname === '/host/my-properties' ? 'var(--sidebar-accent-foreground)' : 'var(--sidebar-foreground)',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: location.pathname === '/host/my-properties' ? 600 : 400,
-              transition: 'background 0.15s',
-            }}
-            title={collapsed ? 'My Property' : undefined}
-          >
-            <Building2 size={18} />
-            {!collapsed && <span>My Property</span>}
-          </button>
-
-          <button
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              width: '100%',
-              padding: collapsed ? '10px 0' : '10px 12px',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              background: location.pathname === '/host/notifications' ? 'var(--sidebar-accent)' : 'transparent',
-              border: 'none',
-              borderRadius: 8,
-              color: location.pathname === '/host/notifications' ? 'var(--sidebar-accent-foreground)' : 'var(--sidebar-foreground)',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: location.pathname === '/host/notifications' ? 600 : 400,
-              transition: 'background 0.15s',
-              marginTop: 16,
-            }}
-            title={collapsed ? 'Notifications' : undefined}
-          >
-            <Bell size={18} />
-            {!collapsed && <span>Notifications</span>}
-          </button>
+            <button
+              onClick={() => navigate('/host/my-properties')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
+                padding: collapsed ? '10px 0' : '10px 12px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                background: location.pathname === '/host/my-properties' ? '#eff6ff' : 'transparent',
+                border: 'none',
+                borderRadius: 8,
+                color: location.pathname === '/host/my-properties' ? '#2563eb' : '#374151',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: location.pathname === '/host/my-properties' ? 600 : 400,
+                transition: 'background 0.15s',
+              }}
+              title={collapsed ? 'My Property' : undefined}
+            >
+              <Building2 size={18} />
+              {!collapsed && <span>My Property</span>}
+            </button>
           </>
         ) : (
-          sections.map((section) => (
-          <div key={section.label} style={{ marginBottom: 20 }}>
-            {!collapsed && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', opacity: 0.5, padding: '0 8px', marginBottom: 8 }}>
-                {section.label}
-              </div>
-            )}
-            {section.items.map((item) => {
-              const parentActive = isParentActive(item)
-              const expanded = expandedItems[item.label] || false
-
-              return (
-                <div key={item.label}>
-                  <button
-                    onClick={() => handleNavClick(item)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      width: '100%',
-                      padding: collapsed ? '10px 0' : '10px 12px',
-                      justifyContent: collapsed ? 'center' : 'flex-start',
-                      background: parentActive && !item.children ? 'var(--sidebar-accent)' : 'transparent',
-                      border: 'none',
-                      borderRadius: 8,
-                      color: parentActive ? 'var(--sidebar-accent-foreground)' : 'var(--sidebar-foreground)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: parentActive ? 600 : 400,
-                      marginBottom: 2,
-                      transition: 'background 0.15s',
-                    }}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                    {!collapsed && (
-                      <>
-                        <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
-                        {item.badge && (
-                          <span style={{ background: 'var(--destructive)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>
-                            {item.badge}
-                          </span>
-                        )}
-                        {item.children && (
-                          <span style={{ flexShrink: 0, opacity: 0.6 }}>
-                            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </button>
-
-                  {!collapsed && item.children && expanded && (
-                    <div style={{ paddingLeft: 20, marginTop: 2 }}>
-                      {item.children.map((child) => {
-                        const childPathname = child.path.split('?')[0]
-                        const childSearchParams = child.path.split('?')[1] || ''
-                        const childActive = location.pathname === childPathname && location.search.includes(childSearchParams)
-                        return (
-                          <button
-                            key={child.label}
-                            onClick={() => navigate(child.path)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8,
-                              width: '100%',
-                              padding: '8px 12px',
-                              background: childActive ? 'var(--sidebar-accent)' : 'transparent',
-                              border: 'none',
-                              borderRadius: 6,
-                              color: childActive ? 'var(--sidebar-accent-foreground)' : 'var(--sidebar-foreground)',
-                              cursor: 'pointer',
-                              fontSize: 12,
-                              fontWeight: childActive ? 600 : 400,
-                              marginBottom: 1,
-                            }}
-                          >
-                            <span style={{ opacity: 0.7 }}>{child.icon}</span>
-                            <span>{child.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+          filteredSections.map((section) => (
+            <div key={section.label} style={{ marginBottom: 20 }}>
+              {!collapsed && (
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#9ca3af', padding: '0 12px', marginBottom: 8 }}>
+                  {section.label}
                 </div>
-              )
-            })}
-          </div>
-        )))}
+              )}
+              {section.items.map((item) => {
+                const parentActive = isParentActive(item)
+                const expanded = expandedItems[item.label] || false
+
+                return (
+                  <div key={item.label}>
+                    <button
+                      onClick={() => handleNavClick(item)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        width: '100%',
+                        padding: collapsed ? '10px 0' : '10px 12px',
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        background: parentActive ? '#eff6ff' : 'transparent',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: parentActive ? '#2563eb' : '#374151',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: parentActive ? 600 : 400,
+                        marginBottom: 2,
+                        transition: 'background 0.15s',
+                      }}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <span style={{ flexShrink: 0 }}>{item.icon}</span>
+                      {!collapsed && (
+                        <>
+                          <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                          {item.badge && (
+                            <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>
+                              {item.badge}
+                            </span>
+                          )}
+                          {item.children && (
+                            <span style={{ flexShrink: 0, color: '#9ca3af' }}>
+                              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </button>
+
+                    {!collapsed && item.children && expanded && (
+                      <div style={{ paddingLeft: 12, marginTop: 2 }}>
+                        {item.children.map((child) => {
+                          const childPathname = child.path.split('?')[0]
+                          const childSearchParams = child.path.split('?')[1] || ''
+                          const childActive = location.pathname === childPathname && location.search.includes(childSearchParams)
+                          return (
+                            <button
+                              key={child.label}
+                              onClick={() => navigate(child.path)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: childActive ? '#eff6ff' : 'transparent',
+                                border: 'none',
+                                borderLeft: childActive ? '3px solid #2563eb' : '3px solid transparent',
+                                borderRadius: 6,
+                                color: childActive ? '#2563eb' : '#6b7280',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: childActive ? 600 : 400,
+                                marginBottom: 2,
+                                textAlign: 'left',
+                              }}
+                            >
+                              <span style={{ opacity: 0.7 }}>{child.icon}</span>
+                              <span>{child.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))
+        )}
       </nav>
 
+      {/* Collapse Button */}
       {!simplified && (
-      <div style={{ padding: collapsed ? '12px 8px' : '12px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
-        {!collapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '0 4px' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--sidebar-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
-              {user?.avatar ? (
-                <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                initials.toUpperCase()
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {firstName} {lastName}
-              </div>
-              <div style={{ fontSize: 11, opacity: 0.6 }}>Super Admin</div>
-            </div>
-            <button
-              onClick={toggleSidebar}
-              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', opacity: 0.6 }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-          </div>
-        )}
-        {collapsed && (
+        <div style={{ padding: collapsed ? '12px 8px' : '12px 16px', borderTop: '1px solid #e5e7eb' }}>
           <button
             onClick={toggleSidebar}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', opacity: 0.6 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 8,
+              width: '100%',
+              padding: '10px 12px',
+              background: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              color: '#6b7280',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 500,
+              transition: 'background 0.15s',
+            }}
           >
-            <ChevronRight size={16} />
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {!collapsed && <span>Collapse Sidebar</span>}
           </button>
-        )}
-      </div>
+        </div>
       )}
     </aside>
   )
