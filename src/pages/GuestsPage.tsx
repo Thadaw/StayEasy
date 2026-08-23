@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '../stores/uiStore'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import StatCard from '../components/dashboard/StatCard'
@@ -62,6 +63,8 @@ export default function GuestsPage() {
   const [viewingGuest, setViewingGuest] = useState<Guest | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Guest | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [overallMode, setOverallMode] = useState(true)
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const pageSize = 10
   const navigate = useNavigate()
 
@@ -129,7 +132,14 @@ export default function GuestsPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Guests" subtitle="Manage all guest profiles and their information" />
+        <DashboardHeader
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title="Guests"
+          subtitle={overallMode ? 'All properties' : 'Filtering by property'}
+          showOverallOption
+          selectedLabel={overallMode ? 'Overall Guests' : 'Property'}
+          onPropertyChange={(id) => setOverallMode(id === null)}
+        />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
 
           {/* Stat Cards */}
