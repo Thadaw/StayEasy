@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueries } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import StatCard from '../components/dashboard/StatCard'
+import { getAllProperties, getPropertyBookings } from '../services/pmsApi'
+import { propertyKeys, bookingKeys } from '../lib/queryKeys'
+import type { PropertyBooking } from '../types/pms'
 import {
   Users, UserPlus, Star, Heart, Gem, Search, Plus,
   Eye, MoreHorizontal, ChevronLeft, ChevronRight, X,
@@ -16,25 +20,12 @@ export interface Guest {
   email: string
   phone: string
   country: string
-  location: string
   lastStay: string
   roomType: string
   totalStays: number
-  points: number
-  pointsLabel: string
   status: 'active' | 'inactive'
   badge?: 'vip' | 'returning'
 }
-
-export const initialGuests: Guest[] = [
-  { id: 1, name: 'John Smith', email: 'john.smith@email.com', phone: '+977 9812345678', country: 'United States', location: 'Kathmandu', lastStay: 'Jun 10, 2026', roomType: 'Deluxe Room', totalStays: 6, points: 2450, pointsLabel: '2,450 pts', status: 'active', badge: 'vip' },
-  { id: 2, name: 'Emily Johnson', email: 'emily.j@email.com', phone: '+977 9823456789', country: 'United Kingdom', location: 'Pokhara', lastStay: 'May 28, 2026', roomType: 'Suite Room', totalStays: 3, points: 1120, pointsLabel: '1,120 pts', status: 'active', badge: 'returning' },
-  { id: 3, name: 'Michael Brown', email: 'michael.b@email.com', phone: '+977 9834567890', country: 'Australia', location: 'Chitwan', lastStay: 'Jun 5, 2026', roomType: 'Standard Room', totalStays: 2, points: 560, pointsLabel: '560 pts', status: 'active' },
-  { id: 4, name: 'Sarah Taylor', email: 'sarah.t@email.com', phone: '+977 9845678901', country: 'Canada', location: 'Kathmandu', lastStay: 'Jun 12, 2026', roomType: 'Deluxe Room', totalStays: 7, points: 3890, pointsLabel: '3,890 pts', status: 'active', badge: 'vip' },
-  { id: 5, name: 'David Wilson', email: 'david.w@email.com', phone: '+977 9845678901', country: 'India', location: 'Pokhara', lastStay: 'May 30, 2026', roomType: 'Suite Room', totalStays: 4, points: 1780, pointsLabel: '1,780 pts', status: 'active' },
-  { id: 6, name: 'Olivia Martinez', email: 'olivia.m@email.com', phone: '+977 9867890123', country: 'Spain', location: 'Chitwan', lastStay: 'Jun 8, 2026', roomType: 'Family Room', totalStays: 3, points: 920, pointsLabel: '920 pts', status: 'inactive', badge: 'returning' },
-  { id: 7, name: 'James Anderson', email: 'james.a@email.com', phone: '+977 9878901234', country: 'Germany', location: 'Kathmandu', lastStay: 'Apr 22, 2026', roomType: 'Standard Room', totalStays: 1, points: 250, pointsLabel: '250 pts', status: 'inactive' },
-]
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -47,7 +38,40 @@ function colorFromName(name: string) {
   return colors[Math.abs(hash) % colors.length]
 }
 
-const emptyForm = { name: '', email: '', phone: '', country: '', location: 'Kathmandu', roomType: 'Standard Room' }
+function deriveGuestsFromBookings(bookings: PropertyBooking[]): Guest[] {
+  const guestMap = new Map<string, Guest>()
+
+  bookings.forEach((b) => {
+    if (!b.guest_email) return
+    const email = b.guest_email.toLowerCase()
+    const existing = guestMap.get(email)
+
+    if (existing) {
+      existing.totalStays += 1
+      if (b.checkin_date > existing.lastStay) existing.lastStay = b.checkin_date
+    } else {
+      guestMap.set(email, {
+        id: guestMap.size + 1,
+        name: b.guest_name || 'Unknown Guest',
+        email: b.guest_email,
+        phone: b.guest_phone || '—',
+        country: b.guest_nationality || '—',
+        lastStay: b.checkin_date,
+        roomType: b.room_names?.[0] || '—',
+        totalStays: 1,
+        status: 'active',
+      })
+    }
+  })
+
+  return Array.from(guestMap.values()).map((g) => {
+    if (g.totalStays >= 5) g.badge = 'vip'
+    else if (g.totalStays >= 3) g.badge = 'returning'
+    return g
+  })
+}
+
+const emptyForm = { name: '', email: '', phone: '', country: '', roomType: 'Standard Room' }
 
 export default function GuestsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
@@ -57,7 +81,6 @@ export default function GuestsPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; guest: Guest } | null>(null)
   const [filterType, setFilterType] = useState('All')
   const [filterNationality, setFilterNationality] = useState('All')
-  const [guests, setGuests] = useState<Guest[]>(initialGuests)
   const [showModal, setShowModal] = useState(false)
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null)
   const [viewingGuest, setViewingGuest] = useState<Guest | null>(null)
@@ -67,6 +90,47 @@ export default function GuestsPage() {
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const pageSize = 10
   const navigate = useNavigate()
+
+  const { data: properties = [] } = useQuery({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+
+  const activePropertyIds = useMemo(
+    () => properties.filter((p) => p.is_active !== false).map((p) => p.id),
+    [properties]
+  )
+
+  const overallBookingQueries = useQueries({
+    queries: activePropertyIds.map((id: string) => ({
+      queryKey: bookingKeys.byProperty(id),
+      queryFn: () => getPropertyBookings(id),
+      select: (data: any) => (Array.isArray(data) ? data : []),
+      enabled: overallMode && activePropertyIds.length > 0,
+    })),
+  })
+
+  const overallBookings: PropertyBooking[] = useMemo(
+    () => overallBookingQueries.flatMap((q) => (q.data ? (q.data as PropertyBooking[]) : [])),
+    [overallBookingQueries]
+  )
+
+  const overallLoading = overallBookingQueries.some((q) => q.isLoading)
+
+  const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
+  const propertyId = overallMode ? null : property?.id
+
+  const { data: singleBookings = [], isLoading: singleLoading } = useQuery<PropertyBooking[]>({
+    queryKey: bookingKeys.byProperty(propertyId ?? ''),
+    queryFn: () => getPropertyBookings(propertyId!),
+    enabled: !overallMode && !!propertyId,
+    select: (data) => Array.isArray(data) ? data : [],
+  })
+
+  const bookings = overallMode ? overallBookings : singleBookings
+  const loading = overallMode ? overallLoading : singleLoading
+
+  const guests: Guest[] = useMemo(() => deriveGuestsFromBookings(bookings), [bookings])
 
   const nationalities = ['All', ...Array.from(new Set(guests.map(g => g.country)))]
 
@@ -97,30 +161,19 @@ export default function GuestsPage() {
 
   const openEditModal = (guest: Guest) => {
     setEditingGuest(guest)
-    setForm({ name: guest.name, email: guest.email, phone: guest.phone, country: guest.country, location: guest.location, roomType: guest.roomType })
+    setForm({ name: guest.name, email: guest.email, phone: guest.phone, country: guest.country, roomType: guest.roomType })
     setShowModal(true)
   }
 
   const handleSave = () => {
-    if (!form.name || !form.email) return
-    if (editingGuest) {
-      setGuests(prev => prev.map(g => g.id === editingGuest.id ? { ...g, ...form } : g))
-    } else {
-      const newId = Math.max(0, ...guests.map(g => g.id)) + 1
-      setGuests(prev => [{ id: newId, ...form, lastStay: 'N/A', totalStays: 0, points: 0, pointsLabel: '0 pts', status: 'active' as const }, ...prev])
-    }
     setShowModal(false)
   }
 
-  const handleDelete = (guest: Guest) => {
-    setConfirmDelete(guest)
+  const handleDelete = (_guest: Guest) => {
   }
 
   const confirmDeleteGuest = () => {
-    if (confirmDelete) {
-      setGuests(prev => prev.filter(g => g.id !== confirmDelete.id))
-      setConfirmDelete(null)
-    }
+    setConfirmDelete(null)
   }
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 13, color: 'var(--foreground)', outline: 'none', boxSizing: 'border-box' }
@@ -183,12 +236,17 @@ export default function GuestsPage() {
           </div>
 
           {/* Table */}
+          {loading ? (
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: '60px 20px', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 14 }}>
+              Loading guests...
+            </div>
+          ) : (
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--secondary)', borderBottom: '1px solid var(--border)' }}>
-                    {['GUEST', 'CONTACT', 'LAST STAY', 'TOTAL STAYS', 'LOYALTY POINTS', 'STATUS', 'ACTIONS'].map(h => (
+                    {['GUEST', 'CONTACT', 'LAST STAY', 'TOTAL STAYS', 'STATUS', 'ACTIONS'].map(h => (
                       <th key={h} style={{ padding: '14px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', letterSpacing: '0.5px' }}>{h}</th>
                     ))}
                   </tr>
@@ -224,8 +282,6 @@ export default function GuestsPage() {
                       </td>
                       {/* Total Stays */}
                       <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>{g.totalStays}</td>
-                      {/* Loyalty Points */}
-                      <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>{g.pointsLabel}</td>
                       {/* Status */}
                       <td style={{ padding: '14px 20px' }}>
                         <span style={{
@@ -255,7 +311,7 @@ export default function GuestsPage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 14 }}>
+                      <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 14 }}>
                         No guests found matching your filters.
                       </td>
                     </tr>
@@ -292,6 +348,7 @@ export default function GuestsPage() {
               </div>
             </div>
           </div>
+          )}
 
         </main>
       </div>
@@ -359,11 +416,9 @@ export default function GuestsPage() {
                 { label: 'Email', value: viewModalGuest.email },
                 { label: 'Phone', value: viewModalGuest.phone },
                 { label: 'Country', value: viewModalGuest.country },
-                { label: 'Location', value: viewModalGuest.location },
                 { label: 'Room Type', value: viewModalGuest.roomType },
                 { label: 'Last Stay', value: viewModalGuest.lastStay },
                 { label: 'Total Stays', value: String(viewModalGuest.totalStays) },
-                { label: 'Loyalty Points', value: viewModalGuest.pointsLabel },
               ].map(item => (
                 <div key={item.label}>
                   <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 2 }}>{item.label}</div>
@@ -411,16 +466,6 @@ export default function GuestsPage() {
                     <option>Suite Room</option>
                     <option>Family Room</option>
                     <option>Presidential Suite</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Location</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}>
-                    <option>Kathmandu</option>
-                    <option>Pokhara</option>
-                    <option>Chitwan</option>
                   </select>
                 </div>
               </div>
