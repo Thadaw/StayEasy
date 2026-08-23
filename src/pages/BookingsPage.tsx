@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
@@ -30,16 +30,41 @@ export default function BookingsPage() {
     queryFn: getAllProperties,
   })
 
+  const [overallMode, setOverallMode] = useState(true)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
-  const propertyId = property?.id
+  const propertyId = overallMode ? null : property?.id
 
-  const { data: apiBookings = [], isLoading: loading } = useQuery<PropertyBooking[]>({
+  const activePropertyIds = useMemo(
+    () => properties.filter((p) => p.is_active !== false).map((p) => p.id),
+    [properties]
+  )
+
+  const overallBookingQueries = useQueries({
+    queries: activePropertyIds.map((id: string) => ({
+      queryKey: bookingKeys.byProperty(id),
+      queryFn: () => getPropertyBookings(id),
+      select: (data: any) => (Array.isArray(data) ? data : []),
+      enabled: overallMode && activePropertyIds.length > 0,
+    })),
+  })
+
+  const overallApiBookings: PropertyBooking[] = useMemo(
+    () => overallBookingQueries.flatMap((q) => (q.data ? (q.data as PropertyBooking[]) : [])),
+    [overallBookingQueries]
+  )
+
+  const overallLoading = overallBookingQueries.some((q) => q.isLoading)
+
+  const { data: singlePropertyBookings = [], isLoading: singleLoading } = useQuery<PropertyBooking[]>({
     queryKey: bookingKeys.byProperty(propertyId ?? ''),
     queryFn: () => getPropertyBookings(propertyId!),
-    enabled: !!propertyId,
+    enabled: !overallMode && !!propertyId,
     select: (data) => Array.isArray(data) ? data : [],
   })
+
+  const apiBookings = overallMode ? overallApiBookings : singlePropertyBookings
+  const loading = overallMode ? overallLoading : singleLoading
 
   const { data: rooms = [] } = useQuery<RoomResponse[]>({
     queryKey: roomKeys.byProperty(propertyId ?? ''),
@@ -104,7 +129,14 @@ export default function BookingsPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Bookings" subtitle="Manage all reservations and bookings" />
+        <DashboardHeader
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title="Bookings"
+          subtitle={overallMode ? 'All properties' : `Managing ${property?.name || 'property'}`}
+          showOverallOption
+          selectedLabel={overallMode ? 'Overall Bookings' : property?.name || 'Property'}
+          onPropertyChange={(id) => setOverallMode(id === null)}
+        />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
 
           <BookingStats bookings={bookings} />

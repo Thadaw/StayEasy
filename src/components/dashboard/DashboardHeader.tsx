@@ -8,13 +8,18 @@ import { propertyKeys } from '../../lib/queryKeys'
 import type { GeneralInfoResponse } from '../../types/pms'
 import { Bell, ChevronDown, Calendar, Menu } from 'lucide-react'
 
+import { Layers } from 'lucide-react'
+
 interface DashboardHeaderProps {
   onMenuToggle?: () => void
   title?: string
   subtitle?: string
+  showOverallOption?: boolean
+  onPropertyChange?: (propertyId: string | null) => void
+  selectedLabel?: string
 }
 
-export default function DashboardHeader({ title, subtitle, onMenuToggle }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, subtitle, onMenuToggle, showOverallOption, onPropertyChange, selectedLabel }: DashboardHeaderProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
@@ -114,7 +119,7 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle }: Dashb
               color: '#374151',
             }}
           >
-            <span>Property</span>
+            <span>{selectedLabel || 'Property'}</span>
             <ChevronDown size={14} color="#9ca3af" />
           </button>
           {showPropertyDropdown && (
@@ -130,27 +135,60 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle }: Dashb
               minWidth: 200,
               zIndex: 50,
             }}>
-              {properties.length === 0 ? (
+              {properties.length === 0 && !showOverallOption ? (
                 <div style={{ padding: '12px 16px', fontSize: 13, color: '#9ca3af' }}>
                   No properties found
                 </div>
               ) : (
                 <>
+                  {showOverallOption && (
+                    <div
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 13,
+                        color: !currentPropertyId && onPropertyChange ? '#2563eb' : onPropertyChange ? '#374151' : '#374151',
+                        fontWeight: !currentPropertyId && onPropertyChange ? 600 : 400,
+                        background: !currentPropertyId && onPropertyChange ? '#eff6ff' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                      onClick={() => {
+                        if (onPropertyChange) {
+                          onPropertyChange(null)
+                          setShowPropertyDropdown(false)
+                        } else {
+                          setCurrentPropertyId(null as any)
+                          setShowPropertyDropdown(false)
+                          navigate('/host/overall-dashboard')
+                        }
+                      }}
+                    >
+                      <Layers size={14} />
+                      <span style={{ fontWeight: 500 }}>Overall Bookings</span>
+                    </div>
+                  )}
                   {(showAllProperties ? properties : properties.slice(0, 5)).map((p) => (
                     <div
                       key={p.id}
                       style={{
                         padding: '8px 16px',
                         fontSize: 13,
-                        color: currentPropertyId === p.id ? '#2563eb' : '#374151',
-                        fontWeight: currentPropertyId === p.id ? 600 : 400,
-                        background: currentPropertyId === p.id ? '#eff6ff' : 'transparent',
+                        color: currentPropertyId === p.id && onPropertyChange ? '#2563eb' : '#374151',
+                        fontWeight: currentPropertyId === p.id && onPropertyChange ? 600 : 400,
+                        background: currentPropertyId === p.id && onPropertyChange ? '#eff6ff' : 'transparent',
                         cursor: 'pointer',
                       }}
                     onClick={() => {
-                      setCurrentPropertyId(p.id)
-                      setShowPropertyDropdown(false)
-                      navigate(`/host/my-properties/dashboard/${p.id}`)
+                      if (onPropertyChange) {
+                        onPropertyChange(p.id)
+                        setShowPropertyDropdown(false)
+                      } else {
+                        setCurrentPropertyId(p.id)
+                        setShowPropertyDropdown(false)
+                        navigate(`/host/my-properties/dashboard/${p.id}`)
+                      }
                     }}
                     >
                       <div style={{ fontWeight: 500 }}>{p.name}</div>
