@@ -165,6 +165,8 @@ export default function HostPortalPageNew() {
   const hasRestoredRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedStepsRef = useRef<Set<WizardStep>>(new Set())
+  const lastSavedDataRef = useRef<Record<string, unknown>>({})
 
   const draftKey = `serveIQDraft_${user?.id || user?.email || 'anon'}`
 
@@ -252,6 +254,8 @@ export default function HostPortalPageNew() {
 
   const clearDraft = useCallback(() => {
     localStorage.removeItem(draftKey)
+    savedStepsRef.current.clear()
+    lastSavedDataRef.current = {}
   }, [draftKey])
 
   useEffect(() => {
@@ -286,6 +290,78 @@ export default function HostPortalPageNew() {
     return { current: section, total: 3 }
   }
 
+  const SECTION_STEP_MAP: Record<number, WizardStep> = {
+    1: 'property',
+    2: 'rooms',
+    3: 'pricing',
+  }
+
+  const hasStepChanged = (step: WizardStep): boolean => {
+    const last = lastSavedDataRef.current[step]
+    if (!last) return true
+    switch (step) {
+      case 'property': return JSON.stringify(propertyData) !== JSON.stringify(last)
+      case 'location': return JSON.stringify(locationData) !== JSON.stringify(last)
+      case 'photos': return (
+        photos.length !== (last as any).photosLength ||
+        coverIndex !== (last as any).coverIndex ||
+        JSON.stringify(systemAmenityIds) !== JSON.stringify((last as any).systemAmenityIds) ||
+        JSON.stringify(customAmenities) !== JSON.stringify((last as any).customAmenities) ||
+        starRating !== (last as any).starRating
+      )
+      case 'localization': return JSON.stringify(localizationData) !== JSON.stringify(last)
+      case 'branding': return (
+        brandData.brandColor !== (last as any).brandColor ||
+        brandData.logo !== null
+      )
+      case 'rooms': return JSON.stringify(rooms) !== JSON.stringify(last)
+      case 'pricing': return JSON.stringify(offers) !== JSON.stringify(last)
+      default: return true
+    }
+  }
+
+  const snapshotStepData = (step: WizardStep): void => {
+    switch (step) {
+      case 'property':
+        lastSavedDataRef.current[step] = { ...propertyData }
+        break
+      case 'location':
+        lastSavedDataRef.current[step] = { ...locationData }
+        break
+      case 'photos':
+        lastSavedDataRef.current[step] = {
+          photosLength: photos.length,
+          coverIndex,
+          systemAmenityIds: [...systemAmenityIds],
+          customAmenities: [...customAmenities],
+          starRating,
+        }
+        break
+      case 'localization':
+        lastSavedDataRef.current[step] = { ...localizationData }
+        break
+      case 'branding':
+        lastSavedDataRef.current[step] = { brandColor: brandData.brandColor, logo: brandData.logo }
+        break
+      case 'rooms':
+        lastSavedDataRef.current[step] = JSON.parse(JSON.stringify(rooms))
+        break
+      case 'pricing':
+        lastSavedDataRef.current[step] = JSON.parse(JSON.stringify(offers))
+        break
+    }
+  }
+
+  const handleProgressStepClick = (sectionNumber: number) => {
+    const targetStep = SECTION_STEP_MAP[sectionNumber]
+    if (!targetStep) return
+    const targetIndex = getStepIndex(targetStep)
+    const currentIndex = getStepIndex(currentStep)
+    if (targetIndex < currentIndex) {
+      setCurrentStep(targetStep)
+    }
+  }
+
   const getStepTitle = (): string => {
     const titles: Record<WizardStep, string> = {
       type: 'Select Your Property Type',
@@ -313,9 +389,15 @@ export default function HostPortalPageNew() {
 
   const saveCurrentStep = useCallback(async (): Promise<boolean> => {
     setSaveError(null)
+
+    if (savedStepsRef.current.has(currentStep) && !hasStepChanged(currentStep)) {
+      return true
+    }
+
     try {
       switch (currentStep) {
         case 'type':
+          savedStepsRef.current.add('type')
           return true
 
         case 'property': {
@@ -336,6 +418,8 @@ export default function HostPortalPageNew() {
           }
           const result = await createGeneralInfo(payload)
           setPropertyId(result.id)
+          savedStepsRef.current.add('property')
+          snapshotStepData('property')
           return true
         }
 
@@ -363,6 +447,8 @@ export default function HostPortalPageNew() {
             longitude: locationData.longitude,
           }
           await createLocation(propertyId, payload)
+          savedStepsRef.current.add('location')
+          snapshotStepData('location')
           return true
         }
 
@@ -398,6 +484,8 @@ export default function HostPortalPageNew() {
             star_rating: starRating,
           }
           await createPhotosAmenities(propertyId, payload)
+          savedStepsRef.current.add('photos')
+          snapshotStepData('photos')
           return true
         }
 
@@ -431,6 +519,8 @@ export default function HostPortalPageNew() {
             always_allow_check_in_out: localizationData.allowAlwaysCheckIn,
           }
           await createLocalization(propertyId, payload)
+          savedStepsRef.current.add('localization')
+          snapshotStepData('localization')
           return true
         }
 
@@ -448,6 +538,8 @@ export default function HostPortalPageNew() {
             brand_logo_url: logoUrl,
           }
           await createBrandVisual(propertyId, payload)
+          savedStepsRef.current.add('branding')
+          snapshotStepData('branding')
           return true
         }
 
@@ -548,6 +640,8 @@ export default function HostPortalPageNew() {
           }
 
           await createRooms(propertyId, { rooms: roomBases })
+          savedStepsRef.current.add('rooms')
+          snapshotStepData('rooms')
           return true
         }
 
@@ -566,6 +660,8 @@ export default function HostPortalPageNew() {
             }))
             await createSpecialOffers(propertyId, payload)
           }
+          savedStepsRef.current.add('pricing')
+          snapshotStepData('pricing')
           return true
         }
 
@@ -782,6 +878,11 @@ export default function HostPortalPageNew() {
               totalSteps={getStepNumber().total}
               percentage={getProgressPercentage()}
               title={getStepTitle()}
+              onStepClick={handleProgressStepClick}
+              clickableSteps={[1, 2, 3].filter(s => {
+                const targetStep = SECTION_STEP_MAP[s]
+                return targetStep && getStepIndex(targetStep) < getStepIndex(currentStep)
+              })}
             />
             {renderStepContent()}
             {renderNavigation()}

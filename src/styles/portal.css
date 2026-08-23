@@ -2148,6 +2148,35 @@
   font-size: 12px;
 }
 
+.progress-step.clickable {
+  cursor: pointer;
+}
+
+.progress-step.clickable:hover .progress-step-circle {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.progress-step.clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.progress-step.clickable.completed:hover .progress-step-circle {
+  background: #15803d;
+}
+
+.progress-step.clickable .progress-step-label {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.progress-step.clickable:hover .progress-step-label {
+  color: var(--primary);
+}
+
 /* Portal Header */
 .portal-header {
   background: #fff;

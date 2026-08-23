@@ -11,6 +11,7 @@ const HostProfilePage = lazy(() => import('../pages/HostProfilePage'))
 const HostPortalPageNew = lazy(() => import('../pages/HostPortalPageNew'))
 const TenantSetupPage = lazy(() => import('../pages/TenantSetup'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
+const OverallDashboardPage = lazy(() => import('../pages/OverallDashboardPage'))
 const PropertyDashboardPage = lazy(() => import('../pages/PropertyDashboardPage'))
 const BookingsPage = lazy(() => import('../pages/BookingsPage'))
 const RoomsPage = lazy(() => import('../pages/RoomsPage'))
@@ -57,6 +58,7 @@ export function AppRoutes() {
       <Route path="/host/profile" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
       <Route path="/host/portal" element={<ProtectedRoute><HostPortalPageNew /></ProtectedRoute>} />
       <Route path="/host/tenant-setup" element={<ProtectedRoute><TenantSetupPage /></ProtectedRoute>} />
+      <Route path="/host/overall-dashboard" element={<ProtectedRoute><OverallDashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
       <Route path="/host/my-properties/dashboard/:propertyId" element={<ProtectedRoute><PropertyDashboardPage /></ProtectedRoute>} />
