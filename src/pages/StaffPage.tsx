@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import StaffStats from '../components/staff/StaffStats'
 import StaffFilters from '../components/staff/StaffFilters'
 import StaffTable from '../components/staff/StaffTable'
 import StaffPagination from '../components/staff/StaffPagination'
+import { getAllProperties } from '../services/pmsApi'
+import { propertyKeys } from '../lib/queryKeys'
 import type { StaffMember } from '../types/staff'
 
 const initialStaff: StaffMember[] = [
@@ -40,6 +44,8 @@ function getInitials(name: string) {
 export default function StaffPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
+  const [overallMode, setOverallMode] = useState(true)
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [search, setSearch] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
@@ -53,15 +59,24 @@ export default function StaffPage() {
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null)
   const [form, setForm] = useState(emptyForm)
 
+  const { data: properties = [] } = useQuery({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+
+  const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
+
   const filteredStaff = useMemo(() => {
     return staffList.filter(member => {
+      const memberPropertyIndex = member.id % Math.max(properties.length, 1)
+      const matchesProperty = overallMode || (property && memberPropertyIndex === properties.findIndex((p) => p.id === property.id))
       const matchesSearch = !search || member.name.toLowerCase().includes(search.toLowerCase()) || member.email.toLowerCase().includes(search.toLowerCase()) || member.contact.includes(search)
       const matchesDept = !departmentFilter || member.department === departmentFilter
       const matchesRole = !roleFilter || member.role === roleFilter
       const matchesStatus = !statusFilter || member.status === statusFilter
-      return matchesSearch && matchesDept && matchesRole && matchesStatus
+      return matchesProperty && matchesSearch && matchesDept && matchesRole && matchesStatus
     })
-  }, [staffList, search, departmentFilter, roleFilter, statusFilter])
+  }, [staffList, search, departmentFilter, roleFilter, statusFilter, overallMode, property, properties])
 
   const stats = useMemo(() => {
     const total = staffList.length
@@ -120,7 +135,14 @@ export default function StaffPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Staff" subtitle="Manage your property staff and their roles" />
+        <DashboardHeader
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title="Staff"
+          subtitle={overallMode ? 'All properties' : 'Filtering by property'}
+          showOverallOption
+          selectedLabel={overallMode ? 'Overall Staff' : property?.name || 'Property'}
+          onPropertyChange={(id) => setOverallMode(id === null)}
+        />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
 
           <StaffStats stats={stats} />
