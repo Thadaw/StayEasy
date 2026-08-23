@@ -13,7 +13,11 @@ const data = [
 
 type TabType = 'thisWeek' | 'lastMonth' | 'thisMonth'
 
-export default function RevenueChart() {
+interface RevenueChartProps {
+  data?: { day: string; thisMonth: number; lastMonth: number; thisWeek: number }[]
+}
+
+export default function RevenueChart({ data: chartData }: RevenueChartProps) {
   const [activeTab, setActiveTab] = useState<TabType>('thisMonth')
 
   const tabs: { key: TabType; label: string }[] = [
@@ -60,7 +64,7 @@ export default function RevenueChart() {
         </span>
       </div>
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={data}>
+        <LineChart data={chartData ?? data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
           <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" tickFormatter={(v) => `${v/1000}K`} />
