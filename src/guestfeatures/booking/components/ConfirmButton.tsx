@@ -28,7 +28,7 @@ export function ConfirmButton({
     (selectedPayment === "stripe" && !stripePaymentIntentId) ||
     (selectedPayment === "khalti" && !khaltiPaymentIntentId)
 
-  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : "Razorpay"
+  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : selectedPayment === "arrival" ? "Pay at Arrival" : "Razorpay"
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">

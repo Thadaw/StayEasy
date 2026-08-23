@@ -24,6 +24,7 @@ interface ConfirmationState {
   totalGuests?: number
   rating?: number
   reviews?: number
+  paymentGateway?: string
 }
 
 export default function BookingConfirmationPage() {
@@ -187,7 +188,7 @@ export default function BookingConfirmationPage() {
         couponDiscount={couponDiscount}
         couponCode={booking?.coupon_code}
         totalAmount={totalAmount}
-        paymentGateway={paymentGateway}
+        paymentGateway={confirmationState?.paymentGateway || paymentGateway}
         refNumber={confirmationCode}
       />
       <BookingActions

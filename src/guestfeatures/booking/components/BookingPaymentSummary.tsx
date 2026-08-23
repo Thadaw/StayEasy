@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react"
+import { FileText, Banknote } from "lucide-react"
 import { DetailField } from "../../../shared/components/DetailField"
 import { Card, SectionHeader } from "../../../shared/ui"
 
@@ -26,6 +26,7 @@ export function BookingPaymentSummary({
   refNumber,
 }: BookingPaymentSummaryProps) {
   return (
+    <>
     <Card>
       <SectionHeader icon={<FileText size={16} />} title="Payment Summary" />
       <div className="space-y-3">
@@ -54,10 +55,24 @@ export function BookingPaymentSummary({
           <span className="text-lg font-bold text-gray-900">{currency} {totalAmount.toLocaleString()}</span>
         </div>
         <div className="grid grid-cols-2 gap-4 pt-2">
-          <DetailField label="Payment Method" value={paymentGateway || "—"} />
-          <DetailField label="Transaction ID" value={`pay_${refNumber.slice(0, 12)}`} mono />
+          <DetailField label="Payment Method" value={paymentGateway === "arrival" ? "Pay at Arrival" : paymentGateway || "—"} />
+          <DetailField label="Transaction ID" value={paymentGateway === "arrival" ? "N/A (Pay at Arrival)" : `pay_${refNumber.slice(0, 12)}`} mono={paymentGateway !== "arrival"} />
         </div>
       </div>
     </Card>
+
+    {paymentGateway === "arrival" && (
+      <Card>
+        <SectionHeader icon={<Banknote size={16} />} title="Pay at Arrival" />
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <Banknote size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700 mb-1">Pay at Arrival</p>
+            <p className="text-xs text-amber-600 leading-relaxed">You will pay {currency} {totalAmount.toLocaleString()} at the property during check-in. No online payment is required.</p>
+          </div>
+        </div>
+      </Card>
+    )}
+    </>
   )
 }

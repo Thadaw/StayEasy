@@ -1,6 +1,6 @@
 import type { RazorpayOrderResponse, RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse, HostBankDetails } from '../../shared/types/razorpay'
 
-export type PaymentMethod = "stripe" | "razorpay" | "khalti"
+export type PaymentMethod = "stripe" | "razorpay" | "khalti" | "arrival"
 
 export interface BookingRoom {
   room_id: string
