@@ -262,6 +262,14 @@ export default function ReservePage() {
     if (!statusMatch && !pidxMatch) return
     const khaltiStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('khalti_status') || '').toLowerCase()
     const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
+
+    if (khaltiStatus === 'user canceled' || khaltiStatus === 'pending') {
+      setKhaltiState({ paymentIntentId: null, loading: false, error: null })
+      setSelectedPayment("khalti")
+      localStorage.removeItem('khalti_payment_intent_id')
+      return
+    }
+
     const storedIntentId = localStorage.getItem('khalti_payment_intent_id') || pidx
     if (storedIntentId) {
       setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
@@ -497,6 +505,14 @@ export default function ReservePage() {
         })
       }
 
+      if (selectedPayment === "arrival" && refNumber) {
+        await confirmBookingWithRetry(refNumber, {
+          idempotency_key: crypto.randomUUID(),
+          payment_gateway: "arrival",
+          gateway_payload: {},
+        })
+      }
+
       const roomTypeName = roomLines.map(l => l.room.name).join(", ")
       const localBookingData = {
         hotelId: Number(booking?.property?.id || hotel?.id || id),
@@ -552,6 +568,7 @@ export default function ReservePage() {
           totalGuests,
           rating: hotel?.rating,
           reviews: hotel?.reviews,
+          paymentGateway: selectedPayment,
         }
       })
     } catch (err: unknown) {
@@ -644,6 +661,56 @@ export default function ReservePage() {
               selectedPayment={selectedPayment}
               onSelect={setSelectedPayment}
             />
+
+            <button
+              type="button"
+              onClick={() => setSelectedPayment(selectedPayment === "arrival" ? null : "arrival")}
+              className={`w-full bg-white rounded-xl border p-5 mb-6 text-left transition-colors cursor-pointer ${
+                selectedPayment === "arrival"
+                  ? "border-[#059669] bg-green-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="20" height="16" rx="4" fill="#059669" />
+                  <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">A</text>
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Pay at Arrival</p>
+                  <p className="text-xs text-gray-500">Pay when you check in</p>
+                </div>
+              </div>
+            </button>
+
+            {selectedPayment === "arrival" && (
+              <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+                <div className="space-y-3">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 shrink-0 mt-0.5">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-green-700 mb-1">Pay at Arrival</p>
+                      <p className="text-xs text-green-600 leading-relaxed">
+                        You will pay {currency}{Math.max(0, total).toFixed(2)} when you check in at the property. No online payment required now.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 shrink-0 mt-0.5">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 mb-1">How it works</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        Complete your booking now and pay the full amount ({currency}{Math.max(0, total).toFixed(2)}) directly at the property during check-in.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <PaymentForms
               selectedPayment={selectedPayment}

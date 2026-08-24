@@ -260,6 +260,12 @@ export function PaymentForms({
               <span className="text-sm text-gray-600">Tap the Khalti tab to pay</span>
             </div>
           )}
+          <button
+            disabled={khaltiLoading || paymentLoading}
+            className="w-full py-3 rounded-xl bg-[#5C2D91] text-white font-semibold text-sm hover:bg-[#4a2375] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {khaltiLoading ? <><Loader2 size={14} className="animate-spin" /> Redirecting...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Khalti</>}
+          </button>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
             <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
             <div>
@@ -270,6 +276,30 @@ export function PaymentForms({
         </div>
       </div>
     )
+  }
+
+  if (selectedPayment === "khalti" && khaltiPaymentIntentId) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 mb-4">
+          <CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-700">Khalti payment initiated</p>
+            <p className="text-xs text-green-600 mt-1">Click "Pay" below to complete your payment via Khalti.</p>
+          </div>
+        </div>
+        <button
+          disabled={paymentLoading}
+          className="w-full py-3 rounded-xl bg-[#5C2D91] text-white font-semibold text-sm hover:bg-[#4a2375] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Khalti</>}
+        </button>
+      </div>
+    )
+  }
+
+  if (selectedPayment === "arrival") {
+    return null
   }
 
   if (razorpayResponse || stripePaymentIntentId || khaltiPaymentIntentId) {

@@ -233,8 +233,8 @@ export function SearchBar() {
           >
             <Users size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
-              <div className="text-[7px] md:text-[8px] font-semibold text-gray-400 uppercase tracking-wide">{t("guests")}</div>
               <div className={`text-xs md:text-sm font-medium truncate ${totalGuests > 0 ? "text-gray-800" : "text-gray-400"}`}>{guestLabel}</div>
+              <div className="text-[7px] md:text-[8px] font-semibold text-gray-400 uppercase tracking-wide">{t("guests")}</div>
             </div>
             <ChevronDown size={13} className={`ml-auto shrink-0 text-gray-400 transition-transform hidden sm:block ${showGuests ? "rotate-180" : ""}`} />
           </button>
