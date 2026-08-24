@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, User, Settings, Lock, HelpCircle, LogOut } from 'lucide-react'
+import { ChevronDown, User, Settings, Lock, HelpCircle, LogOut, UserCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 
@@ -187,8 +187,30 @@ export default function UserProfileDropdown({ user }: UserProfileDropdownProps) 
             ))}
           </div>
 
-          {/* Divider + Logout */}
+          {/* View Full Profile + Divider + Logout */}
           <div style={{ borderTop: '1px solid var(--border)', padding: '6px 0' }}>
+            <button
+              onClick={() => handleNavigate('/host/admin-profile')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
+                padding: '10px 16px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--brand-dark)',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--muted)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+            >
+              <UserCircle size={16} style={{ color: 'var(--primary)' }} />
+              View Full Profile
+            </button>
             <button
               onClick={handleLogout}
               style={{

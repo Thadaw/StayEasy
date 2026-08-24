@@ -8,6 +8,7 @@ const SignupPage = lazy(() => import('../auth/Signup'))
 const ForgotPasswordPage = lazy(() => import('../auth/ForgotPassword'))
 const ResetPasswordPage = lazy(() => import('../auth/ResetPassword'))
 const HostProfilePage = lazy(() => import('../pages/HostProfilePage'))
+const AdminProfilePage = lazy(() => import('../pages/AdminProfilePage'))
 const HostPortalPageNew = lazy(() => import('../pages/HostPortalPageNew'))
 const TenantSetupPage = lazy(() => import('../pages/TenantSetup'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
@@ -57,6 +58,7 @@ export function AppRoutes() {
       <Route path="/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/profile" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
+      <Route path="/host/admin-profile" element={<ProtectedRoute><AdminProfilePage /></ProtectedRoute>} />
       <Route path="/host/portal" element={<ProtectedRoute><HostPortalPageNew /></ProtectedRoute>} />
       <Route path="/host/tenant-setup" element={<ProtectedRoute><TenantSetupPage /></ProtectedRoute>} />
       <Route path="/host/overall-dashboard" element={<ProtectedRoute><OverallDashboardPage /></ProtectedRoute>} />
