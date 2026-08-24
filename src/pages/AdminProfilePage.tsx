@@ -85,13 +85,7 @@ export default function AdminProfilePage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <DashboardHeader
           title="Admin Profile"
-          subtitle={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
-              <span style={{ cursor: 'pointer' }} onClick={() => navigate('/host/overall-dashboard')}>Dashboard</span>
-              <ChevronRight size={14} color="#9ca3af" />
-              <span>Admin Profile</span>
-            </span>
-          }
+          subtitle="Dashboard > Admin Profile"
         />
 
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
