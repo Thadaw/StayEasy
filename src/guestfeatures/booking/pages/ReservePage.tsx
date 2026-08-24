@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
-import { CalendarDays } from "lucide-react"
 import { useRazorpay } from "../../../shared/hooks/useRazorpay"
 import type { RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse } from "../../../shared/types/razorpay"
 import type { RoomType } from "../../../data/hotels"
@@ -36,34 +35,25 @@ const paymentOptions: { key: PaymentMethod; label: string; sub: string; logo: JS
     key: "stripe",
     label: "Stripe",
     sub: "Pay via Credit / Debit Card",
-    logo: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="4" width="20" height="16" rx="4" fill="#635bff" />
-        <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">S</text>
-      </svg>
-    ),
+    logo: <img src="/logos/Stripe_Logo_2.webp" alt="Stripe" className="w-[60px] h-[60px] object-contain" />,
   },
   {
     key: "razorpay",
     label: "Razorpay",
     sub: "Pay via UPI, Card, Net Banking & more",
-    logo: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="4" width="20" height="16" rx="4" fill="#3399ff" />
-        <text x="12" y="16" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">R</text>
-      </svg>
-    ),
+    logo: <img src="/logos/Razorpay_logo.png" alt="Razorpay" className="w-[60px] h-[60px] object-contain" />,
   },
   {
     key: "khalti",
     label: "Khalti",
     sub: "Pay via eWallet, Cards, Net Banking",
-    logo: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="4" width="20" height="16" rx="4" fill="#5C2D91" />
-        <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">K</text>
-      </svg>
-    ),
+    logo: <img src="/logos/Khalti_Official_idvPMBBXpx_0.jpeg" alt="Khalti" className="w-[60px] h-[60px] object-contain" />,
+  },
+  {
+    key: "esewa",
+    label: "eSewa",
+    sub: "Pay via eSewa Wallet",
+    logo: <img src="/logos/Esewa_Green.png" alt="eSewa" className="w-[42px] h-[42px] object-contain" />,
   },
 ]
 
@@ -149,6 +139,12 @@ export default function ReservePage() {
     error: null as string | null,
   })
   const [khaltiRetryCount, setKhaltiRetryCount] = useState(0)
+  const [esewaState, setEsewaState] = useState({
+    paymentIntentId: null as string | null,
+    loading: false,
+    error: null as string | null,
+  })
+  const [esewaRetryCount, setEsewaRetryCount] = useState(0)
   const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
   const [confirmingBooking, setConfirmingBooking] = useState(false)
 
@@ -283,6 +279,33 @@ export default function ReservePage() {
     localStorage.removeItem('khalti_payment_intent_id')
   }, [searchParams])
 
+  useEffect(() => {
+    const rawQuery = window.location.search
+    const oidMatch = rawQuery.match(/[?&]oid=([^&]+)/i)
+    const statusMatch = rawQuery.match(/[?&](?:status|esewa_status)=([^&]+)/i)
+    if (!oidMatch && !statusMatch) return
+    const esewaStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('esewa_status') || '').toLowerCase()
+
+    if (esewaStatus === 'user canceled' || esewaStatus === 'pending' || esewaStatus === 'failed') {
+      setEsewaState({ paymentIntentId: null, loading: false, error: null })
+      setSelectedPayment("esewa")
+      localStorage.removeItem('esewa_payment_intent_id')
+      return
+    }
+
+    const storedIntentId = localStorage.getItem('esewa_payment_intent_id') || oidMatch?.[1] || ''
+    if (storedIntentId) {
+      setEsewaState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
+      setSelectedPayment("esewa")
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const rawQuery = window.location.search
+    if (/[?&](?:oid|esewa_status)=/i.test(rawQuery)) return
+    localStorage.removeItem('esewa_payment_intent_id')
+  }, [searchParams])
+
   const handleApplyPromo = async () => {
     const code = promoInput.trim().toUpperCase()
     if (!code) return
@@ -385,6 +408,46 @@ export default function ReservePage() {
 
   const total = booking?.total_amount || (subtotal - discountAmount);
 
+  useEffect(() => {
+    if (selectedPayment !== "esewa" || !refNumber) return
+    if (esewaState.paymentIntentId) return
+    let cancelled = false
+    const createEsewaIntent = async () => {
+      setEsewaState(prev => ({ ...prev, loading: true, error: null }))
+      try {
+        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
+        const response = await api.post(`/bookings/${refNumber}/payment-intent`, {
+          payment_gateway: "esewa",
+          return_url: returnToUrl,
+        })
+        if (cancelled) return
+        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.id || response.data?.data?.id
+        const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
+        if (redirectUrl) {
+          if (intentId) localStorage.setItem('esewa_payment_intent_id', intentId)
+          localStorage.setItem('esewa_return_to', returnToUrl)
+          window.location.href = redirectUrl
+          return
+        }
+        const mockUrl = `${window.location.origin}/payment/esewa/mock?ref=${refNumber}&amount=${total}&currency=${currency}`
+        if (intentId) localStorage.setItem('esewa_payment_intent_id', intentId)
+        localStorage.setItem('esewa_return_to', returnToUrl)
+        window.location.href = mockUrl
+        return
+      } catch {
+        if (cancelled) return
+        const mockUrl = `${window.location.origin}/payment/esewa/mock?ref=${refNumber}&amount=${total}&currency=${currency}`
+        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
+        localStorage.setItem('esewa_return_to', returnToUrl)
+        window.location.href = mockUrl
+      } finally {
+        if (!cancelled) setEsewaState(prev => ({ ...prev, loading: false }))
+      }
+    }
+    createEsewaIntent()
+    return () => { cancelled = true }
+  }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaRetryCount, total, currency])
+
   const handleRazorpayPayment = async (options: RazorpayPayOptions) => {
     if (!razorpayState.orderId) { toast.error("Razorpay not ready"); return }
     setPaymentLoading(true)
@@ -469,6 +532,11 @@ export default function ReservePage() {
       return
     }
 
+    if (selectedPayment === "esewa" && !esewaState.paymentIntentId) {
+      toast.error("Please complete eSewa payment first")
+      return
+    }
+
     setConfirmingBooking(true)
     setPaymentLoading(true)
     try {
@@ -501,6 +569,16 @@ export default function ReservePage() {
           payment_gateway: "khalti",
           gateway_payload: {
             payment_intent_id: khaltiState.paymentIntentId,
+          },
+        })
+      }
+
+      if (selectedPayment === "esewa" && esewaState.paymentIntentId && refNumber) {
+        await confirmBookingWithRetry(refNumber, {
+          idempotency_key: crypto.randomUUID(),
+          payment_gateway: "esewa",
+          gateway_payload: {
+            payment_intent_id: esewaState.paymentIntentId,
           },
         })
       }
@@ -551,13 +629,14 @@ export default function ReservePage() {
       }
       toast.success("Booking confirmed!")
       addNotification({
-        icon: CalendarDays,
+        icon: 'CalendarDays',
         color: 'var(--brand-accent)',
         bgColor: 'var(--brand-accent-light)',
         title: 'Booking Confirmed',
         message: `Your booking at ${hotel?.name ?? 'the property'} has been confirmed. Check-in is on ${checkIn}.`,
       })
       localStorage.removeItem('khalti_payment_intent_id')
+      localStorage.removeItem('esewa_payment_intent_id')
       navigate(`/booking-confirmation/${refNumber || newBooking.id}`, {
         state: {
           propertyImages: hotel?.images || [],
@@ -631,6 +710,9 @@ export default function ReservePage() {
     subtotal,
     discountAmount,
     total,
+    specialOfferDiscount: booking?.special_offer_discount || 0,
+    couponDiscount: booking?.coupon_discount || 0,
+    couponCode: booking?.coupon_code || null,
     appliedDiscount,
     promoInput,
     promoError,
@@ -734,6 +816,9 @@ export default function ReservePage() {
               khaltiPaymentIntentId={khaltiState.paymentIntentId}
               khaltiLoading={khaltiState.loading}
               khaltiError={khaltiState.error}
+              esewaPaymentIntentId={esewaState.paymentIntentId}
+              esewaLoading={esewaState.loading}
+              esewaError={esewaState.error}
               paySubMethod={paySubMethod}
               onSetPaySubMethod={setPaySubMethod}
               onStripeSuccess={(id, secret, createdAt) => { setStripeState(prev => ({ ...prev, paymentIntentId: id, clientSecret: secret, transactionTime: createdAt })) }}
@@ -746,6 +831,10 @@ export default function ReservePage() {
                 setKhaltiState({ paymentIntentId: null, loading: false, error: null })
                 setKhaltiRetryCount(c => c + 1)
               }}
+              onEsewaRetry={() => {
+                setEsewaState({ paymentIntentId: null, loading: false, error: null })
+                setEsewaRetryCount(c => c + 1)
+              }}
             />
 
             <ConfirmButton
@@ -755,6 +844,7 @@ export default function ReservePage() {
               razorpayResponse={razorpayState.response}
               stripePaymentIntentId={stripeState.paymentIntentId}
               khaltiPaymentIntentId={khaltiState.paymentIntentId}
+              esewaPaymentIntentId={esewaState.paymentIntentId}
               onSetMarketingOptIn={setMarketingOptIn}
               onConfirm={handleConfirmBooking}
             />

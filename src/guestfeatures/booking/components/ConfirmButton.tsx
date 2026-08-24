@@ -9,6 +9,7 @@ interface ConfirmButtonProps {
   razorpayResponse: RazorpayPaymentResponse | null
   stripePaymentIntentId: string | null
   khaltiPaymentIntentId: string | null
+  esewaPaymentIntentId: string | null
   onSetMarketingOptIn: (value: boolean) => void
   onConfirm: () => void
 }
@@ -20,15 +21,17 @@ export function ConfirmButton({
   razorpayResponse,
   stripePaymentIntentId,
   khaltiPaymentIntentId,
+  esewaPaymentIntentId,
   onSetMarketingOptIn,
   onConfirm,
 }: ConfirmButtonProps) {
   const isDisabled = !selectedPayment || paymentLoading ||
     (selectedPayment === "razorpay" && !razorpayResponse) ||
     (selectedPayment === "stripe" && !stripePaymentIntentId) ||
-    (selectedPayment === "khalti" && !khaltiPaymentIntentId)
+    (selectedPayment === "khalti" && !khaltiPaymentIntentId) ||
+    (selectedPayment === "esewa" && !esewaPaymentIntentId)
 
-  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : selectedPayment === "arrival" ? "Pay at Arrival" : "Razorpay"
+  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : selectedPayment === "esewa" ? "eSewa" : selectedPayment === "arrival" ? "Pay at Arrival" : "Razorpay"
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">

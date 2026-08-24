@@ -33,6 +33,8 @@ const BookingPage = lazy(() => import('../guestfeatures/booking/pages/GuestBooki
 const BookingViewPage = lazy(() => import('../guestfeatures/booking/pages/BookingSummaryPage'))
 const ReservePage = lazy(() => import('../guestfeatures/booking/pages/ReservePage'))
 const KhaltiCallbackPage = lazy(() => import('../guestfeatures/booking/pages/KhaltiCallbackPage'))
+const EsewaMockPage = lazy(() => import('../guestfeatures/booking/pages/EsewaMockPage'))
+const EsewaCallbackPage = lazy(() => import('../guestfeatures/booking/pages/EsewaCallbackPage'))
 const BookingConfirmationPage = lazy(() => import('../guestfeatures/booking/pages/BookingConfirmationPage'))
 const ProfilePage = lazy(() => import('../guestfeatures/profile/pages/ProfilePage'))
 const AboutMe = lazy(() => import('../guestfeatures/profile/components/AboutMe'))
@@ -94,6 +96,8 @@ export function AppRoutes() {
       <Route path="/reserve" element={<KhaltiCallbackPage />} />
       <Route path="/reserve/:id" element={<ProtectedRoute><ReservePage /></ProtectedRoute>} />
       <Route path="/payment/khalti/callback" element={<KhaltiCallbackPage />} />
+      <Route path="/payment/esewa/mock" element={<EsewaMockPage />} />
+      <Route path="/payment/esewa/callback" element={<EsewaCallbackPage />} />
       <Route path="/booking-confirmation/:refNumber?" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

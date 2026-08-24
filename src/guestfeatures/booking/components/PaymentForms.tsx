@@ -25,6 +25,9 @@ interface PaymentFormsProps {
   khaltiPaymentIntentId: string | null
   khaltiLoading: boolean
   khaltiError: string | null
+  esewaPaymentIntentId: string | null
+  esewaLoading: boolean
+  esewaError: string | null
   paySubMethod: 'upi' | 'card' | 'netbanking' | null
   onSetPaySubMethod: (method: 'upi' | 'card' | 'netbanking' | null) => void
   onStripeSuccess: (id: string, secret: string, createdAt: number) => void
@@ -34,6 +37,7 @@ interface PaymentFormsProps {
   onSetKhaltiError: (error: string | null) => void
   onSetKhaltiLoading: (loading: boolean) => void
   onKhaltiRetry: () => void
+  onEsewaRetry: () => void
 }
 
 export function PaymentForms({
@@ -57,6 +61,9 @@ export function PaymentForms({
   khaltiPaymentIntentId,
   khaltiLoading,
   khaltiError,
+  esewaPaymentIntentId,
+  esewaLoading,
+  esewaError,
   paySubMethod,
   onSetPaySubMethod,
   onStripeSuccess,
@@ -65,6 +72,7 @@ export function PaymentForms({
   onRazorpayRetry,
   onSetKhaltiError,
   onKhaltiRetry,
+  onEsewaRetry,
 }: PaymentFormsProps) {
   if (selectedPayment === "stripe" && !stripePaymentIntentId) {
     return (
@@ -298,11 +306,70 @@ export function PaymentForms({
     )
   }
 
+  if (selectedPayment === "esewa" && !esewaPaymentIntentId) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <div className="space-y-3">
+          {esewaLoading && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <Loader2 size={16} className="animate-spin text-[#60BB46]" />
+              <span className="text-sm text-gray-500">Redirecting to eSewa...</span>
+            </div>
+          )}
+          {esewaError && (
+            <div className="text-center py-4">
+              <p className="text-sm text-red-500 mb-2">{esewaError}</p>
+              <button
+                onClick={onEsewaRetry}
+                className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
+              >
+                Tap to retry
+              </button>
+            </div>
+          )}
+          {!esewaLoading && !esewaError && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <ShieldCheck size={16} className="text-[#60BB46]" />
+              <span className="text-sm text-gray-600">Tap the eSewa tab to pay</span>
+            </div>
+          )}
+          <button
+            disabled={esewaLoading || paymentLoading}
+            className="w-full py-3 rounded-xl bg-[#60BB46] text-white font-semibold text-sm hover:bg-[#4fa83a] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {esewaLoading ? <><Loader2 size={14} className="animate-spin" /> Redirecting...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via eSewa</>}
+          </button>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-1">Secure Payment via eSewa</p>
+              <p className="text-xs text-gray-600">You will be redirected to eSewa to complete payment.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (selectedPayment === "esewa" && esewaPaymentIntentId) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 mb-4">
+          <CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-700">eSewa payment initiated</p>
+            <p className="text-xs text-green-600 mt-1">Click "Complete booking" below to confirm your reservation.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (selectedPayment === "arrival") {
     return null
   }
 
-  if (razorpayResponse || stripePaymentIntentId || khaltiPaymentIntentId) {
+  if (razorpayResponse || stripePaymentIntentId || khaltiPaymentIntentId || esewaPaymentIntentId) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">

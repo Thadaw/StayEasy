@@ -17,6 +17,9 @@ interface PriceSummaryCardProps {
   subtotal: number
   discountAmount: number
   total: number
+  specialOfferDiscount?: number
+  couponDiscount?: number
+  couponCode?: string | null
   appliedDiscount?: {
     code: string
     type: 'percentage' | 'fixed'
@@ -37,6 +40,9 @@ export function PriceSummaryCard({
   subtotal,
   discountAmount,
   total,
+  specialOfferDiscount = 0,
+  couponDiscount = 0,
+  couponCode,
   appliedDiscount,
   promoInput,
   promoError,
@@ -53,7 +59,19 @@ export function PriceSummaryCard({
           <span className="text-sm text-gray-600">Original price</span>
           <span className="text-sm text-gray-900">{currency}{subtotal.toFixed(2)}</span>
         </div>
-        {appliedDiscount && (
+        {specialOfferDiscount > 0 && (
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-[#C0392B] font-medium">Special offer discount</span>
+            <span className="text-sm text-[#C0392B] font-medium">-{currency}{specialOfferDiscount.toFixed(2)}</span>
+          </div>
+        )}
+        {couponDiscount > 0 && couponCode && (
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-[#C0392B] font-medium">Coupon ({couponCode})</span>
+            <span className="text-sm text-[#C0392B] font-medium">-{currency}{couponDiscount.toFixed(2)}</span>
+          </div>
+        )}
+        {appliedDiscount && !couponCode && (
           <div className="flex justify-between items-center">
             <span className="text-sm text-[#C0392B] font-medium">Bonus savings</span>
             <span className="text-sm text-[#C0392B] font-medium">-{currency}{discountAmount.toFixed(2)}</span>
@@ -61,7 +79,7 @@ export function PriceSummaryCard({
         )}
       </div>
 
-      {appliedDiscount && (
+      {(specialOfferDiscount > 0 || couponDiscount > 0 || appliedDiscount) && (
         <p className="text-xs text-gray-500 italic mt-2">
           You're getting a reduced rate because this property is offering a discount.
         </p>
@@ -113,8 +131,8 @@ export function PriceSummaryCard({
       </div>
 
       <div className="border-t border-gray-200 mt-4 pt-4">
-        {appliedDiscount && (
-          <p className="text-sm text-[#C0392B] line-through mb-1">{currency}{subtotal.toFixed(2)}</p>
+        {(specialOfferDiscount > 0 || couponDiscount > 0 || appliedDiscount) && (
+          <p className="text-sm text-[#C0392B] line-through mb-1">{currency}{(subtotal + specialOfferDiscount + couponDiscount).toFixed(2)}</p>
         )}
         <p className="text-xl font-bold text-gray-900">Total {currency}{Math.max(0, total).toFixed(2)}</p>
         <p className="text-xs text-gray-500">Taxes & fees included</p>

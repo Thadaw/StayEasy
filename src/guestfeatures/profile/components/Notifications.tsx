@@ -2,7 +2,7 @@ import { Bell, Check, Trash2, Circle } from 'lucide-react'
 import { useNotifications } from '../../../context/NotificationContext'
 
 export default function Notifications() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, getIcon } = useNotifications()
 
   if (notifications.length === 0) {
     return (
@@ -39,7 +39,7 @@ export default function Notifications() {
         </div>
         <div className="divide-y divide-brand-card-border">
           {notifications.map(notification => {
-            const Icon = notification.icon
+            const Icon = getIcon(notification.icon) || Bell
             return (
               <div
                 key={notification.id}

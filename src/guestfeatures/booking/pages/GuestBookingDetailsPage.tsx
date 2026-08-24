@@ -172,9 +172,12 @@ export default function BookingDetailsPage() {
     })
   }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation])
 
-  const nights = calculateNights(checkIn, checkOut)
-  const subtotal = roomLines.reduce((s, l) => s + l.lineTotal * nights, 0)
-  const total = subtotal
+  const nights = bookingData?.nights || calculateNights(checkIn, checkOut)
+  const subtotal = bookingData?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal * nights, 0)
+  const specialOfferDiscount = bookingData?.special_offer_discount || 0
+  const couponDiscount = bookingData?.coupon_discount || 0
+  const couponCode = bookingData?.coupon_code || null
+  const total = bookingData?.total_amount || subtotal
 
   const handleNext = () => {
     const params = new URLSearchParams()
@@ -379,13 +382,32 @@ export default function BookingDetailsPage() {
 
               <div className="border-t border-gray-200 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Your price summary</h3>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-gray-600">Original price</span>
+                  <span className="text-xs text-gray-900">{currency}{subtotal.toFixed(2)}</span>
+                </div>
+                {specialOfferDiscount > 0 && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Special offer discount</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{specialOfferDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && couponCode && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Coupon ({couponCode})</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
                 {roomLines.map(l => (
                   <div key={l.room.id} className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-600">{l.room.name}</span>
+                    <span className="text-xs text-gray-600">{l.room.name} × {nights} night{nights !== 1 ? 's' : ''}</span>
                     <span className="text-xs text-gray-900">{currency}{(l.lineTotal * nights).toFixed(2)}</span>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 mt-3 pt-3">
+                  {(specialOfferDiscount > 0 || couponDiscount > 0) && (
+                    <p className="text-xs text-[#C0392B] line-through mb-1">{currency}{(subtotal + specialOfferDiscount + couponDiscount).toFixed(2)}</p>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-gray-900">Total</span>
                     <span className="text-sm font-bold text-gray-900">{currency}{Math.max(0, total).toFixed(2)}</span>

@@ -1,6 +1,6 @@
 import { Globe } from "lucide-react";
 import { Link } from "react-router-dom";
-import logo1 from "../../assets/logo1.png";
+
 
 const footerLinks = {
   Support: ["Help Center", "Contact Us", "Booking Help", "Cancellation & Refund", "Payment & Security", "Safety Information", "Accessibility"],
@@ -16,7 +16,7 @@ export function Footer() {
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="mb-8">
           <Link to="/" className="shrink-0 flex items-center gap-2">
-            <img src={logo1} alt="ServeIQ" className="h-[34px] w-auto" />
+            <img src="/logo1.png" alt="ServeIQ" className="h-[34px] w-auto" />
             <span className="font-brand font-extrabold text-xl tracking-tight leading-none text-brand-primary">
               Serve<span className="text-brand-accent">IQ</span>
             </span>
