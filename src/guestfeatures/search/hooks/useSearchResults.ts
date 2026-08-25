@@ -25,7 +25,11 @@ function resolveSearchTerms(location: string, propertyType: string) {
 
   if (detectedType && !propertyType) {
     const destination = trimmed.replace(new RegExp(`^${trimmed.split(/\s/)[0]}\\s*$`, "i"), "").trim();
-    return { destination: destination || "Nepal", propertyType: detectedType };
+    return { destination: destination || trimmed, propertyType: detectedType };
+  }
+
+  if (detectedType && !trimmed) {
+    return { destination: propertyType, propertyType: detectedType };
   }
 
   return { destination: trimmed || "Nepal", propertyType: detectedType };
@@ -50,9 +54,6 @@ function buildParams(
     limit: String(limit),
     destination,
   };
-  if (resolvedType) {
-    params.property_type = resolvedType;
-  }
   params.adults = guests.match(/\d+/)?.[0] || "1";
   params.children = "0";
   params.rooms = "1";

@@ -1,5 +1,4 @@
-import { Loader2, CreditCard, Smartphone, Building2, CheckCircle2, ShieldCheck } from 'lucide-react'
-import StripeCardForm from '../../../shared/components/StripeCardForm'
+import { Loader2, CreditCard, Smartphone, Building2, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react'
 import type { RazorpayPaymentResponse, RazorpayPayOptions } from '../types'
 import type { PaymentMethod } from '../types'
 
@@ -38,12 +37,15 @@ interface PaymentFormsProps {
   onSetKhaltiLoading: (loading: boolean) => void
   onKhaltiRetry: () => void
   onEsewaRetry: () => void
+  razorpayModalOpen?: boolean
+  khaltiCompleted?: boolean
 }
 
 export function PaymentForms({
   selectedPayment,
   total,
   currency,
+  hotelName,
   refNumber,
   guestName,
   guestEmail,
@@ -73,26 +75,11 @@ export function PaymentForms({
   onSetKhaltiError,
   onKhaltiRetry,
   onEsewaRetry,
+  razorpayModalOpen,
+  khaltiCompleted = false,
 }: PaymentFormsProps) {
-  if (selectedPayment === "stripe" && !stripePaymentIntentId) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <StripeCardForm
-          refNumber={refNumber}
-          amount={total}
-          currency={currency}
-          guestName={guestName}
-          guestEmail={guestEmail}
-          guestPhone={guestPhone}
-          clientSecret={stripeClientSecret}
-          intentLoading={stripeIntentLoading}
-          intentError={stripeIntentError}
-          onRetry={onStripeRetry}
-          onSuccess={onStripeSuccess}
-        />
-      </div>
-    )
-  }
+  if (selectedPayment === "stripe" && !stripePaymentIntentId) return null
+  if (selectedPayment === "razorpay" && !razorpayResponse && razorpayModalOpen) return null
 
   if (selectedPayment === "razorpay" && !razorpayResponse) {
     return (
@@ -263,9 +250,12 @@ export function PaymentForms({
             </div>
           )}
           {!khaltiLoading && !khaltiError && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <ShieldCheck size={16} className="text-[#5C2D91]" />
-              <span className="text-sm text-gray-600">Tap the Khalti tab to pay</span>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Payment not completed</p>
+                <p className="text-xs text-gray-600">Click the button below to retry your payment.</p>
+              </div>
             </div>
           )}
           <button
@@ -280,6 +270,20 @@ export function PaymentForms({
               <p className="text-sm font-semibold text-gray-900 mb-1">Secure Payment via Khalti</p>
               <p className="text-xs text-gray-600">You will be redirected to Khalti to complete payment.</p>
             </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (selectedPayment === "khalti" && khaltiPaymentIntentId && khaltiCompleted) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-700">Payment completed!</p>
+            <p className="text-xs text-green-600 mt-1">Click "Complete booking" below to confirm your reservation.</p>
           </div>
         </div>
       </div>
@@ -328,9 +332,12 @@ export function PaymentForms({
             </div>
           )}
           {!esewaLoading && !esewaError && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <ShieldCheck size={16} className="text-[#60BB46]" />
-              <span className="text-sm text-gray-600">Tap the eSewa tab to pay</span>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Payment not completed</p>
+                <p className="text-xs text-gray-600">Click the button below to retry your payment.</p>
+              </div>
             </div>
           )}
           <button

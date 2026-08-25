@@ -153,6 +153,8 @@ export default function BookingDetailsPage() {
     return hotel.roomTypes.filter(rt => selectedRooms[rt.id] && selectedRooms[rt.id] > 0)
   }, [hotel, reservedRooms, selectedRooms])
 
+  const nights = bookingData?.nights || calculateNights(checkIn, checkOut)
+
   const roomLines = useMemo(() => {
     if (reservedRooms.length > 0) {
       return reservedRooms.map(br => {
@@ -160,20 +162,37 @@ export default function BookingDetailsPage() {
         const qty = 1
         const gc = br.max_adults + br.max_children
         const ep = br.base_rate
-        return { room: rt || { id: br.room_id, name: br.room_name, price: br.base_rate, maxGuests: gc } as RoomType, qty, gc, ep, lineTotal: qty * ep }
+        return {
+          room: rt || {
+            id: br.room_id,
+            name: br.room_name,
+            price: br.base_rate,
+            maxGuests: gc,
+            maxAdults: br.max_adults,
+            maxChildren: br.max_children,
+            roomTypeName: br.room_type || '',
+            bedType: br.bed_type || '',
+            image: br.photo || br.photos?.cover || '',
+            cancellationTitle: br.cancellation_title || '',
+            cancellationDescription: br.cancellation_description || '',
+          } as RoomType,
+          qty, gc, ep, lineTotal: br.subtotal || qty * ep * nights,
+          nights: br.nights,
+          maxAdults: br.max_adults,
+          maxChildren: br.max_children,
+        }
       })
     }
     return selectedRoomTypes.map(rt => {
       const qty = selectedRooms[rt.id] || 0
       const gc = guestAllocation[rt.id] || 1
       const ep = rt.price
-      const lineTotal = qty * ep
-      return { room: rt, qty, gc, ep, lineTotal }
+      const lineTotal = qty * ep * nights
+      return { room: rt, qty, gc, ep, lineTotal, maxAdults: rt.maxAdults || 0, maxChildren: rt.maxChildren || 0 }
     })
-  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation])
+  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation, nights])
 
-  const nights = bookingData?.nights || calculateNights(checkIn, checkOut)
-  const subtotal = bookingData?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal * nights, 0)
+  const subtotal = bookingData?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal, 0)
   const specialOfferDiscount = bookingData?.special_offer_discount || 0
   const couponDiscount = bookingData?.coupon_discount || 0
   const couponCode = bookingData?.coupon_code || null
@@ -348,7 +367,7 @@ export default function BookingDetailsPage() {
               </div>
 
               {roomLines.length > 0 && (
-                <div className="border-t border-gray-200 p-5 hidden lg:block">
+                <div className="border-t border-gray-200 p-5">
                   <h3 className="text-sm font-bold text-gray-900 mb-3">Room details</h3>
                   <div className="space-y-3">
                     {roomLines.map((l, i) => {
@@ -365,14 +384,21 @@ export default function BookingDetailsPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900">{room.name}</p>
-                            <p className="text-xs text-gray-500">{room.roomTypeName || room.bedType || ''}</p>
-                            <p className="text-xs text-gray-500">Room type: Standard</p>
-                            <p className="text-xs text-gray-500">Bed type: Queen</p>
+                            {room.roomTypeName && (
+                              <p className="text-xs text-gray-500">Room type: {room.roomTypeName}</p>
+                            )}
+                            {room.bedType && (
+                              <p className="text-xs text-gray-500">Bed type: {room.bedType}</p>
+                            )}
                             <p className="text-xs text-gray-400">
-                              3 adults · 2 children
+                              {l.maxAdults > 0 && l.maxChildren > 0
+                                ? `${l.maxAdults} adult${l.maxAdults !== 1 ? 's' : ''} · ${l.maxChildren} child${l.maxChildren !== 1 ? 'ren' : ''}`
+                                : l.gc > 0
+                                  ? `${l.gc} guest${l.gc !== 1 ? 's' : ''}`
+                                  : ''}
                             </p>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.ep.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.lineTotal.toFixed(2)}</p>
                         </div>
                       )
                     })}
@@ -382,10 +408,6 @@ export default function BookingDetailsPage() {
 
               <div className="border-t border-gray-200 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Your price summary</h3>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-600">Original price</span>
-                  <span className="text-xs text-gray-900">{currency}{subtotal.toFixed(2)}</span>
-                </div>
                 {specialOfferDiscount > 0 && (
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-[#C0392B] font-medium">Special offer discount</span>
@@ -401,7 +423,7 @@ export default function BookingDetailsPage() {
                 {roomLines.map(l => (
                   <div key={l.room.id} className="flex justify-between items-center mb-1">
                     <span className="text-xs text-gray-600">{l.room.name} × {nights} night{nights !== 1 ? 's' : ''}</span>
-                    <span className="text-xs text-gray-900">{currency}{(l.lineTotal * nights).toFixed(2)}</span>
+                    <span className="text-xs text-gray-900">{currency}{l.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 mt-3 pt-3">

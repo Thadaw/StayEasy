@@ -7,9 +7,12 @@ import { Footer } from "../../../shared/components/Footer";
 import { PageMessage } from "../../../shared/components/PageMessage";
 import { useFavorites } from "../../../context/FavoritesContext";
 import { getDefaultDates } from "../../../shared/utils/date";
-import { parseSearchResponse } from "../../../shared/utils/helpers";
+import { parseSearchResponse, parseSearchMeta } from "../../../shared/utils/helpers";
 import type { SearchProperty } from "../../../shared/types/api";
 import api from "../../../services/axios";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 10;
 
 export default function CountryPage() {
   const { code } = useParams<{ code: string }>();
@@ -18,14 +21,28 @@ export default function CountryPage() {
   const [activeCity, setActiveCity] = useState<string | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
   const [searchResults, setSearchResults] = useState<SearchProperty[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [code]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   useEffect(() => {
     if (!country) return;
+    let cancelled = false;
     const loadProperties = async () => {
       setLoading(true);
       try {
         const { today, tomorrow } = getDefaultDates();
+        const skip = (currentPage - 1) * PAGE_SIZE;
         const { data } = await api.get("/search", {
           params: {
             destination: country.name,
@@ -34,18 +51,26 @@ export default function CountryPage() {
             adults: 2,
             children: 0,
             rooms: 1,
+            limit: PAGE_SIZE,
+            skip,
           },
         });
-        const results = parseSearchResponse<SearchProperty>(data);
-        setSearchResults(results);
+        if (cancelled) return;
+        setSearchResults(parseSearchResponse<SearchProperty>(data));
+        const meta = parseSearchMeta(data);
+        setTotal(meta?.total ?? parseSearchResponse<SearchProperty>(data).length);
       } catch {
-        setSearchResults([]);
+        if (!cancelled) {
+          setSearchResults([]);
+          setTotal(0);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadProperties();
-  }, [country]);
+    return () => { cancelled = true; };
+  }, [country, currentPage]);
 
   const selectedCity = activeCity
     ? country?.cities.find((c) => c.name === activeCity)
@@ -232,9 +257,6 @@ export default function CountryPage() {
             <h2 className="font-display font-bold text-foreground text-2xl">
               {selectedCity ? `Stays in ${selectedCity.name}` : `Stays in ${country.name}`}
             </h2>
-            <Link to="/" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-              View all <ChevronRight size={15} />
-            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {loading ? (
@@ -292,6 +314,13 @@ export default function CountryPage() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </div>
 

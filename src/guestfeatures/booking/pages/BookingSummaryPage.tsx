@@ -234,7 +234,7 @@ export default function BookingDetailsView() {
       </div>
 
       <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
           <div className="space-y-6">
             <BookingHeader
               propertyName={propertyName}

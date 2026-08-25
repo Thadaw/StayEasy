@@ -43,7 +43,7 @@ export default function EsewaMockPage() {
   const handleCancel = () => {
     localStorage.removeItem('esewa_return_to')
     localStorage.removeItem('esewa_payment_intent_id')
-    navigate(-1)
+    navigate(`/reserve?ref=${refNumber}`, { replace: true })
   }
 
   if (paymentSuccess) {

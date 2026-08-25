@@ -104,7 +104,7 @@ export default function SearchResultsPage() {
           }
           const fLower = f.toLowerCase().replace(/s$/, "");
           const tNorm = type.replace(/s$/, "");
-          return type.includes(fLower) || fLower.includes(type) || tNorm === fLower;
+          return tNorm === fLower;
         });
         if (!matchesType) return false;
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
+import { Loader2, CreditCard, Smartphone, Building2, ShieldCheck } from "lucide-react"
 import { useRazorpay } from "../../../shared/hooks/useRazorpay"
 import type { RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse } from "../../../shared/types/razorpay"
 import type { RoomType } from "../../../data/hotels"
@@ -16,6 +17,7 @@ import { PriceSummaryCard } from "../components/PriceSummaryCard"
 import { PaymentMethodTabs } from "../components/PaymentMethodTabs"
 import { PaymentForms } from "../components/PaymentForms"
 import { ConfirmButton } from "../components/ConfirmButton"
+import StripeCardForm from "../../../shared/components/StripeCardForm"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { allCountries } from "../../../data/countries"
 import { parseJSON } from "../../../shared/utils/helpers"
@@ -147,6 +149,9 @@ export default function ReservePage() {
   const [esewaRetryCount, setEsewaRetryCount] = useState(0)
   const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
   const [confirmingBooking, setConfirmingBooking] = useState(false)
+  const [stripeModalOpen, setStripeModalOpen] = useState(false)
+  const [razorpayModalOpen, setRazorpayModalOpen] = useState(false)
+  const [khaltiCompleted, setKhaltiCompleted] = useState(false)
 
   const { isLoaded: razorpayLoaded } = useRazorpay(selectedPayment === "razorpay")
 
@@ -260,6 +265,7 @@ export default function ReservePage() {
     const pidx = pidxMatch?.[1] || searchParams.get('pidx') || ''
 
     if (khaltiStatus === 'user canceled' || khaltiStatus === 'pending') {
+      toast("Payment cancelled. You can retry anytime.", { icon: "ℹ️" })
       setKhaltiState({ paymentIntentId: null, loading: false, error: null })
       setSelectedPayment("khalti")
       localStorage.removeItem('khalti_payment_intent_id')
@@ -270,6 +276,7 @@ export default function ReservePage() {
     if (storedIntentId) {
       setKhaltiState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
       setSelectedPayment("khalti")
+      setKhaltiCompleted(true)
     }
   }, [searchParams])
 
@@ -287,6 +294,7 @@ export default function ReservePage() {
     const esewaStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('esewa_status') || '').toLowerCase()
 
     if (esewaStatus === 'user canceled' || esewaStatus === 'pending' || esewaStatus === 'failed') {
+      toast("Payment cancelled. You can retry anytime.", { icon: "ℹ️" })
       setEsewaState({ paymentIntentId: null, loading: false, error: null })
       setSelectedPayment("esewa")
       localStorage.removeItem('esewa_payment_intent_id')
@@ -366,14 +374,31 @@ export default function ReservePage() {
     return hotel.roomTypes.filter(rt => selectedRooms[rt.id] && selectedRooms[rt.id] > 0)
   }, [hotel, booking, selectedRooms])
 
+  const nights = booking?.nights || calculateNights(checkIn, checkOut)
+
   const roomLines = useMemo(() => {
     if (booking?.rooms?.length) {
       return booking.rooms.map(br => {
         const rt = hotel?.roomTypes.find(r => r.id === br.room_id)
         return {
-          room: rt || { id: br.room_id, name: br.room_name, price: br.base_rate, maxGuests: br.max_adults + br.max_children } as RoomType,
-          qty: 1, gc: br.max_adults + br.max_children, ep: br.base_rate, lineTotal: br.subtotal,
-          cancellationTitle: rt?.cancellationTitle || '',
+          room: rt || {
+            id: br.room_id,
+            name: br.room_name,
+            price: br.base_rate,
+            maxGuests: br.max_adults + br.max_children,
+            maxAdults: br.max_adults,
+            maxChildren: br.max_children,
+            roomTypeName: br.room_type || '',
+            bedType: br.bed_type || '',
+            image: br.photo || br.photos?.cover || '',
+            cancellationTitle: br.cancellation_title || '',
+            cancellationDescription: br.cancellation_description || '',
+          } as RoomType,
+          qty: 1, gc: br.max_adults + br.max_children, ep: br.base_rate, lineTotal: br.subtotal || 1 * br.base_rate * nights,
+          nights: br.nights,
+          maxAdults: br.max_adults,
+          maxChildren: br.max_children,
+          cancellationTitle: rt?.cancellationTitle || br.cancellation_title || '',
           cancellationPolicy: rt?.cancellationPolicy || '',
         }
       })
@@ -382,10 +407,10 @@ export default function ReservePage() {
       const qty = selectedRooms[rt.id] || 0;
       const gc = guestAllocation[rt.id] || 1;
       const ep = rt.price;
-      const lineTotal = qty * ep;
-      return { room: rt, qty, gc, ep, lineTotal, cancellationTitle: rt.cancellationTitle || '', cancellationPolicy: rt.cancellationPolicy || '' };
+      const lineTotal = qty * ep * nights;
+      return { room: rt, qty, gc, ep, lineTotal, maxAdults: rt.maxAdults || 0, maxChildren: rt.maxChildren || 0, cancellationTitle: rt.cancellationTitle || '', cancellationPolicy: rt.cancellationPolicy || '' };
     })
-  }, [booking, selectedRoomTypes, hotel, selectedRooms, guestAllocation])
+  }, [booking, selectedRoomTypes, hotel, selectedRooms, guestAllocation, nights])
 
   const cancellationTitle = booking?.rooms?.[0]?.cancellation_title || availableRooms[0]?.cancellation_title || ''
   const cancellationDescription = booking?.rooms?.[0]?.cancellation_description || availableRooms[0]?.cancellation_description || ''
@@ -396,8 +421,7 @@ export default function ReservePage() {
     || (adultsParam ? Number(adultsParam) : 0) + (childrenParam ? Number(childrenParam) : 0)
     || booking?.rooms?.reduce((s, r) => s + r.max_adults + r.max_children, 0) || 0;
 
-  const nights = booking?.nights || calculateNights(checkIn, checkOut)
-  const subtotal = booking?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal * nights, 0);
+  const subtotal = booking?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal, 0);
 
   let discountAmount = 0;
   if (appliedDiscount) {
@@ -510,7 +534,11 @@ export default function ReservePage() {
       razorpay.open()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error"
-      if (msg !== "Payment cancelled") toast.error("Payment failed: " + msg)
+      if (msg === "Payment cancelled") {
+        toast("Payment cancelled. You can retry anytime.", { icon: "ℹ️" })
+      } else {
+        toast.error("Payment failed: " + msg)
+      }
     } finally { setPaymentLoading(false) }
   }
 
@@ -691,7 +719,7 @@ export default function ReservePage() {
     checkOut,
     totalGuests,
     nights,
-    booking,
+    bookingData: booking,
     guestName,
     guestEmail,
     guestPhone,
@@ -741,7 +769,11 @@ export default function ReservePage() {
             <PaymentMethodTabs
               paymentOptions={paymentOptions}
               selectedPayment={selectedPayment}
-              onSelect={setSelectedPayment}
+              onSelect={(method) => {
+                setSelectedPayment(method)
+                if (method === "stripe") setStripeModalOpen(true)
+                if (method === "razorpay") setRazorpayModalOpen(true)
+              }}
             />
 
             <button
@@ -816,6 +848,7 @@ export default function ReservePage() {
               khaltiPaymentIntentId={khaltiState.paymentIntentId}
               khaltiLoading={khaltiState.loading}
               khaltiError={khaltiState.error}
+              khaltiCompleted={khaltiCompleted}
               esewaPaymentIntentId={esewaState.paymentIntentId}
               esewaLoading={esewaState.loading}
               esewaError={esewaState.error}
@@ -835,6 +868,7 @@ export default function ReservePage() {
                 setEsewaState({ paymentIntentId: null, loading: false, error: null })
                 setEsewaRetryCount(c => c + 1)
               }}
+              razorpayModalOpen={razorpayModalOpen}
             />
 
             <ConfirmButton
@@ -853,6 +887,225 @@ export default function ReservePage() {
       />
 
       <Footer />
+
+      {stripeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:px-6">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setStripeModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setStripeModalOpen(false)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="p-6">
+              <StripeCardForm
+                refNumber={refNumber}
+                amount={total}
+                currency={currency}
+                guestName={guestName}
+                guestEmail={guestEmail}
+                guestPhone={guestPhone}
+                hotelName={hotelName}
+                clientSecret={stripeState.clientSecret}
+                intentLoading={stripeState.loading}
+                intentError={stripeState.error}
+                onRetry={() => setStripeRetryCount(c => c + 1)}
+                onSuccess={(id, secret, createdAt) => {
+                  setStripeState(prev => ({ ...prev, paymentIntentId: id, clientSecret: secret, transactionTime: createdAt }))
+                  setStripeModalOpen(false)
+                }}
+              />
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => {
+                    setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null })
+                    setSelectedPayment(null)
+                    setStripeModalOpen(false)
+                  }}
+                  className="px-4 py-1.5 rounded-md border border-gray-300 text-gray-500 text-xs font-medium hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
+                >
+                  Cancel Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {razorpayModalOpen && selectedPayment === "razorpay" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:px-6">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setRazorpayModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setRazorpayModalOpen(false)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Payment</h3>
+                <p className="text-xs text-gray-500">Pay via UPI, Card, Net Banking & more</p>
+              </div>
+
+              <div className="space-y-4">
+                {razorpayState.loading && (
+                  <div className="flex items-center justify-center gap-2 py-4">
+                    <Loader2 size={16} className="animate-spin text-[#1A3C5E]" />
+                    <span className="text-sm text-gray-500">Initializing Razorpay...</span>
+                  </div>
+                )}
+                {razorpayState.error && (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-red-500 mb-2">{razorpayState.error}</p>
+                    <button
+                      onClick={() => setRazorpayRetryCount(c => c + 1)}
+                      className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {!razorpayState.loading && !razorpayState.error && razorpayState.orderId && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setPaySubMethod(paySubMethod === 'upi' ? null : 'upi')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        paySubMethod === 'upi'
+                          ? 'border-[#1A3C5E] bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        paySubMethod === 'upi' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        <Smartphone size={18} />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900">UPI</span>
+                      <span className="text-[10px] text-gray-500">GPay, PhonePe, etc.</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPaySubMethod(paySubMethod === 'card' ? null : 'card')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        paySubMethod === 'card'
+                          ? 'border-[#1A3C5E] bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        paySubMethod === 'card' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        <CreditCard size={18} />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900">Card</span>
+                      <span className="text-[10px] text-gray-500">Debit / Credit</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPaySubMethod(paySubMethod === 'netbanking' ? null : 'netbanking')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        paySubMethod === 'netbanking'
+                          ? 'border-[#1A3C5E] bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        paySubMethod === 'netbanking' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        <Building2 size={18} />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900">Net Banking</span>
+                      <span className="text-[10px] text-gray-500">All major banks</span>
+                    </button>
+                  </div>
+                )}
+
+                {paySubMethod === 'upi' && (
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                    <label className="block text-xs font-semibold text-gray-700">Select your UPI app</label>
+                    <p className="text-[11px] text-gray-400">
+                      You'll be redirected to your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.) to approve the payment.
+                    </p>
+                    <button
+                      disabled={paymentLoading || !razorpayState.orderId}
+                      onClick={() => handleRazorpayPayment({ type: 'upi' })}
+                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via UPI</>}
+                    </button>
+                  </div>
+                )}
+
+                {paySubMethod === 'card' && (
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                    <p className="text-xs text-gray-600">You'll be redirected to Razorpay's secure card checkout.</p>
+                    <div className="flex items-center gap-2">
+                      {['Visa', 'Mastercard', 'RuPay', 'Amex'].map(b => (
+                        <span key={b} className="text-[10px] font-medium bg-white border border-gray-200 rounded px-2 py-1 text-gray-600">{b}</span>
+                      ))}
+                    </div>
+                    <button
+                      disabled={paymentLoading || !razorpayState.orderId}
+                      onClick={() => handleRazorpayPayment({ type: 'card' })}
+                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Card</>}
+                    </button>
+                  </div>
+                )}
+
+                {paySubMethod === 'netbanking' && (
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                    <label className="block text-xs font-semibold text-gray-700">Select your bank in the secure checkout</label>
+                    <p className="text-[11px] text-gray-400">
+                      You'll be redirected to your bank's net banking page to complete the payment.
+                    </p>
+                    <button
+                      disabled={paymentLoading || !razorpayState.orderId}
+                      onClick={() => handleRazorpayPayment({ type: 'netbanking' })}
+                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Net Banking</>}
+                    </button>
+                  </div>
+                )}
+
+                {!paySubMethod && !razorpayState.response && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                    <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 mb-1">Secure Payment via Razorpay</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        Select a payment method above to proceed. All transactions are encrypted and PCI-compliant.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!razorpayLoaded && (
+                  <p className="text-xs text-gray-400 text-center">Loading Razorpay...</p>
+                )}
+              </div>
+
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => {
+                    setRazorpayState({ response: null, orderId: null, loading: false, error: null })
+                    setPaySubMethod(null)
+                    setSelectedPayment(null)
+                    setRazorpayModalOpen(false)
+                  }}
+                  className="px-4 py-1.5 rounded-md border border-gray-300 text-gray-500 text-xs font-medium hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
+                >
+                  Cancel Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ export interface StripeCardFormProps {
   guestName?: string
   guestEmail?: string
   guestPhone?: string
+  hotelName?: string
   clientSecret?: string | null
   intentLoading?: boolean
   intentError?: string | null

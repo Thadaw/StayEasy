@@ -89,7 +89,7 @@ export function PriceSummaryCard({
         {roomLines.map((l, i) => (
           <div key={i} className="flex justify-between items-center text-sm">
             <span className="text-gray-600">{l.room.name} × {nights} night{nights !== 1 ? 's' : ''}</span>
-            <span className="text-gray-900">{currency}{(l.lineTotal * nights).toFixed(2)}</span>
+            <span className="text-gray-900">{currency}{l.lineTotal.toFixed(2)}</span>
           </div>
         ))}
       </div>

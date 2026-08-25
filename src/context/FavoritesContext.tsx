@@ -61,11 +61,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return
     setLoading(true)
-    api.get<SearchProperty[]>('/favorites')
+    api.get('/favorites')
       .then(({ data }) => {
-        const ids = new Set(data.map((p) => p.property_id))
+        const raw: any[] = Array.isArray(data) ? data : data?.data ?? []
+        const normalized: SearchProperty[] = raw.map((p: any) => ({
+          ...p,
+          property_id: p.property_id ?? p.id,
+          cover_photo: p.cover_photo ?? p.photos?.cover ?? "",
+        }))
+        const ids = new Set(normalized.map((p) => p.property_id))
         const map: Record<string, SearchProperty> = {}
-        data.forEach((p) => { map[p.property_id] = p })
+        normalized.forEach((p) => { map[p.property_id] = p })
         setFavorites(ids)
         setFavoritesData(map)
       })

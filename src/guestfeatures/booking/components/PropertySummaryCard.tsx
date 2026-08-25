@@ -8,16 +8,21 @@ interface RoomLine {
     name: string
     price: number
     maxGuests: number
+    maxAdults?: number
+    maxChildren?: number
     bedType?: string
     roomTypeName?: string
     cancellationTitle?: string
-    cancellationPolicy?: string
+    cancellationDescription?: string
     image?: string
   }
   qty: number
   gc: number
   ep: number
   lineTotal: number
+  maxAdults?: number
+  maxChildren?: number
+  nights?: number
   cancellationTitle?: string
   cancellationPolicy?: string
 }
@@ -185,7 +190,7 @@ export function PropertySummaryCard({
       </div>
 
       {roomLines.length > 0 && (
-        <div className="border-t border-gray-200 p-5 hidden lg:block">
+        <div className="border-t border-gray-200 p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Room details</h3>
           <div className="space-y-3">
             {roomLines.map((rl, i) => {
@@ -202,11 +207,18 @@ export function PropertySummaryCard({
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{rl.room.name}</p>
-                    <p className="text-xs text-gray-500">{rl.room.roomTypeName || rl.room.bedType || ''}</p>
-                    <p className="text-xs text-gray-500">Room type: Standard</p>
-                    <p className="text-xs text-gray-500">Bed type: Queen</p>
+                    {rl.room.roomTypeName && (
+                      <p className="text-xs text-gray-500">Room type: {rl.room.roomTypeName}</p>
+                    )}
+                    {rl.room.bedType && (
+                      <p className="text-xs text-gray-500">Bed type: {rl.room.bedType}</p>
+                    )}
                     <p className="text-xs text-gray-400">
-                      3 adults · 2 children
+                      {rl.maxAdults && rl.maxChildren && rl.maxAdults > 0 && rl.maxChildren > 0
+                        ? `${rl.maxAdults} adult${rl.maxAdults !== 1 ? 's' : ''} · ${rl.maxChildren} child${rl.maxChildren !== 1 ? 'ren' : ''}`
+                        : rl.gc > 0
+                          ? `${rl.gc} guest${rl.gc !== 1 ? 's' : ''}`
+                          : ''}
                     </p>
                   </div>
                   <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{rl.ep.toFixed(2)}</p>
