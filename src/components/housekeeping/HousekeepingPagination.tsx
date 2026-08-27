@@ -6,7 +6,7 @@ interface HousekeepingPaginationProps {
   totalItems: number
   itemsPerPage: number
   onPageChange: (page: number) => void
-  onItemsPerPageChange: (count: number) => void
+  onItemsPerPageChange?: (count: number) => void
 }
 
 export default function HousekeepingPagination({
@@ -15,7 +15,6 @@ export default function HousekeepingPagination({
   totalItems,
   itemsPerPage,
   onPageChange,
-  onItemsPerPageChange,
 }: HousekeepingPaginationProps) {
   const startItem = (currentPage - 1) * itemsPerPage + 1
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
@@ -48,8 +47,8 @@ export default function HousekeepingPagination({
         padding: '12px 0',
       }}
     >
-      <p style={{ fontSize: 14, color: '#6B7280', margin: 0 }}>
-        Showing {startItem} to {endItem} of {totalItems} rooms
+      <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
+        Showing {startItem} to {endItem} of {totalItems} room
       </p>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -57,10 +56,10 @@ export default function HousekeepingPagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           style={{
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             border: '1px solid #E5E7EB',
-            borderRadius: 8,
+            borderRadius: 6,
             background: '#fff',
             cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
             display: 'flex',
@@ -69,7 +68,7 @@ export default function HousekeepingPagination({
             color: currentPage === 1 ? '#D1D5DB' : '#6B7280',
           }}
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
         </button>
 
         {getPageNumbers().map((page, idx) =>
@@ -77,13 +76,13 @@ export default function HousekeepingPagination({
             <span
               key={`ellipsis-${idx}`}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#9CA3AF',
-                fontSize: 14,
+                fontSize: 13,
               }}
             >
               ...
@@ -93,14 +92,14 @@ export default function HousekeepingPagination({
               key={page}
               onClick={() => onPageChange(page)}
               style={{
-                width: 36,
-                height: 36,
-                border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB',
-                borderRadius: 8,
-                background: page === currentPage ? 'var(--primary)' : '#fff',
+                width: 32,
+                height: 32,
+                border: page === currentPage ? '1px solid #2563EB' : '1px solid #E5E7EB',
+                borderRadius: 6,
+                background: page === currentPage ? '#2563EB' : '#fff',
                 color: page === currentPage ? '#fff' : '#374151',
                 fontWeight: page === currentPage ? 600 : 400,
-                fontSize: 14,
+                fontSize: 13,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -116,10 +115,10 @@ export default function HousekeepingPagination({
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           style={{
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             border: '1px solid #E5E7EB',
-            borderRadius: 8,
+            borderRadius: 6,
             background: '#fff',
             cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
             display: 'flex',
@@ -128,31 +127,8 @@ export default function HousekeepingPagination({
             color: currentPage === totalPages ? '#D1D5DB' : '#6B7280',
           }}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <select
-          value={itemsPerPage}
-          onChange={e => onItemsPerPageChange(Number(e.target.value))}
-          style={{
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            padding: '6px 28px 6px 10px',
-            border: '1px solid #E5E7EB',
-            borderRadius: 6,
-            fontSize: 13,
-            color: '#374151',
-            background: '#fff url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' fill=\'%236B7280\' viewBox=\'0 0 16 16\'%3E%3Cpath d=\'M8 11L3 6h10l-5 5z\'/%3E%3C/svg%3E") no-repeat right 8px center',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          <option value={10}>10 / page</option>
-          <option value={25}>25 / page</option>
-          <option value={50}>50 / page</option>
-        </select>
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import { usePropertyStore } from '../stores/propertyStore'
@@ -23,12 +24,6 @@ const initialStaff: StaffMember[] = [
   { id: 8, name: 'Dinesh Parajuli', email: 'dinesh.parajuli@email.com', role: 'Maintenance Staff', department: 'Maintenance', contact: '+977 9819988776', joiningDate: 'Jun 3, 2024', status: 'Active' },
 ]
 
-const emptyForm = { name: '', email: '', role: 'Receptionist', department: 'Front Office', contact: '', joiningDate: '', status: 'Active' as StaffMember['status'] }
-
-const roles = ['Manager', 'Receptionist', 'Housekeeping Staff', 'Housekeeping Supervisor', 'Chef', 'Waiter', 'Cashier', 'Maintenance Staff']
-const departments = ['Front Office', 'Housekeeping', 'Kitchen', 'Restaurant', 'Accounts', 'Maintenance']
-const statuses: StaffMember['status'][] = ['Active', 'On Leave', 'Inactive']
-
 const statusColors: Record<string, { bg: string; text: string }> = {
   Active: { bg: '#D1FAE5', text: '#065F46' },
   'On Leave': { bg: '#FEF3C7', text: '#92400E' },
@@ -44,6 +39,7 @@ function getInitials(name: string) {
 export default function StaffPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
+  const navigate = useNavigate()
   const [overallMode, setOverallMode] = useState(true)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [search, setSearch] = useState('')
@@ -53,11 +49,8 @@ export default function StaffPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [staffList, setStaffList] = useState<StaffMember[]>(initialStaff)
-  const [showModal, setShowModal] = useState(false)
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null)
   const [viewingStaff, setViewingStaff] = useState<StaffMember | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null)
-  const [form, setForm] = useState(emptyForm)
 
   const { data: properties = [] } = useQuery({
     queryKey: propertyKeys.all,
@@ -91,26 +84,11 @@ export default function StaffPage() {
   const paginatedStaff = filteredStaff.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const openAddModal = () => {
-    setEditingStaff(null)
-    setForm({ ...emptyForm, joiningDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) })
-    setShowModal(true)
+    navigate('/host/staff/add')
   }
 
   const openEditModal = (member: StaffMember) => {
-    setEditingStaff(member)
-    setForm({ name: member.name, email: member.email, role: member.role, department: member.department, contact: member.contact, joiningDate: member.joiningDate, status: member.status })
-    setShowModal(true)
-  }
-
-  const handleSave = () => {
-    if (!form.name || !form.email) return
-    if (editingStaff) {
-      setStaffList(prev => prev.map(s => s.id === editingStaff.id ? { ...s, ...form } : s))
-    } else {
-      const newId = Math.max(0, ...staffList.map(s => s.id)) + 1
-      setStaffList(prev => [{ id: newId, ...form }, ...prev])
-    }
-    setShowModal(false)
+    navigate(`/host/staff/edit/${member.id}`)
   }
 
   const handleDelete = (member: StaffMember) => {
@@ -127,9 +105,6 @@ export default function StaffPage() {
   const handleChangeStatus = (member: StaffMember, newStatus: StaffMember['status']) => {
     setStaffList(prev => prev.map(s => s.id === member.id ? { ...s, status: newStatus } : s))
   }
-
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontSize: 14, color: '#374151', outline: 'none', boxSizing: 'border-box' }
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 4, display: 'block' }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
@@ -213,61 +188,6 @@ export default function StaffPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => { setViewingStaff(null); openEditModal(viewingStaff) }} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Edit Staff</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Staff Modal */}
-      {showModal && (
-        <div onClick={() => setShowModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: 28, width: 500, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>{editingStaff ? 'Edit Staff' : 'Add Staff'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Full Name *</label>
-                <input style={inputStyle} placeholder="e.g. Ramesh Thapa" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Email *</label>
-                  <input style={inputStyle} type="email" placeholder="staff@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Contact</label>
-                  <input style={inputStyle} placeholder="+977 9812345678" value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value })} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Role</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Department</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}>
-                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Joining Date</label>
-                  <input style={inputStyle} value={form.joiningDate} onChange={e => setForm({ ...form, joiningDate: e.target.value })} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Status</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.status} onChange={e => setForm({ ...form, status: e.target.value as StaffMember['status'] })}>
-                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-              <button onClick={() => setShowModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{editingStaff ? 'Save Changes' : 'Add Staff'}</button>
             </div>
           </div>
         </div>

@@ -8,6 +8,10 @@ export interface StaffMember {
   contact: string
   joiningDate: string
   status: 'Active' | 'On Leave' | 'Inactive'
+  monthlySalary?: number
+  photo?: string
+  citizenshipFront?: string
+  citizenshipBack?: string
 }
 
 export interface StaffStats {

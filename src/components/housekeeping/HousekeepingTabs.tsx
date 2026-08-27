@@ -1,14 +1,22 @@
+import { Settings, AlertTriangle, Plus } from 'lucide-react'
+
 interface HousekeepingTabsProps {
   activeTab: string
   onTabChange: (tab: string) => void
-  activeFloor: string
-  onFloorChange: (floor: string) => void
+  onBulkAction?: () => void
+  onReviewMaintenance?: () => void
+  onAssignTask?: () => void
 }
 
 const tabs = ['Room Status', 'Housekeeping Tasks', 'Staff Assignments']
-const floors = ['All Floors', '1st Floor', '2nd Floor', '3rd Floor', '4th Floor']
 
-export default function HousekeepingTabs({ activeTab, onTabChange, activeFloor, onFloorChange }: HousekeepingTabsProps) {
+export default function HousekeepingTabs({
+  activeTab,
+  onTabChange,
+  onBulkAction,
+  onReviewMaintenance,
+  onAssignTask,
+}: HousekeepingTabsProps) {
   return (
     <div
       style={{
@@ -19,6 +27,7 @@ export default function HousekeepingTabs({ activeTab, onTabChange, activeFloor, 
         borderBottom: '1px solid #E5E7EB',
       }}
     >
+      {/* Left: Tabs */}
       <div style={{ display: 'flex', gap: 0 }}>
         {tabs.map(tab => (
           <button
@@ -30,9 +39,9 @@ export default function HousekeepingTabs({ activeTab, onTabChange, activeFloor, 
               background: 'transparent',
               fontSize: 14,
               fontWeight: 500,
-              color: activeTab === tab ? 'var(--primary)' : '#6B7280',
+              color: activeTab === tab ? '#2563EB' : '#6B7280',
               cursor: 'pointer',
-              borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid #2563EB' : '2px solid transparent',
               marginBottom: -1,
             }}
           >
@@ -41,25 +50,65 @@ export default function HousekeepingTabs({ activeTab, onTabChange, activeFloor, 
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        {floors.map(floor => (
-          <button
-            key={floor}
-            onClick={() => onFloorChange(floor)}
-            style={{
-              padding: '6px 14px',
-              border: activeFloor === floor ? 'none' : '1px solid #E5E7EB',
-              borderRadius: 20,
-              background: activeFloor === floor ? 'var(--primary)' : '#fff',
-              color: activeFloor === floor ? '#fff' : '#6B7280',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            {floor}
-          </button>
-        ))}
+      {/* Right: Action Buttons */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={onBulkAction}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 16px',
+            border: '1px solid #E5E7EB',
+            borderRadius: 8,
+            background: '#fff',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#374151',
+            cursor: 'pointer',
+          }}
+        >
+          <Settings size={14} />
+          Bulk Action
+        </button>
+        <button
+          onClick={onReviewMaintenance}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 16px',
+            border: '1px solid #FECACA',
+            borderRadius: 8,
+            background: '#FEF2F2',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#DC2626',
+            cursor: 'pointer',
+          }}
+        >
+          <AlertTriangle size={14} />
+          Review Maintenance
+        </button>
+        <button
+          onClick={onAssignTask}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 16px',
+            border: 'none',
+            borderRadius: 8,
+            background: '#2563EB',
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <Plus size={16} />
+          Assign Task
+        </button>
       </div>
     </div>
   )

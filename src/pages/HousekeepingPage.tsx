@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
-import DashboardHeader from '../components/dashboard/DashboardHeader'
+import HousekeepingHeader from '../components/housekeeping/HousekeepingHeader'
 import HousekeepingStats from '../components/housekeeping/HousekeepingStats'
 import HousekeepingFilters from '../components/housekeeping/HousekeepingFilters'
 import HousekeepingTable from '../components/housekeeping/HousekeepingTable'
@@ -73,11 +73,8 @@ export default function HousekeepingPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [roomTypeFilter, setRoomTypeFilter] = useState('')
   const [dateFilter, setDateFilter] = useState('')
-  const [activeFloor, setActiveFloor] = useState('All Floors')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [assignedStaffFilter, setAssignedStaffFilter] = useState('')
-  const [cleaningStatusFilter, setCleaningStatusFilter] = useState('')
+  const [itemsPerPage] = useState(10)
 
   const [tasks, setTasks] = useState<HousekeepingTask[]>(allTasks)
   const [taskSearch, setTaskSearch] = useState('')
@@ -123,12 +120,10 @@ export default function HousekeepingPage() {
       const matchesFloor = !floorFilter || room.floor === floorFilter
       const matchesStatus = !statusFilter || room.status === statusFilter
       const matchesRoomType = !roomTypeFilter || room.roomType === roomTypeFilter
-      const matchesFloorTab = activeFloor === 'All Floors' || room.floor === activeFloor
-      const matchesAssignedStaff = !assignedStaffFilter || room.assignedTo === assignedStaffFilter
       const matchesDate = !dateFilter || parseDateStr(room.nextCleaning) === dateFilter || parseDateStr(room.lastCleaned) === dateFilter
-      return matchesSearch && matchesFloor && matchesStatus && matchesRoomType && matchesFloorTab && matchesAssignedStaff && matchesDate
+      return matchesSearch && matchesFloor && matchesStatus && matchesRoomType && matchesDate
     })
-  }, [rooms, roomSearch, floorFilter, statusFilter, roomTypeFilter, activeFloor, assignedStaffFilter, dateFilter])
+  }, [rooms, roomSearch, floorFilter, statusFilter, roomTypeFilter, dateFilter])
 
   const roomStats: RoomStats = useMemo(() => ({
     total: rooms.length,
@@ -189,16 +184,18 @@ export default function HousekeepingPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Housekeeping" subtitle="Manage room cleaning status, tasks and housekeeping activities" />
-        <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
+        <HousekeepingHeader />
 
+        <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
           <HousekeepingStats stats={roomStats} activeFilter={statusFilter} onFilterChange={(s) => { setStatusFilter(s); setCurrentPage(1) }} />
 
           <HousekeepingTabs
             activeTab={topTab}
             onTabChange={setTopTab}
-            activeFloor={activeFloor}
-            onFloorChange={setActiveFloor}
+            onAssignTask={() => {
+              setCreateForm({ room: 'Room 205', taskType: 'Cleaning', priority: 'High', assignedStaff: '', dueTime: '11:00', notes: '' })
+              setShowCreateTask(true)
+            }}
           />
 
           {/* ============ ROOM STATUS TAB ============ */}
@@ -215,15 +212,10 @@ export default function HousekeepingPage() {
                 onRoomTypeChange={setRoomTypeFilter}
                 date={dateFilter}
                 onDateChange={setDateFilter}
-                onAddTask={() => { setCreateForm({ room: 'Room 205', taskType: 'Cleaning', priority: 'High', assignedStaff: '', dueTime: '11:00', notes: '' }); setShowCreateTask(true) }}
-                assignedStaff={assignedStaffFilter}
-                onAssignedStaffChange={setAssignedStaffFilter}
-                cleaningStatus={cleaningStatusFilter}
-                onCleaningStatusChange={setCleaningStatusFilter}
               />
 
-              <HousekeepingTable 
-                rooms={paginatedRooms} 
+              <HousekeepingTable
+                rooms={paginatedRooms}
                 onViewRoom={setViewingRoom}
                 onMoreActions={(room, action) => {
                   if (action === 'menu') {
@@ -238,7 +230,6 @@ export default function HousekeepingPage() {
                 totalItems={filteredRooms.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
-                onItemsPerPageChange={(count) => { setItemsPerPage(count); setCurrentPage(1) }}
               />
             </>
           )}
@@ -466,15 +457,15 @@ export default function HousekeepingPage() {
 
       {/* Toast Notification */}
       {toast && (
-        <div style={{ 
-          position: 'fixed', 
-          bottom: 24, 
-          right: 24, 
-          padding: '14px 20px', 
-          borderRadius: 10, 
-          background: toast.type === 'success' ? '#059669' : '#DC2626', 
-          color: '#fff', 
-          fontSize: 14, 
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          padding: '14px 20px',
+          borderRadius: 10,
+          background: toast.type === 'success' ? '#059669' : '#DC2626',
+          color: '#fff',
+          fontSize: 14,
           fontWeight: 500,
           boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
           zIndex: 1100,

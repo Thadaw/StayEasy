@@ -18,6 +18,11 @@ const BookingsPage = lazy(() => import('../pages/BookingsPage'))
 const RoomsPage = lazy(() => import('../pages/RoomsPage'))
 const GuestsPage = lazy(() => import('../pages/GuestsPage'))
 const StaffPage = lazy(() => import('../pages/StaffPage'))
+const AddStaffPage = lazy(() => import('../pages/AddStaffPage'))
+const EditStaffPage = lazy(() => import('../pages/EditStaffPage'))
+const StaffPerformancePage = lazy(() => import('../pages/StaffPerformancePage'))
+const StaffShiftsPage = lazy(() => import('../pages/StaffShiftsPage'))
+const ShiftCoveragePage = lazy(() => import('../pages/ShiftCoveragePage'))
 const HousekeepingPage = lazy(() => import('../pages/HousekeepingPage'))
 const PricingPage = lazy(() => import('../pages/PricingPage'))
 const ReportsPage = lazy(() => import('../pages/ReportsPage'))
@@ -69,6 +74,11 @@ export function AppRoutes() {
       <Route path="/host/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
       <Route path="/host/guests" element={<ProtectedRoute><GuestsPage /></ProtectedRoute>} />
       <Route path="/host/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/add" element={<ProtectedRoute><AddStaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/edit/:id" element={<ProtectedRoute><EditStaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/performance" element={<ProtectedRoute><StaffPerformancePage /></ProtectedRoute>} />
+      <Route path="/host/staff/shifts" element={<ProtectedRoute><StaffShiftsPage /></ProtectedRoute>} />
+      <Route path="/host/staff/shift-coverage" element={<ProtectedRoute><ShiftCoveragePage /></ProtectedRoute>} />
       <Route path="/host/housekeeping" element={<ProtectedRoute><HousekeepingPage /></ProtectedRoute>} />
       <Route path="/host/pricing/*" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
       <Route path="/host/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
