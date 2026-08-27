@@ -9,7 +9,7 @@ interface LeaveRequest {
   department: string
   avatarInitials: string
   avatarColor: string
-  date: string
+  date?: string
   reasonCategory: string
   reason: string
   type: 'leave' | 'shift_swap'

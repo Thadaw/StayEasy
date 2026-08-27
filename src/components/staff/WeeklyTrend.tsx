@@ -67,7 +67,7 @@ export default function WeeklyTrend() {
               fontSize: 12,
               boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
             }}
-            formatter={(value: number) => [`${value}%`, 'Attendance']}
+            formatter={(value) => [`${value}%`, 'Attendance']}
           />
           <Area
             type="monotone"
