@@ -26,6 +26,7 @@ dist-ssr/
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
@@ -34,3 +35,6 @@ dist-ssr/
 
 # TypeScript
 *.tsbuildinfo
+
+# OpenCode
+.opencode/
