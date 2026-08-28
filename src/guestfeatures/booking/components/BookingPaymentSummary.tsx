@@ -12,6 +12,9 @@ interface BookingPaymentSummaryProps {
   totalAmount: number
   paymentGateway?: string
   refNumber: string
+  advanceAmount?: number | null
+  amountPaid?: number
+  amountDue?: number
 }
 
 export function BookingPaymentSummary({
@@ -24,7 +27,17 @@ export function BookingPaymentSummary({
   totalAmount,
   paymentGateway,
   refNumber,
+  advanceAmount,
+  amountPaid = 0,
+  amountDue,
 }: BookingPaymentSummaryProps) {
+  const isAdvance = advanceAmount != null && advanceAmount > 0 && advanceAmount < totalAmount && paymentGateway !== "arrival"
+  const paidAmount = isAdvance ? advanceAmount : totalAmount
+  const remainingAmount = isAdvance ? totalAmount - advanceAmount : 0
+  const isArrival = paymentGateway === "arrival"
+  const arrivalPaid = amountPaid
+  const arrivalDue = amountDue ?? totalAmount
+
   return (
     <>
     <Card>
@@ -50,24 +63,57 @@ export function BookingPaymentSummary({
             <span className="text-sm font-semibold">- {currency} {couponDiscount.toLocaleString()}</span>
           </div>
         )}
-        <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-          <span className="text-sm font-bold text-gray-900">Total Paid</span>
-          <span className="text-lg font-bold text-gray-900">{currency} {totalAmount.toLocaleString()}</span>
-        </div>
+        {isArrival ? (
+          <>
+            <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+              <span className="text-sm font-bold text-emerald-600">Amount Paid</span>
+              <span className="text-lg font-bold text-emerald-600">{currency} {arrivalPaid.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-bold text-amber-600">Amount Due</span>
+              <span className="text-lg font-bold text-amber-600">{currency} {arrivalDue.toLocaleString()}</span>
+            </div>
+          </>
+        ) : isAdvance ? (
+          <>
+            <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+              <span className="text-sm font-bold text-emerald-600">Paid Amount</span>
+              <span className="text-lg font-bold text-emerald-600">{currency} {paidAmount.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-bold text-amber-600">Remaining Amount</span>
+              <span className="text-lg font-bold text-amber-600">{currency} {remainingAmount.toLocaleString()}</span>
+            </div>
+          </>
+        ) : (
+          <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+            <span className="text-sm font-bold text-gray-900">Total Paid</span>
+            <span className="text-lg font-bold text-gray-900">{currency} {totalAmount.toLocaleString()}</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4 pt-2">
-          <DetailField label="Payment Method" value={paymentGateway === "arrival" ? "Pay at Arrival" : paymentGateway || "—"} />
-          <DetailField label="Transaction ID" value={paymentGateway === "arrival" ? "N/A (Pay at Arrival)" : `pay_${refNumber.slice(0, 12)}`} mono={paymentGateway !== "arrival"} />
+          {paymentGateway === "arrival" ? (
+            <>
+              <DetailField label="Payment Method" value="Pay at Property" />
+              <DetailField label="Payment Status" value="Pending at check-in" />
+            </>
+          ) : (
+            <>
+              <DetailField label="Payment Method" value={paymentGateway || "—"} />
+              <DetailField label="Transaction ID" value={`pay_${refNumber.slice(0, 12)}`} mono />
+            </>
+          )}
         </div>
       </div>
     </Card>
 
     {paymentGateway === "arrival" && (
       <Card>
-        <SectionHeader icon={<Banknote size={16} />} title="Pay at Arrival" />
+        <SectionHeader icon={<Banknote size={16} />} title="Pay at Property" />
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <Banknote size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-700 mb-1">Pay at Arrival</p>
+            <p className="text-sm font-semibold text-amber-700 mb-1">Pay at Property</p>
             <p className="text-xs text-amber-600 leading-relaxed">You will pay {currency} {totalAmount.toLocaleString()} at the property during check-in. No online payment is required.</p>
           </div>
         </div>

@@ -34,8 +34,8 @@ const BookingPage = lazy(() => import('../guestfeatures/booking/pages/GuestBooki
 const BookingViewPage = lazy(() => import('../guestfeatures/booking/pages/BookingSummaryPage'))
 const ReservePage = lazy(() => import('../guestfeatures/booking/pages/ReservePage'))
 const KhaltiCallbackPage = lazy(() => import('../guestfeatures/booking/pages/KhaltiCallbackPage'))
-const EsewaMockPage = lazy(() => import('../guestfeatures/booking/pages/EsewaMockPage'))
-const EsewaCallbackPage = lazy(() => import('../guestfeatures/booking/pages/EsewaCallbackPage'))
+const StripeCallbackPage = lazy(() => import('../guestfeatures/booking/pages/StripeCallbackPage'))
+const PaymentSuccessPage = lazy(() => import('../guestfeatures/booking/pages/PaymentSuccessPage'))
 const BookingConfirmationPage = lazy(() => import('../guestfeatures/booking/pages/BookingConfirmationPage'))
 const ProfilePage = lazy(() => import('../guestfeatures/profile/pages/ProfilePage'))
 const AboutMe = lazy(() => import('../guestfeatures/profile/components/AboutMe'))
@@ -99,8 +99,8 @@ export function AppRoutes() {
       <Route path="/reserve" element={<KhaltiCallbackPage />} />
       <Route path="/reserve/:id" element={<ProtectedRoute><ReservePage /></ProtectedRoute>} />
       <Route path="/payment/khalti/callback" element={<KhaltiCallbackPage />} />
-      <Route path="/payment/esewa/mock" element={<EsewaMockPage />} />
-      <Route path="/payment/esewa/callback" element={<EsewaCallbackPage />} />
+      <Route path="/payment/stripe/callback" element={<StripeCallbackPage />} />
+      <Route path="/payment/success" element={<PaymentSuccessPage />} />
       <Route path="/booking-confirmation/:refNumber?" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
       <Route path="/help-center" element={<FooterPage />} />
       <Route path="/contact" element={<FooterPage />} />

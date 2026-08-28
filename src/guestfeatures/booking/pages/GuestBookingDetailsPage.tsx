@@ -238,7 +238,7 @@ export default function BookingDetailsPage() {
 
       {/* Full-width stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
-        <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-5 relative">
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
@@ -269,14 +269,14 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      <div className="max-w-275 mx-auto px-4 sm:px-6 py-6">
+      <div className="mx-auto w-full max-w-[1250px] px-3.5 py-4 pb-10 sm:px-6 sm:py-5">
 
         <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
           <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
-          <div className="order-1 lg:order-1">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_600px] lg:gap-[26px] items-start">
+          <div className="order-1 lg:order-1 space-y-5">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <img
                 src={hotel.imageUrl || hotel.images[0]}
@@ -440,7 +440,7 @@ export default function BookingDetailsPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+          <div className="order-2 lg:order-2 w-full lg:max-w-[600px] lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
               onGuestChange={setGuest}

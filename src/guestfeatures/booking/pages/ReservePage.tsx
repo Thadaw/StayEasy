@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
-import { Loader2, CreditCard, Smartphone, Building2, ShieldCheck } from "lucide-react"
+import { Loader2, CreditCard } from "lucide-react"
 import { useRazorpay } from "../../../shared/hooks/useRazorpay"
 import type { RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse } from "../../../shared/types/razorpay"
 import type { RoomType } from "../../../data/hotels"
@@ -14,9 +14,10 @@ import { ReserveLayout } from "../components/ReserveLayout"
 import { ReserveStepper } from "../components/ReserveStepper"
 import { PropertySummaryCard } from "../components/PropertySummaryCard"
 import { PriceSummaryCard } from "../components/PriceSummaryCard"
-import { PaymentMethodTabs } from "../components/PaymentMethodTabs"
 import { PaymentForms } from "../components/PaymentForms"
 import { ConfirmButton } from "../components/ConfirmButton"
+import PaymentSection from "../components/PaymentSection"
+import type { PaymentPlan } from "../components/PaymentSection"
 import StripeCardForm from "../../../shared/components/StripeCardForm"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { allCountries } from "../../../data/countries"
@@ -31,33 +32,6 @@ interface AppliedDiscount {
   amount: number
   code: string
 }
-
-const paymentOptions: { key: PaymentMethod; label: string; sub: string; logo: JSX.Element }[] = [
-  {
-    key: "stripe",
-    label: "Stripe",
-    sub: "Pay via Credit / Debit Card",
-    logo: <img src="/logos/Stripe_Logo_2.webp" alt="Stripe" className="w-[60px] h-[60px] object-contain" />,
-  },
-  {
-    key: "razorpay",
-    label: "Razorpay",
-    sub: "Pay via UPI, Card, Net Banking & more",
-    logo: <img src="/logos/Razorpay_logo.png" alt="Razorpay" className="w-[60px] h-[60px] object-contain" />,
-  },
-  {
-    key: "khalti",
-    label: "Khalti",
-    sub: "Pay via eWallet, Cards, Net Banking",
-    logo: <img src="/logos/Khalti_Official_idvPMBBXpx_0.jpeg" alt="Khalti" className="w-[60px] h-[60px] object-contain" />,
-  },
-  {
-    key: "esewa",
-    label: "eSewa",
-    sub: "Pay via eSewa Wallet",
-    logo: <img src="/logos/Esewa_Green.png" alt="eSewa" className="w-[42px] h-[42px] object-contain" />,
-  },
-]
 
 async function confirmBookingWithRetry(refNumber: string, payload: Record<string, unknown>, maxRetries = 3): Promise<void> {
   let lastError: unknown
@@ -80,7 +54,7 @@ export default function ReservePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  const refNumber = searchParams.get('ref') || ''
+  const refNumber = searchParams.get('ref') || localStorage.getItem('esewa_ref_number') || ''
 
   const { addNotification } = useNotifications()
 
@@ -147,10 +121,9 @@ export default function ReservePage() {
     error: null as string | null,
   })
   const [esewaRetryCount, setEsewaRetryCount] = useState(0)
-  const [paySubMethod, setPaySubMethod] = useState<'upi' | 'card' | 'netbanking' | null>(null)
+  const [esewaConfirmData, setEsewaConfirmData] = useState<string | null>(null)
   const [confirmingBooking, setConfirmingBooking] = useState(false)
-  const [stripeModalOpen, setStripeModalOpen] = useState(false)
-  const [razorpayModalOpen, setRazorpayModalOpen] = useState(false)
+  const [paymentPlan, setPaymentPlan] = useState<PaymentPlan>("full")
   const [khaltiCompleted, setKhaltiCompleted] = useState(false)
 
   const { isLoaded: razorpayLoaded } = useRazorpay(selectedPayment === "razorpay")
@@ -166,13 +139,31 @@ export default function ReservePage() {
     }
   }, [booking])
 
+  const advancePercentage = booking?.advance_payment_percentage ?? 30
+  const total = booking?.total_amount ?? 0
+  const allowAdvance = (booking?.min_advance_amount != null && booking.min_advance_amount > 0) || (booking?.advance_payment_percentage != null && booking.advance_payment_percentage > 0)
+  const advanceAmount = useMemo(() => {
+    if (paymentPlan === "advance") {
+      if (booking?.advance_amount != null && booking.advance_amount > 0) return booking.advance_amount
+      return Math.round((total * advancePercentage) / 100)
+    }
+    return total
+  }, [paymentPlan, total, advancePercentage, booking?.advance_amount])
+
+  useEffect(() => {
+    if (!allowAdvance && paymentPlan === "advance") {
+      setPaymentPlan("full")
+      setSelectedPayment(null)
+    }
+  }, [allowAdvance, paymentPlan])
+
   useEffect(() => {
     if (selectedPayment !== "razorpay" || !refNumber) return
     let cancelled = false
     const createOrder = async () => {
       setRazorpayState(prev => ({ ...prev, loading: true, error: null, orderId: null }))
       try {
-        const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_gateway: "razorpay" })
+        const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_method: paymentPlan === "advance" ? "ADVANCE" : "ONLINE", payment_gateway: "razorpay", advance_amount: advanceAmount })
         if (cancelled) return
         const orderId = response.data?.razorpay_order_id || response.data?.data?.razorpay_order_id || response.data?.order_id || response.data?.data?.order_id
         if (!orderId) {
@@ -190,7 +181,13 @@ export default function ReservePage() {
     }
     createOrder()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, razorpayRetryCount])
+  }, [selectedPayment, refNumber, razorpayRetryCount, advanceAmount])
+
+  // Auto-open official Razorpay checkout once order is created and SDK is loaded
+  useEffect(() => {
+    if (selectedPayment !== "razorpay" || !razorpayLoaded || !razorpayState.orderId || razorpayState.response || razorpayState.loading) return
+    handleRazorpayPayment({ type: 'card' })
+  }, [selectedPayment, razorpayLoaded, razorpayState.orderId, razorpayState.response, razorpayState.loading])
 
   useEffect(() => {
     if (selectedPayment !== "stripe" || !refNumber) return
@@ -198,7 +195,7 @@ export default function ReservePage() {
     const createStripeIntent = async () => {
       setStripeState(prev => ({ ...prev, loading: true, error: null, clientSecret: null }))
       try {
-        const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_gateway: "stripe" })
+        const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_method: paymentPlan === "advance" ? "ADVANCE" : "ONLINE", payment_gateway: "stripe", advance_amount: advanceAmount })
         if (cancelled) return
         const secret = response.data?.client_secret || response.data?.data?.client_secret
         if (!secret) {
@@ -216,7 +213,7 @@ export default function ReservePage() {
     }
     createStripeIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, stripeRetryCount])
+  }, [selectedPayment, refNumber, stripeRetryCount, advanceAmount])
 
   useEffect(() => {
     if (selectedPayment !== "khalti" || !refNumber) return
@@ -227,8 +224,10 @@ export default function ReservePage() {
       try {
         const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, {
+          payment_method: paymentPlan === "advance" ? "ADVANCE" : "ONLINE",
           payment_gateway: "khalti",
           return_url: returnToUrl,
+          advance_amount: advanceAmount,
         })
         if (cancelled) return
         const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.intent_id || response.data?.data?.intent_id || response.data?.pidx || response.data?.data?.pidx || response.data?.id || response.data?.data?.id
@@ -254,7 +253,7 @@ export default function ReservePage() {
     }
     createKhaltiIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId, khaltiRetryCount])
+  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId, khaltiRetryCount, advanceAmount])
 
   useEffect(() => {
     const rawQuery = window.location.search
@@ -286,33 +285,58 @@ export default function ReservePage() {
     localStorage.removeItem('khalti_payment_intent_id')
   }, [searchParams])
 
+  // Detect Stripe callback redirect — Stripe redirects to /payment/stripe/callback,
+  // which then redirects to /payment/success, which then redirects here with payment_intent in URL params.
   useEffect(() => {
-    const rawQuery = window.location.search
-    const oidMatch = rawQuery.match(/[?&]oid=([^&]+)/i)
-    const statusMatch = rawQuery.match(/[?&](?:status|esewa_status)=([^&]+)/i)
-    if (!oidMatch && !statusMatch) return
-    const esewaStatus = (statusMatch?.[1] || searchParams.get('status') || searchParams.get('esewa_status') || '').toLowerCase()
+    const paymentIntentId = searchParams.get('payment_intent')
+    const redirectStatus = searchParams.get('redirect_status')
+    if (!paymentIntentId) return
 
-    if (esewaStatus === 'user canceled' || esewaStatus === 'pending' || esewaStatus === 'failed') {
+    setSelectedPayment('stripe')
+    setStripeState(prev => ({
+      ...prev,
+      paymentIntentId,
+      clientSecret: null,
+      transactionTime: Math.floor(Date.now() / 1000),
+    }))
+
+    localStorage.removeItem('stripe_property_id')
+
+    // Clean URL params
+    const newUrl = new URL(window.location.href)
+    newUrl.searchParams.delete('payment_intent')
+    newUrl.searchParams.delete('redirect_status')
+    window.history.replaceState({}, '', newUrl.toString())
+
+    if (redirectStatus === 'succeeded') {
+      toast.success('Payment successful!')
+    } else {
+      toast('Payment processing. Please wait.', { icon: 'ℹ️' })
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const esewaData = searchParams.get('data') || localStorage.getItem('esewa_confirm_data')
+    const statusParam = searchParams.get('status') || searchParams.get('esewa_status') || localStorage.getItem('esewa_status')
+    const hasEsewaParams = esewaData || statusParam || /[?&](?:data|esewa_status)=/i.test(window.location.search)
+    if (!hasEsewaParams) return
+
+    localStorage.removeItem('esewa_confirm_data')
+    localStorage.removeItem('esewa_status')
+
+    if (statusParam && ['user canceled', 'pending', 'failed'].includes(statusParam.toLowerCase())) {
       toast("Payment cancelled. You can retry anytime.", { icon: "ℹ️" })
       setEsewaState({ paymentIntentId: null, loading: false, error: null })
       setSelectedPayment("esewa")
-      localStorage.removeItem('esewa_payment_intent_id')
       return
     }
 
-    const storedIntentId = localStorage.getItem('esewa_payment_intent_id') || oidMatch?.[1] || ''
-    if (storedIntentId) {
-      setEsewaState(prev => ({ ...prev, paymentIntentId: storedIntentId }))
+    if (esewaData) {
       setSelectedPayment("esewa")
+      setEsewaConfirmData(esewaData)
+      toast.success("eSewa payment verified successfully")
     }
-  }, [searchParams])
-
-  useEffect(() => {
-    const rawQuery = window.location.search
-    if (/[?&](?:oid|esewa_status)=/i.test(rawQuery)) return
-    localStorage.removeItem('esewa_payment_intent_id')
-  }, [searchParams])
+  }, [searchParams, refNumber])
 
   const handleApplyPromo = async () => {
     const code = promoInput.trim().toUpperCase()
@@ -333,10 +357,10 @@ export default function ReservePage() {
         setPromoError('')
         setPromoInput('')
       } else {
-        setPromoError('Invalid promo code')
+        setPromoError('Invalid or expired discount code')
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Invalid promo code'
+      const msg = err instanceof Error ? err.message : 'Invalid or expired discount code'
       setPromoError(msg)
     }
   }
@@ -430,55 +454,69 @@ export default function ReservePage() {
       : appliedDiscount.amount;
   }
 
-  const total = booking?.total_amount || (subtotal - discountAmount);
-
   useEffect(() => {
     if (selectedPayment !== "esewa" || !refNumber) return
-    if (esewaState.paymentIntentId) return
+    if (esewaState.paymentIntentId || esewaConfirmData) return
+    if (searchParams.get('data') || searchParams.get('esewa_status')) return
     let cancelled = false
     const createEsewaIntent = async () => {
       setEsewaState(prev => ({ ...prev, loading: true, error: null }))
       try {
-        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
+        const returnToUrl = `${window.location.origin}/reserve/${id}`
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, {
+          payment_method: paymentPlan === "advance" ? "ADVANCE" : "ONLINE",
           payment_gateway: "esewa",
           return_url: returnToUrl,
+          advance_amount: advanceAmount,
         })
         if (cancelled) return
-        const intentId = response.data?.payment_intent_id || response.data?.data?.payment_intent_id || response.data?.id || response.data?.data?.id
-        const redirectUrl = response.data?.payment_url || response.data?.data?.payment_url || response.data?.redirect_url || response.data?.data?.redirect_url
-        if (redirectUrl) {
-          if (intentId) localStorage.setItem('esewa_payment_intent_id', intentId)
+        const data = response.data?.data || response.data
+        const intentId = data?.payment_intent_id || data?.id
+        const formUrl = data?.form_url
+        const formFields = data?.form_fields
+
+        if (intentId) {
+          setEsewaState(prev => ({ ...prev, paymentIntentId: intentId }))
+        }
+
+        if (formUrl && formFields) {
           localStorage.setItem('esewa_return_to', returnToUrl)
-          window.location.href = redirectUrl
+          localStorage.setItem('esewa_ref_number', refNumber)
+          const form = document.createElement('form')
+          form.method = 'POST'
+          form.action = formUrl
+          form.style.display = 'none'
+          for (const [key, value] of Object.entries(formFields)) {
+            const input = document.createElement('input')
+            input.type = 'hidden'
+            input.name = key
+            input.value = String(value)
+            form.appendChild(input)
+          }
+          document.body.appendChild(form)
+          form.submit()
           return
         }
-        const mockUrl = `${window.location.origin}/payment/esewa/mock?ref=${refNumber}&amount=${total}&currency=${currency}`
-        if (intentId) localStorage.setItem('esewa_payment_intent_id', intentId)
-        localStorage.setItem('esewa_return_to', returnToUrl)
-        window.location.href = mockUrl
-        return
+
+        setEsewaState(prev => ({ ...prev, error: "Invalid response from payment gateway" }))
       } catch {
         if (cancelled) return
-        const mockUrl = `${window.location.origin}/payment/esewa/mock?ref=${refNumber}&amount=${total}&currency=${currency}`
-        const returnToUrl = `${window.location.origin}/reserve/${id}?ref=${refNumber}`
-        localStorage.setItem('esewa_return_to', returnToUrl)
-        window.location.href = mockUrl
+        setEsewaState(prev => ({ ...prev, error: "Failed to initialize eSewa payment. Please retry." }))
       } finally {
         if (!cancelled) setEsewaState(prev => ({ ...prev, loading: false }))
       }
     }
     createEsewaIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaRetryCount, total, currency])
+  }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaConfirmData, esewaRetryCount, advanceAmount])
 
-  const handleRazorpayPayment = async (options: RazorpayPayOptions) => {
+  const handleRazorpayPayment = async (options?: RazorpayPayOptions) => {
     if (!razorpayState.orderId) { toast.error("Razorpay not ready"); return }
     setPaymentLoading(true)
     try {
       const razorpayOptions: RazorpayCheckoutOptions = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
-        amount: Math.max(0, total) * 100,
+        amount: Math.max(0, advanceAmount) * 100,
         currency: "INR",
         order_id: razorpayState.orderId,
         name: "ServeIQ",
@@ -488,45 +526,9 @@ export default function ReservePage() {
           name: guestName,
           email: guestEmail,
           contact: guestPhone,
-          method: options.type,
+          method: options?.type,
         },
         theme: { color: "#1A3C5E" },
-      }
-
-      if (options.type === 'upi') {
-        razorpayOptions.config = {
-          display: {
-            blocks: {
-              upib: {
-                name: "Pay via UPI",
-                instruments: [
-                  { method: "upi", flows: ["intent"] }
-                ]
-              }
-            },
-            sequence: ["block.upib"],
-            preferences: {
-              show_default_blocks: true
-            }
-          }
-        }
-      } else if (options.type === 'netbanking') {
-        razorpayOptions.config = {
-          display: {
-            blocks: {
-              nbb: {
-                name: "Pay via Net Banking",
-                instruments: [
-                  { method: "netbanking" }
-                ]
-              }
-            },
-            sequence: ["block.nbb"],
-            preferences: {
-              show_default_blocks: true
-            }
-          }
-        }
       }
 
       const razorpay = new window.Razorpay(razorpayOptions)
@@ -560,7 +562,7 @@ export default function ReservePage() {
       return
     }
 
-    if (selectedPayment === "esewa" && !esewaState.paymentIntentId) {
+    if (selectedPayment === "esewa" && !esewaConfirmData) {
       toast.error("Please complete eSewa payment first")
       return
     }
@@ -571,6 +573,9 @@ export default function ReservePage() {
       if (selectedPayment === "razorpay" && razorpayState.response && refNumber) {
         await confirmBookingWithRetry(refNumber, {
           idempotency_key: crypto.randomUUID(),
+          payment_method: "ONLINE",
+          payment_gateway: "razorpay",
+          advance_amount: advanceAmount,
           gateway_payload: {
             razorpay_order_id: razorpayState.response.razorpay_order_id,
             razorpay_payment_id: razorpayState.response.razorpay_payment_id,
@@ -582,11 +587,12 @@ export default function ReservePage() {
       if (selectedPayment === "stripe" && stripeState.paymentIntentId && refNumber) {
         await confirmBookingWithRetry(refNumber, {
           idempotency_key: crypto.randomUUID(),
+          payment_method: "ONLINE",
           payment_gateway: "stripe",
+          advance_amount: advanceAmount,
           gateway_payload: {
             payment_intent_id: stripeState.paymentIntentId,
             stripe_payment_intent_id: stripeState.paymentIntentId,
-            client_secret: stripeState.clientSecret,
           },
         })
       }
@@ -594,28 +600,30 @@ export default function ReservePage() {
       if (selectedPayment === "khalti" && khaltiState.paymentIntentId && refNumber) {
         await confirmBookingWithRetry(refNumber, {
           idempotency_key: crypto.randomUUID(),
+          payment_method: "ONLINE",
           payment_gateway: "khalti",
+          advance_amount: advanceAmount,
           gateway_payload: {
             payment_intent_id: khaltiState.paymentIntentId,
           },
         })
       }
 
-      if (selectedPayment === "esewa" && esewaState.paymentIntentId && refNumber) {
+      if (selectedPayment === "esewa" && esewaConfirmData && refNumber) {
         await confirmBookingWithRetry(refNumber, {
           idempotency_key: crypto.randomUUID(),
+          payment_method: "ONLINE",
           payment_gateway: "esewa",
+          advance_amount: advanceAmount,
           gateway_payload: {
-            payment_intent_id: esewaState.paymentIntentId,
+            data: esewaConfirmData,
           },
         })
       }
 
       if (selectedPayment === "arrival" && refNumber) {
-        await confirmBookingWithRetry(refNumber, {
-          idempotency_key: crypto.randomUUID(),
-          payment_gateway: "arrival",
-          gateway_payload: {},
+        await api.post(`/bookings/${refNumber}/payment-intent`, {
+          payment_method: "PAY_ON_ARRIVAL",
         })
       }
 
@@ -632,6 +640,7 @@ export default function ReservePage() {
         guests: totalGuests,
         totalPrice: Math.max(0, total),
         refNumber: refNumber || undefined,
+        paymentGateway: selectedPayment === "arrival" ? "arrival" : selectedPayment || undefined,
         discountApplied: appliedDiscount ? {
           code: appliedDiscount.code,
           type: appliedDiscount.type,
@@ -664,7 +673,10 @@ export default function ReservePage() {
         message: `Your booking at ${hotel?.name ?? 'the property'} has been confirmed. Check-in is on ${checkIn}.`,
       })
       localStorage.removeItem('khalti_payment_intent_id')
-      localStorage.removeItem('esewa_payment_intent_id')
+      localStorage.removeItem('esewa_confirm_data')
+      localStorage.removeItem('esewa_status')
+      localStorage.removeItem('esewa_return_to')
+      localStorage.removeItem('esewa_ref_number')
       navigate(`/booking-confirmation/${refNumber || newBooking.id}`, {
         state: {
           propertyImages: hotel?.images || [],
@@ -741,13 +753,6 @@ export default function ReservePage() {
     specialOfferDiscount: booking?.special_offer_discount || 0,
     couponDiscount: booking?.coupon_discount || 0,
     couponCode: booking?.coupon_code || null,
-    appliedDiscount,
-    promoInput,
-    promoError,
-    onPromoInputChange: (value: string) => { setPromoInput(value); setPromoError('') },
-    onApplyPromo: handleApplyPromo,
-    onRemovePromo: handleRemovePromo,
-    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleApplyPromo() },
   }
 
   return (
@@ -758,73 +763,44 @@ export default function ReservePage() {
 
       <ReserveLayout
         leftColumn={
-          <PropertySummaryCard
-            {...propertySummaryProps}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <PropertySummaryCard {...propertySummaryProps} />
+            <PriceSummaryCard {...priceSummaryProps} />
+          </div>
         }
         rightColumn={
           <>
-            <PriceSummaryCard {...priceSummaryProps} />
-
-            <PaymentMethodTabs
-              paymentOptions={paymentOptions}
+            <PaymentSection
+              total={total}
+              currency={currency}
+              advancePercentage={booking?.advance_payment_percentage ?? 30}
+              advanceAmount={booking?.advance_amount}
+              allowAdvance={allowAdvance}
               selectedPayment={selectedPayment}
-              onSelect={(method) => {
+              onSelectPayment={(method) => {
                 setSelectedPayment(method)
-                if (method === "stripe") setStripeModalOpen(true)
-                if (method === "razorpay") setRazorpayModalOpen(true)
+                if (method === "stripe") {
+                  if (refNumber) localStorage.setItem("stripe_ref_number", refNumber)
+                  if (propertyId) localStorage.setItem("stripe_property_id", String(propertyId))
+                }
               }}
+              paymentPlan={paymentPlan}
+              onSelectPlan={(plan) => {
+                setPaymentPlan(plan)
+                if (plan === "arrival") {
+                  setSelectedPayment("arrival")
+                } else {
+                  setSelectedPayment(null)
+                }
+              }}
+              appliedDiscount={appliedDiscount}
+              promoInput={promoInput}
+              promoError={promoError}
+              onPromoInputChange={setPromoInput}
+              onApplyPromo={handleApplyPromo}
+              onRemovePromo={handleRemovePromo}
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
             />
-
-            <button
-              type="button"
-              onClick={() => setSelectedPayment(selectedPayment === "arrival" ? null : "arrival")}
-              className={`w-full bg-white rounded-xl border p-5 mb-6 text-left transition-colors cursor-pointer ${
-                selectedPayment === "arrival"
-                  ? "border-[#059669] bg-green-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="4" width="20" height="16" rx="4" fill="#059669" />
-                  <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">A</text>
-                </svg>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Pay at Arrival</p>
-                  <p className="text-xs text-gray-500">Pay when you check in</p>
-                </div>
-              </div>
-            </button>
-
-            {selectedPayment === "arrival" && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-                <div className="space-y-3">
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 shrink-0 mt-0.5">
-                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-semibold text-green-700 mb-1">Pay at Arrival</p>
-                      <p className="text-xs text-green-600 leading-relaxed">
-                        You will pay {currency}{Math.max(0, total).toFixed(2)} when you check in at the property. No online payment required now.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 shrink-0 mt-0.5">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 mb-1">How it works</p>
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        Complete your booking now and pay the full amount ({currency}{Math.max(0, total).toFixed(2)}) directly at the property during check-in.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <PaymentForms
               selectedPayment={selectedPayment}
@@ -837,7 +813,6 @@ export default function ReservePage() {
               guestPhone={guestPhone}
               paymentLoading={paymentLoading}
               stripePaymentIntentId={stripeState.paymentIntentId}
-              stripeClientSecret={stripeState.clientSecret}
               stripeIntentLoading={stripeState.loading}
               stripeIntentError={stripeState.error}
               razorpayResponse={razorpayState.response}
@@ -850,14 +825,10 @@ export default function ReservePage() {
               khaltiError={khaltiState.error}
               khaltiCompleted={khaltiCompleted}
               esewaPaymentIntentId={esewaState.paymentIntentId}
+              esewaConfirmData={esewaConfirmData}
               esewaLoading={esewaState.loading}
               esewaError={esewaState.error}
-              paySubMethod={paySubMethod}
-              onSetPaySubMethod={setPaySubMethod}
-              onStripeSuccess={(id, secret, createdAt) => { setStripeState(prev => ({ ...prev, paymentIntentId: id, clientSecret: secret, transactionTime: createdAt })) }}
               onStripeRetry={() => setStripeRetryCount(count => count + 1)}
-              onRazorpayPay={handleRazorpayPayment}
-              onRazorpayRetry={() => setRazorpayRetryCount(count => count + 1)}
               onSetKhaltiError={(error) => setKhaltiState(prev => ({ ...prev, error }))}
               onSetKhaltiLoading={(loading) => setKhaltiState(prev => ({ ...prev, loading }))}
               onKhaltiRetry={() => {
@@ -866,9 +837,12 @@ export default function ReservePage() {
               }}
               onEsewaRetry={() => {
                 setEsewaState({ paymentIntentId: null, loading: false, error: null })
+                setEsewaConfirmData(null)
+                localStorage.removeItem('esewa_confirm_data')
+                localStorage.removeItem('esewa_status')
+                localStorage.removeItem('esewa_ref_number')
                 setEsewaRetryCount(c => c + 1)
               }}
-              razorpayModalOpen={razorpayModalOpen}
             />
 
             <ConfirmButton
@@ -879,6 +853,7 @@ export default function ReservePage() {
               stripePaymentIntentId={stripeState.paymentIntentId}
               khaltiPaymentIntentId={khaltiState.paymentIntentId}
               esewaPaymentIntentId={esewaState.paymentIntentId}
+              esewaConfirmData={esewaConfirmData}
               onSetMarketingOptIn={setMarketingOptIn}
               onConfirm={handleConfirmBooking}
             />
@@ -888,221 +863,28 @@ export default function ReservePage() {
 
       <Footer />
 
-      {stripeModalOpen && (
+      {selectedPayment === "stripe" && !stripeState.paymentIntentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:px-6">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setStripeModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setSelectedPayment(null); setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null }) }} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto p-6">
             <button
-              onClick={() => setStripeModalOpen(false)}
+              onClick={() => { setSelectedPayment(null); setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null }) }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
             >
               ✕
             </button>
-            <div className="p-6">
-              <StripeCardForm
-                refNumber={refNumber}
-                amount={total}
-                currency={currency}
-                guestName={guestName}
-                guestEmail={guestEmail}
-                guestPhone={guestPhone}
-                hotelName={hotelName}
-                clientSecret={stripeState.clientSecret}
-                intentLoading={stripeState.loading}
-                intentError={stripeState.error}
-                onRetry={() => setStripeRetryCount(c => c + 1)}
-                onSuccess={(id, secret, createdAt) => {
-                  setStripeState(prev => ({ ...prev, paymentIntentId: id, clientSecret: secret, transactionTime: createdAt }))
-                  setStripeModalOpen(false)
-                }}
-              />
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={() => {
-                    setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null })
-                    setSelectedPayment(null)
-                    setStripeModalOpen(false)
-                  }}
-                  className="px-4 py-1.5 rounded-md border border-gray-300 text-gray-500 text-xs font-medium hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
-                >
-                  Cancel Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {razorpayModalOpen && selectedPayment === "razorpay" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:px-6">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setRazorpayModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setRazorpayModalOpen(false)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
-            <div className="p-6">
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Payment</h3>
-                <p className="text-xs text-gray-500">Pay via UPI, Card, Net Banking & more</p>
-              </div>
-
-              <div className="space-y-4">
-                {razorpayState.loading && (
-                  <div className="flex items-center justify-center gap-2 py-4">
-                    <Loader2 size={16} className="animate-spin text-[#1A3C5E]" />
-                    <span className="text-sm text-gray-500">Initializing Razorpay...</span>
-                  </div>
-                )}
-                {razorpayState.error && (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-red-500 mb-2">{razorpayState.error}</p>
-                    <button
-                      onClick={() => setRazorpayRetryCount(c => c + 1)}
-                      className="text-sm text-[#1A3C5E] font-semibold hover:underline cursor-pointer"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                )}
-
-                {!razorpayState.loading && !razorpayState.error && razorpayState.orderId && (
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      onClick={() => setPaySubMethod(paySubMethod === 'upi' ? null : 'upi')}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                        paySubMethod === 'upi'
-                          ? 'border-[#1A3C5E] bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        paySubMethod === 'upi' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        <Smartphone size={18} />
-                      </div>
-                      <span className="text-xs font-semibold text-gray-900">UPI</span>
-                      <span className="text-[10px] text-gray-500">GPay, PhonePe, etc.</span>
-                    </button>
-
-                    <button
-                      onClick={() => setPaySubMethod(paySubMethod === 'card' ? null : 'card')}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                        paySubMethod === 'card'
-                          ? 'border-[#1A3C5E] bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        paySubMethod === 'card' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        <CreditCard size={18} />
-                      </div>
-                      <span className="text-xs font-semibold text-gray-900">Card</span>
-                      <span className="text-[10px] text-gray-500">Debit / Credit</span>
-                    </button>
-
-                    <button
-                      onClick={() => setPaySubMethod(paySubMethod === 'netbanking' ? null : 'netbanking')}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                        paySubMethod === 'netbanking'
-                          ? 'border-[#1A3C5E] bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        paySubMethod === 'netbanking' ? 'bg-[#1A3C5E] text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        <Building2 size={18} />
-                      </div>
-                      <span className="text-xs font-semibold text-gray-900">Net Banking</span>
-                      <span className="text-[10px] text-gray-500">All major banks</span>
-                    </button>
-                  </div>
-                )}
-
-                {paySubMethod === 'upi' && (
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                    <label className="block text-xs font-semibold text-gray-700">Select your UPI app</label>
-                    <p className="text-[11px] text-gray-400">
-                      You'll be redirected to your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.) to approve the payment.
-                    </p>
-                    <button
-                      disabled={paymentLoading || !razorpayState.orderId}
-                      onClick={() => handleRazorpayPayment({ type: 'upi' })}
-                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via UPI</>}
-                    </button>
-                  </div>
-                )}
-
-                {paySubMethod === 'card' && (
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                    <p className="text-xs text-gray-600">You'll be redirected to Razorpay's secure card checkout.</p>
-                    <div className="flex items-center gap-2">
-                      {['Visa', 'Mastercard', 'RuPay', 'Amex'].map(b => (
-                        <span key={b} className="text-[10px] font-medium bg-white border border-gray-200 rounded px-2 py-1 text-gray-600">{b}</span>
-                      ))}
-                    </div>
-                    <button
-                      disabled={paymentLoading || !razorpayState.orderId}
-                      onClick={() => handleRazorpayPayment({ type: 'card' })}
-                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Card</>}
-                    </button>
-                  </div>
-                )}
-
-                {paySubMethod === 'netbanking' && (
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                    <label className="block text-xs font-semibold text-gray-700">Select your bank in the secure checkout</label>
-                    <p className="text-[11px] text-gray-400">
-                      You'll be redirected to your bank's net banking page to complete the payment.
-                    </p>
-                    <button
-                      disabled={paymentLoading || !razorpayState.orderId}
-                      onClick={() => handleRazorpayPayment({ type: 'netbanking' })}
-                      className="w-full py-2.5 rounded-lg bg-[#1A3C5E] text-white text-sm font-semibold hover:bg-[#163552] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {paymentLoading ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : <>Pay {currency}{Math.max(0, total).toFixed(2)} via Net Banking</>}
-                    </button>
-                  </div>
-                )}
-
-                {!paySubMethod && !razorpayState.response && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                    <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 mb-1">Secure Payment via Razorpay</p>
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        Select a payment method above to proceed. All transactions are encrypted and PCI-compliant.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!razorpayLoaded && (
-                  <p className="text-xs text-gray-400 text-center">Loading Razorpay...</p>
-                )}
-              </div>
-
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={() => {
-                    setRazorpayState({ response: null, orderId: null, loading: false, error: null })
-                    setPaySubMethod(null)
-                    setSelectedPayment(null)
-                    setRazorpayModalOpen(false)
-                  }}
-                  className="px-4 py-1.5 rounded-md border border-gray-300 text-gray-500 text-xs font-medium hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
-                >
-                  Cancel Payment
-                </button>
-              </div>
-            </div>
+            <StripeCardForm
+              refNumber={refNumber}
+              amount={advanceAmount}
+              currency={currency}
+              guestName={guestName}
+              guestEmail={guestEmail}
+              hotelName={hotelName}
+              clientSecret={stripeState.clientSecret}
+              intentLoading={stripeState.loading}
+              intentError={stripeState.error}
+              onRetry={() => setStripeRetryCount(c => c + 1)}
+            />
           </div>
         </div>
       )}

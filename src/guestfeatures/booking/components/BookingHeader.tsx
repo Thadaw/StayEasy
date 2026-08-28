@@ -76,7 +76,7 @@ export function BookingHeader({
           <p className="text-sm font-semibold text-gray-900">{formatDateShort(createdAt)}, {new Date(createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</p>
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-2">Payment Status</p>
           <p className="text-sm font-semibold text-emerald-600 flex items-center gap-1 sm:justify-end">
-            {paymentStatus === "paid" ? "Paid" : paymentStatus || "Pending"}{" "}
+            {paymentStatus ? paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1).toLowerCase() : "Pending"}{" "}
             <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-[10px]">✓</span>
           </p>
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-2">Total Paid</p>

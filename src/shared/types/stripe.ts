@@ -11,11 +11,9 @@ export interface StripeCardFormProps {
   currency?: string
   guestName?: string
   guestEmail?: string
-  guestPhone?: string
   hotelName?: string
   clientSecret?: string | null
   intentLoading?: boolean
   intentError?: string | null
   onRetry?: () => void
-  onSuccess: (paymentIntentId: string, clientSecret: string, createdAt: number) => void
 }

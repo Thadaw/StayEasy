@@ -119,6 +119,7 @@ export default function BookingConfirmationPage() {
       totalAmount,
       currency,
       createdAt,
+      paymentGateway,
     })
   }
 
@@ -192,6 +193,9 @@ export default function BookingConfirmationPage() {
         totalAmount={totalAmount}
         paymentGateway={confirmationState?.paymentGateway || paymentGateway}
         refNumber={confirmationCode}
+        advanceAmount={booking?.advance_amount}
+        amountPaid={booking?.amount_paid}
+        amountDue={booking?.amount_due}
       />
       <BookingActions
         refNumber={confirmationCode}

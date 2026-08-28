@@ -7,19 +7,12 @@ interface ReserveLayoutProps {
 
 export function ReserveLayout({ leftColumn, rightColumn }: ReserveLayoutProps) {
   return (
-    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-      <div className="lg:hidden space-y-5">
+    <div className="mx-auto grid w-full max-w-[1250px] grid-cols-1 gap-4 px-3.5 py-4 pb-10 sm:px-6 sm:py-5 lg:grid-cols-[1fr_600px] lg:gap-[26px]">
+      <div className="space-y-5">
         {leftColumn}
-        {rightColumn}
       </div>
-
-      <div className="hidden lg:grid lg:grid-cols-2 gap-8 items-start">
-        <div className="space-y-5">
-          {leftColumn}
-        </div>
-        <div className="lg:sticky lg:top-24 self-start">
-          {rightColumn}
-        </div>
+      <div className="w-full lg:max-w-[600px]">
+        {rightColumn}
       </div>
     </div>
   )

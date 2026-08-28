@@ -18,4 +18,5 @@ export interface Booking {
   }
   status: 'upcoming' | 'completed' | 'cancelled'
   createdAt: string
+  paymentGateway?: string
 }
