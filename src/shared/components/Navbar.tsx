@@ -7,6 +7,7 @@ import { useAuth } from "../../auth/AuthContext"
 import { useUserProfile } from "../../guestfeatures/profile/hooks/useUserProfile"
 import logo1 from "../../assets/logo1.png"
 
+
 export function Navbar({ compact }: { compact?: boolean }) {
   const { t } = useTranslation()
   const { user, logout } = useAuth()

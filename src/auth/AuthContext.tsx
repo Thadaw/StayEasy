@@ -22,7 +22,7 @@ const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
-const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
+const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -35,7 +35,10 @@ function readToken(): string | null {
   if (persisted) {
     const expiresAt = Number(localStorage.getItem(EXPIRY_KEY) || 0)
     if (expiresAt && Date.now() > expiresAt) {
-      clearAuth()
+      // Only clear the access token — keep the refresh token so the
+      // axios interceptor can silently refresh the session.
+      localStorage.removeItem(TOKEN_KEY)
+      sessionStorage.removeItem(TOKEN_KEY)
       return null
     }
     return persisted

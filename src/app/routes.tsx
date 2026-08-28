@@ -40,6 +40,8 @@ const BookingPage = lazy(() => import('../guestfeatures/booking/pages/GuestBooki
 const BookingViewPage = lazy(() => import('../guestfeatures/booking/pages/BookingSummaryPage'))
 const ReservePage = lazy(() => import('../guestfeatures/booking/pages/ReservePage'))
 const KhaltiCallbackPage = lazy(() => import('../guestfeatures/booking/pages/KhaltiCallbackPage'))
+const StripeCallbackPage = lazy(() => import('../guestfeatures/booking/pages/StripeCallbackPage'))
+const PaymentSuccessPage = lazy(() => import('../guestfeatures/booking/pages/PaymentSuccessPage'))
 const BookingConfirmationPage = lazy(() => import('../guestfeatures/booking/pages/BookingConfirmationPage'))
 const ProfilePage = lazy(() => import('../guestfeatures/profile/pages/ProfilePage'))
 const AboutMe = lazy(() => import('../guestfeatures/profile/components/AboutMe'))
@@ -49,6 +51,7 @@ const Coupons = lazy(() => import('../guestfeatures/profile/components/Coupons')
 const Reviews = lazy(() => import('../guestfeatures/profile/components/Reviews'))
 const Notifications = lazy(() => import('../guestfeatures/profile/components/Notifications'))
 const NotFoundPage = lazy(() => import('../guestfeatures/misc/pages/NotFoundPage'))
+const FooterPage = lazy(() => import('../guestfeatures/misc/pages/FooterPage'))
 
 export function AppRoutes() {
   return (
@@ -108,7 +111,32 @@ export function AppRoutes() {
       <Route path="/reserve" element={<KhaltiCallbackPage />} />
       <Route path="/reserve/:id" element={<ProtectedRoute><ReservePage /></ProtectedRoute>} />
       <Route path="/payment/khalti/callback" element={<KhaltiCallbackPage />} />
+      <Route path="/payment/stripe/callback" element={<StripeCallbackPage />} />
+      <Route path="/payment/success" element={<PaymentSuccessPage />} />
       <Route path="/booking-confirmation/:refNumber?" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
+      <Route path="/help-center" element={<FooterPage />} />
+      <Route path="/contact" element={<FooterPage />} />
+      <Route path="/booking-help" element={<FooterPage />} />
+      <Route path="/cancellation-refund" element={<FooterPage />} />
+      <Route path="/payment-security" element={<FooterPage />} />
+      <Route path="/safety" element={<FooterPage />} />
+      <Route path="/accessibility" element={<FooterPage />} />
+      <Route path="/destinations" element={<FooterPage />} />
+      <Route path="/hotels-stays" element={<FooterPage />} />
+      <Route path="/offers" element={<FooterPage />} />
+      <Route path="/nearby-stays" element={<FooterPage />} />
+      <Route path="/hosting-guide" element={<FooterPage />} />
+      <Route path="/host-resources" element={<FooterPage />} />
+      <Route path="/host-safety" element={<FooterPage />} />
+      <Route path="/about" element={<FooterPage />} />
+      <Route path="/features" element={<FooterPage />} />
+      <Route path="/careers" element={<FooterPage />} />
+      <Route path="/privacy" element={<FooterPage />} />
+      <Route path="/terms" element={<FooterPage />} />
+      <Route path="/cancellation-policy" element={<FooterPage />} />
+      <Route path="/refund-policy" element={<FooterPage />} />
+      <Route path="/cookie-policy" element={<FooterPage />} />
+      <Route path="/sitemap" element={<FooterPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

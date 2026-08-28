@@ -4,10 +4,21 @@ import { Heart, MapPin, Building2 } from 'lucide-react'
 import { FavouriteButton } from '../../../shared/components/FavouriteButton'
 
 export default function Favourites() {
-  const { favorites, getFavoriteProperties, toggleFavorite, isFavorite } = useFavorites()
+  const { favorites, getFavoriteProperties, toggleFavorite, isFavorite, loading } = useFavorites()
   const navigate = useNavigate()
 
   const properties = getFavoriteProperties()
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl">
+        <div className="bg-white rounded-xl border border-brand-card-border p-12 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
+          <p className="text-sm text-brand-text-secondary">Loading favourites...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (favorites.size === 0) {
     return (

@@ -20,6 +20,7 @@ export interface ReceiptParams {
   totalAmount: number
   currency: string
   createdAt?: string
+  paymentGateway?: string
 }
 
 function formatDate(dateStr: string): string {
@@ -50,6 +51,19 @@ function calcNights(checkIn: string, checkOut: string): number {
 export function printReceipt(params: ReceiptParams) {
   const nights = calcNights(params.checkIn, params.checkOut)
   const bookedOn = params.createdAt || formatDateTime(new Date().toISOString())
+
+  const gatewayLabels: Record<string, string> = {
+    razorpay: 'Razorpay',
+    stripe: 'Stripe',
+    khalti: 'Khalti',
+    esewa: 'eSewa',
+    arrival: 'Pay at Property',
+  }
+  const paymentMethodText = params.paymentGateway === 'arrival'
+    ? 'Pay at Property'
+    : params.paymentGateway
+      ? `Online Confirmation / Guaranteed (${gatewayLabels[params.paymentGateway] || params.paymentGateway})`
+      : 'Online Confirmation / Guaranteed'
 
   const roomLines = params.rooms
     .map(
@@ -187,7 +201,7 @@ export function printReceipt(params: ReceiptParams) {
     </table>
     <div style="padding:10px 12px;font-size:12px;color:#666;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0">
       <span>Payment method</span>
-      <span>Online Confirmation / Guaranteed</span>
+      <span>${paymentMethodText}</span>
     </div>
   </div>
 

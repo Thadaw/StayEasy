@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { ArrowLeft, Copy, Share2, Download, QrCode, ArrowRight, Heart } from "lucide-react"
+import { ArrowLeft, Copy, Share2, Download, QrCode, ArrowRight, Heart, Star } from "lucide-react"
 import QRCodeLib from "qrcode"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
@@ -13,6 +13,7 @@ import { CancellationCard } from "../components/CancellationCard"
 import { BookingPaymentSummary } from "../components/BookingPaymentSummary"
 import { useBookingActions } from "../../../shared/hooks/useBookingActions"
 import { useBookingDetails } from "../hooks/useBookingDetails"
+import { WriteReviewModal } from "../../review/components/WriteReviewModal"
 import { getStatusColor, canCancelBooking, buildShareText, buildQrData } from "../../../shared/utils/bookingHelpers"
 import { formatDateFull } from "../../../shared/utils/format"
 
@@ -36,6 +37,7 @@ export default function BookingDetailsView() {
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
   const [localCopied, setLocalCopied] = useState(false)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
 
   const {
     booking,
@@ -71,6 +73,10 @@ export default function BookingDetailsView() {
     taxAmount,
     basePrice,
   } = useBookingDetails(id)
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const reviewPropertyId = booking?.property?.id || ""
+  const canReview = bookingStatus === "completed" && UUID_RE.test(reviewPropertyId)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -185,6 +191,7 @@ export default function BookingDetailsView() {
       totalAmount,
       currency,
       createdAt,
+      paymentGateway,
     })
   }
 
@@ -220,7 +227,7 @@ export default function BookingDetailsView() {
       <Navbar />
 
       <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-4 grid grid-cols-3 items-center">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-4 grid grid-cols-3 items-center">
           <button
             onClick={() => navigate("/profile/bookings")}
             className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer justify-self-start"
@@ -233,8 +240,8 @@ export default function BookingDetailsView() {
         </div>
       </div>
 
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
             <BookingHeader
               propertyName={propertyName}
@@ -288,6 +295,9 @@ export default function BookingDetailsView() {
               totalAmount={totalAmount}
               paymentGateway={paymentGateway || undefined}
               refNumber={refNumber}
+              advanceAmount={booking?.advance_amount}
+              amountPaid={booking?.amount_paid}
+              amountDue={booking?.amount_due}
             />
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
@@ -345,9 +355,30 @@ export default function BookingDetailsView() {
                 <Heart size={14} /> Book Again
               </button>
             </div>
+
+            {canReview && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-1">Write a Review</h3>
+              <p className="text-xs text-gray-500 mb-3">Share your experience at this property.</p>
+              <button
+                onClick={() => setReviewModalOpen(true)}
+                className="w-full py-3 rounded-xl border border-[#1A3C5E] text-[#1A3C5E] font-semibold text-sm hover:bg-[#1A3C5E] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Star size={14} /> Write a Review
+              </button>
+            </div>
+            )}
           </div>
         </div>
       </div>
+
+      {reviewModalOpen && (
+        <WriteReviewModal
+          propertyId={reviewPropertyId}
+          propertyName={propertyName}
+          onClose={() => setReviewModalOpen(false)}
+        />
+      )}
 
       <Footer />
     </div>

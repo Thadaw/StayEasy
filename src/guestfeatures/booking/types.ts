@@ -1,6 +1,6 @@
 import type { RazorpayOrderResponse, RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse, HostBankDetails } from '../../shared/types/razorpay'
 
-export type PaymentMethod = "stripe" | "razorpay" | "khalti" | "arrival"
+export type PaymentMethod = "stripe" | "razorpay" | "khalti" | "esewa" | "arrival"
 
 export interface BookingRoom {
   room_id: string
@@ -53,6 +53,14 @@ export interface ApiBooking {
   number_of_adults?: number
   number_of_children?: number
   photos?: { cover: string; gallery: string[] }
+  advance_amount?: number | null
+  min_advance_amount?: number
+  max_advance_amount?: number
+  min_advance_percentage?: number
+  max_advance_percentage?: number
+  advance_payment_percentage?: number
+  amount_paid?: number
+  amount_due?: number
 }
 
 export interface LocalBooking {
@@ -75,6 +83,7 @@ export interface LocalBooking {
   }
   status: 'upcoming' | 'completed' | 'cancelled'
   createdAt: string
+  paymentGateway?: string
 }
 
 export type { RazorpayOrderResponse, RazorpayPaymentResponse, RazorpayCheckoutOptions, RazorpayPayOptions, RazorpayFailureResponse, HostBankDetails }

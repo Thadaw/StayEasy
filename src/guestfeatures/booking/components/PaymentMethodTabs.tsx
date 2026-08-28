@@ -28,7 +28,7 @@ export function PaymentMethodTabs({ paymentOptions, selectedPayment, onSelect }:
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            <span className="flex items-center justify-center gap-1.5">{logo} {label}</span>
+            <span className="flex items-center justify-center">{logo}</span>
           </button>
         ))}
       </div>

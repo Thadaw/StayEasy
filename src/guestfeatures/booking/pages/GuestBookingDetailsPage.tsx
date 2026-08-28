@@ -153,6 +153,8 @@ export default function BookingDetailsPage() {
     return hotel.roomTypes.filter(rt => selectedRooms[rt.id] && selectedRooms[rt.id] > 0)
   }, [hotel, reservedRooms, selectedRooms])
 
+  const nights = bookingData?.nights || calculateNights(checkIn, checkOut)
+
   const roomLines = useMemo(() => {
     if (reservedRooms.length > 0) {
       return reservedRooms.map(br => {
@@ -160,21 +162,41 @@ export default function BookingDetailsPage() {
         const qty = 1
         const gc = br.max_adults + br.max_children
         const ep = br.base_rate
-        return { room: rt || { id: br.room_id, name: br.room_name, price: br.base_rate, maxGuests: gc } as RoomType, qty, gc, ep, lineTotal: qty * ep }
+        return {
+          room: rt || {
+            id: br.room_id,
+            name: br.room_name,
+            price: br.base_rate,
+            maxGuests: gc,
+            maxAdults: br.max_adults,
+            maxChildren: br.max_children,
+            roomTypeName: br.room_type || '',
+            bedType: br.bed_type || '',
+            image: br.photo || br.photos?.cover || '',
+            cancellationTitle: br.cancellation_title || '',
+            cancellationDescription: br.cancellation_description || '',
+          } as RoomType,
+          qty, gc, ep, lineTotal: br.subtotal || qty * ep * nights,
+          nights: br.nights,
+          maxAdults: br.max_adults,
+          maxChildren: br.max_children,
+        }
       })
     }
     return selectedRoomTypes.map(rt => {
       const qty = selectedRooms[rt.id] || 0
       const gc = guestAllocation[rt.id] || 1
       const ep = rt.price
-      const lineTotal = qty * ep
-      return { room: rt, qty, gc, ep, lineTotal }
+      const lineTotal = qty * ep * nights
+      return { room: rt, qty, gc, ep, lineTotal, maxAdults: rt.maxAdults || 0, maxChildren: rt.maxChildren || 0 }
     })
-  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation])
+  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation, nights])
 
-  const nights = calculateNights(checkIn, checkOut)
-  const subtotal = roomLines.reduce((s, l) => s + l.lineTotal * nights, 0)
-  const total = subtotal
+  const subtotal = bookingData?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal, 0)
+  const specialOfferDiscount = bookingData?.special_offer_discount || 0
+  const couponDiscount = bookingData?.coupon_discount || 0
+  const couponCode = bookingData?.coupon_code || null
+  const total = bookingData?.total_amount || subtotal
 
   const handleNext = () => {
     const params = new URLSearchParams()
@@ -216,7 +238,7 @@ export default function BookingDetailsPage() {
 
       {/* Full-width stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
-        <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-5 relative">
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
@@ -247,14 +269,14 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      <div className="max-w-275 mx-auto px-4 sm:px-6 py-6">
+      <div className="mx-auto w-full max-w-[1250px] px-3.5 py-4 pb-10 sm:px-6 sm:py-5">
 
         <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
           <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
-          <div className="order-1 lg:order-1">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_600px] lg:gap-[26px] items-start">
+          <div className="order-1 lg:order-1 space-y-5">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <img
                 src={hotel.imageUrl || hotel.images[0]}
@@ -345,7 +367,7 @@ export default function BookingDetailsPage() {
               </div>
 
               {roomLines.length > 0 && (
-                <div className="border-t border-gray-200 p-5 hidden lg:block">
+                <div className="border-t border-gray-200 p-5">
                   <h3 className="text-sm font-bold text-gray-900 mb-3">Room details</h3>
                   <div className="space-y-3">
                     {roomLines.map((l, i) => {
@@ -362,14 +384,21 @@ export default function BookingDetailsPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900">{room.name}</p>
-                            <p className="text-xs text-gray-500">{room.roomTypeName || room.bedType || ''}</p>
-                            <p className="text-xs text-gray-500">Room type: Standard</p>
-                            <p className="text-xs text-gray-500">Bed type: Queen</p>
+                            {room.roomTypeName && (
+                              <p className="text-xs text-gray-500">Room type: {room.roomTypeName}</p>
+                            )}
+                            {room.bedType && (
+                              <p className="text-xs text-gray-500">Bed type: {room.bedType}</p>
+                            )}
                             <p className="text-xs text-gray-400">
-                              3 adults · 2 children
+                              {l.maxAdults > 0 && l.maxChildren > 0
+                                ? `${l.maxAdults} adult${l.maxAdults !== 1 ? 's' : ''} · ${l.maxChildren} child${l.maxChildren !== 1 ? 'ren' : ''}`
+                                : l.gc > 0
+                                  ? `${l.gc} guest${l.gc !== 1 ? 's' : ''}`
+                                  : ''}
                             </p>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.ep.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.lineTotal.toFixed(2)}</p>
                         </div>
                       )
                     })}
@@ -379,13 +408,28 @@ export default function BookingDetailsPage() {
 
               <div className="border-t border-gray-200 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Your price summary</h3>
+                {specialOfferDiscount > 0 && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Special offer discount</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{specialOfferDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && couponCode && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Coupon ({couponCode})</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
                 {roomLines.map(l => (
                   <div key={l.room.id} className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-600">{l.room.name}</span>
-                    <span className="text-xs text-gray-900">{currency}{(l.lineTotal * nights).toFixed(2)}</span>
+                    <span className="text-xs text-gray-600">{l.room.name} × {nights} night{nights !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-gray-900">{currency}{l.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 mt-3 pt-3">
+                  {(specialOfferDiscount > 0 || couponDiscount > 0) && (
+                    <p className="text-xs text-[#C0392B] line-through mb-1">{currency}{(subtotal + specialOfferDiscount + couponDiscount).toFixed(2)}</p>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-gray-900">Total</span>
                     <span className="text-sm font-bold text-gray-900">{currency}{Math.max(0, total).toFixed(2)}</span>
@@ -396,7 +440,7 @@ export default function BookingDetailsPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+          <div className="order-2 lg:order-2 w-full lg:max-w-[600px] lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
               onGuestChange={setGuest}

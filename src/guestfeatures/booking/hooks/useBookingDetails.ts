@@ -148,7 +148,9 @@ export function useBookingDetails(id: string | undefined) {
   const specialOfferDiscount = booking?.special_offer_discount || 0
   const couponDiscount = booking?.coupon_discount || 0
   const paymentStatus = booking?.payment_status || (localBooking ? "paid" : null)
-  const paymentGateway = booking?.payment_gateway || ""
+  const paymentGateway = booking?.payment_gateway || localBooking?.paymentGateway || ""
+  const amountPaid = booking?.amount_paid ?? 0
+  const amountDue = booking?.amount_due ?? totalAmount
   const refNumber = booking?.ref_number || localBooking?.refNumber || localBooking?.id || id || ""
   const createdAt = booking?.created_at || localBooking?.createdAt || new Date().toISOString()
   const bookingStatus = resolveBookingStatus(
@@ -192,6 +194,8 @@ export function useBookingDetails(id: string | undefined) {
     couponDiscount,
     paymentStatus,
     paymentGateway,
+    amountPaid,
+    amountDue,
     refNumber,
     createdAt,
     bookingStatus,

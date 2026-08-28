@@ -1,12 +1,19 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { CalendarDays, TicketPercent, Shield, Bell } from 'lucide-react'
+import { CalendarDays, TicketPercent, Shield, Bell, type LucideIcon } from 'lucide-react'
 
 export type NotificationIcon = typeof CalendarDays
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  CalendarDays,
+  TicketPercent,
+  Shield,
+  Bell,
+}
+
 export interface Notification {
   id: string
-  icon: NotificationIcon
+  icon: string
   color: string
   bgColor: string
   title: string
@@ -22,6 +29,7 @@ interface NotificationContextValue {
   markAsRead: (id: string) => void
   markAllAsRead: () => void
   deleteNotification: (id: string) => void
+  getIcon: (name: string) => LucideIcon | undefined
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null)
@@ -94,9 +102,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications(prev => prev.filter(n => n.id !== id))
   }, [])
 
+  const getIcon = useCallback((name: string) => ICON_MAP[name], [])
+
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, deleteNotification }}
+      value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, deleteNotification, getIcon }}
     >
       {children}
     </NotificationContext.Provider>

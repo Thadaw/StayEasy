@@ -16,7 +16,7 @@ import { RoomSelectionPanel } from "../components/RoomSelectionPanel";
 import { ReviewSection } from "../components/ReviewSection";
 import { ThingsToKnow } from "../components/ThingsToKnow";
 import { RoomDetailModal } from "../components/RoomDetailModal";
-import { RecommendedRoom } from "../components/RecommendedRoom";
+
 import { usePropertyDetails } from "../hooks/usePropertyDetails";
 import { useBookingCreation } from "../../booking/hooks/useBookingCreation";
 
@@ -41,8 +41,7 @@ export default function PropertyDetailPage() {
     detailRoomId,
     nights,
     capacityError,
-    recommendedRooms,
-    hotelMatchesFilters,
+
     setCheckIn,
     setCheckOut,
     setGuests,
@@ -110,10 +109,6 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const guestCount = (() => {
-    const total = guests.adults + guests.children
-    return total > 0 ? total : 2
-  })();
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -260,18 +255,6 @@ export default function PropertyDetailPage() {
 
         <AmenitiesSection hotel={hotel} />
 
-        {hotelMatchesFilters && recommendedRooms.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-foreground mb-3 font-brand">
-              Recommended for {guestCount} guest{guestCount > 1 ? "s" : ""}
-            </h3>
-            <div className="space-y-3">
-              {recommendedRooms.map((rt) => (
-                <RecommendedRoom key={rt.id} room={rt} onReserve={handleSelectRoom} currency={currency} roomQuantities={roomQuantities} />
-              ))}
-            </div>
-          </div>
-        )}
 
         <RoomSelectionPanel
           hotel={hotel}
@@ -295,7 +278,7 @@ export default function PropertyDetailPage() {
           isCreating={isCreating}
         />
 
-        <ReviewSection hotel={hotel} />
+        <ReviewSection hotel={hotel} propertyId={id!} />
 
         <ThingsToKnow />
       </div>

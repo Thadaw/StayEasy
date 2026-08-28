@@ -61,6 +61,7 @@ export default function BookingConfirmationPage() {
     specialOfferDiscount,
     couponDiscount,
     paymentGateway,
+    createdAt,
   } = useBookingDetails(refNumber)
 
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
@@ -117,6 +118,8 @@ export default function BookingConfirmationPage() {
       couponDiscount,
       totalAmount,
       currency,
+      createdAt,
+      paymentGateway,
     })
   }
 
@@ -147,7 +150,7 @@ export default function BookingConfirmationPage() {
     currency,
     paymentMethod: paymentGateway || 'Online',
     cancellationPolicy: cancellationDescription || cancellationTitle || '',
-    bookedOn: new Date().toISOString(),
+    bookedOn: createdAt || new Date().toISOString(),
   })
 
   const leftContent = (
@@ -190,6 +193,9 @@ export default function BookingConfirmationPage() {
         totalAmount={totalAmount}
         paymentGateway={confirmationState?.paymentGateway || paymentGateway}
         refNumber={confirmationCode}
+        advanceAmount={booking?.advance_amount}
+        amountPaid={booking?.amount_paid}
+        amountDue={booking?.amount_due}
       />
       <BookingActions
         refNumber={confirmationCode}
