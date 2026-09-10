@@ -20,6 +20,8 @@ import type {
   TenantResponse,
   PropertyBooking,
   BookingCreatePayload,
+  WalkinBookingPayload,
+  ArrivalGuest,
 } from '../types/pms'
 
 // The backend wraps every JSON response in a StandardResponse envelope:
@@ -134,9 +136,9 @@ export const deleteRoom = async (propertyId: string, roomId: string): Promise<vo
   await api.delete(`/properties/${propertyId}/rooms/${roomId}`)
 }
 
-export const getAvailableRooms = async (propertyId: string, checkinDate: string, checkoutDate: string): Promise<AvailableRoom[]> => {
+export const getAvailableRooms = async (propertyId: string, checkinDate: string, checkoutDate: string, adults: number, children: number): Promise<AvailableRoom[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/available-rooms`, {
-    params: { checkin_date: checkinDate, checkout_date: checkoutDate },
+    params: { checkin_date: checkinDate, checkout_date: checkoutDate, adults, children },
   })
   const data = unwrapBody<AvailableRoom[]>(result)
   return Array.isArray(data) ? data : []
@@ -269,4 +271,92 @@ export const getBookingByRefNumber = async (refNumber: string): Promise<Property
 export const createBooking = async (data: BookingCreatePayload): Promise<PropertyBooking> => {
   const { data: result } = await api.post('/bookings/', data)
   return unwrapBody<PropertyBooking>(result)
+}
+
+export const createWalkinBooking = async (data: WalkinBookingPayload): Promise<PropertyBooking> => {
+  const { data: result } = await api.post('/staff/create-walkin-booking', data)
+  return unwrapBody<PropertyBooking>(result)
+}
+
+// ─── Staff Arrivals ──────────────────────────────────────────
+
+export const getTodayArrivals = async (propertyId: string): Promise<ArrivalGuest[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/today/arrivals`)
+  const data = unwrapBody<ArrivalGuest[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getTodayDepartures = async (propertyId: string): Promise<ArrivalGuest[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/today/departures`)
+  const data = unwrapBody<ArrivalGuest[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+// ─── Staff Check-In ──────────────────────────────────────────
+
+export const checkInGuest = async (refNumber: string): Promise<string> => {
+  const { data: result } = await api.post(`/staff/check-in/${refNumber}`)
+  return typeof result === "string" ? result : result?.data ?? "Checked in"
+}
+
+// ─── Staff Check-Out ─────────────────────────────────────────
+
+export const checkOutGuest = async (refNumber: string): Promise<string> => {
+  const { data: result } = await api.post(`/staff/check-out/${refNumber}`)
+  return typeof result === "string" ? result : result?.data ?? "Checked out"
+}
+
+// ─── Staff Front Desk Summary ────────────────────────────────
+
+export interface FrontDeskSummary {
+  todays_arrivals: number
+  todays_departures: number
+  todays_checked_in: number
+  todays_checked_out: number
+  total_rooms: number
+  total_available_rooms: number
+  dirty_rooms: number
+  occupied_rooms: number
+}
+
+export const getFrontDeskSummary = async (propertyId: string): Promise<FrontDeskSummary> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/front-desk-summary`)
+  return unwrapBody<FrontDeskSummary>(result)
+}
+
+// ─── Staff Enums ─────────────────────────────────────────────
+
+export interface EnumOption {
+  value: string
+  label: string
+}
+
+export const getBookingStatuses = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/booking-statuses')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentStatuses = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-statuses')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentGateways = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-gateways')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentMethods = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-methods')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getBookingTypes = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/booking-types')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
 }

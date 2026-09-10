@@ -62,6 +62,7 @@ export default function BookingConfirmationPage() {
     couponDiscount,
     paymentGateway,
     createdAt,
+    specialRequests,
   } = useBookingDetails(refNumber)
 
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
@@ -120,6 +121,7 @@ export default function BookingConfirmationPage() {
       currency,
       createdAt,
       paymentGateway,
+      specialRequests,
     })
   }
 
@@ -151,6 +153,7 @@ export default function BookingConfirmationPage() {
     paymentMethod: paymentGateway || 'Online',
     cancellationPolicy: cancellationDescription || cancellationTitle || '',
     bookedOn: createdAt || new Date().toISOString(),
+    specialRequests,
   })
 
   const leftContent = (
@@ -174,6 +177,12 @@ export default function BookingConfirmationPage() {
         guestPhone={guestPhone}
         guestNationality={guestNationality}
       />
+      {specialRequests && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">Special Requests</h3>
+          <p className="text-sm text-gray-600">{specialRequests}</p>
+        </div>
+      )}
       <InfoCards
         cancellationTitle={cancellationTitle}
         cancellationDescription={cancellationDescription}

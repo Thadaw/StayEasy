@@ -79,7 +79,7 @@ export function BookingHeader({
             {paymentStatus ? paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1).toLowerCase() : "Pending"}{" "}
             <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-[10px]">✓</span>
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-2">Total Paid</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-2">Total Cost</p>
           <p className="text-lg font-bold text-gray-900">{currency} {totalAmount.toLocaleString()}</p>
         </div>
       </div>

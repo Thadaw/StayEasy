@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import { useAuth } from './AuthContext'
+import { usePropertyStore } from '../stores/propertyStore'
 import loginAni from '../assets/login.mp4'
 import bgImage from '../assets/background.png'
 
@@ -24,6 +25,7 @@ export default function Login() {
   const [searchParams] = useSearchParams()
 
   const { login: authLogin } = useAuth()
+  const { setCurrentPropertyId } = usePropertyStore()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
   const [videoReady, setVideoReady] = useState(false)
   const [email, setEmail] = useState('')
@@ -49,7 +51,17 @@ export default function Login() {
       const res = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      await authLogin(res.data.access_token, remember, isHost ? 'host' : 'guest', res.data.refresh_token)
+
+      const responseRole = res.data.role
+      const isStaff = responseRole === 'front_desk'
+      const userRole = isStaff ? 'staff' : isHost ? 'host' : 'guest'
+
+      await authLogin(res.data.access_token, remember, userRole, res.data.refresh_token)
+
+      if (isStaff && res.data.property?.id) {
+        setCurrentPropertyId(res.data.property.id)
+      }
+
       const redirectTo = searchParams.get('redirect')
       const redirectIsHost = !!redirectTo && redirectTo.startsWith('/host')
       const isAuthPage =
@@ -58,7 +70,11 @@ export default function Login() {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      setTimeout(() => navigate(isHost ? '/host/overall-dashboard' : '/'), 800)
+      if (isStaff) {
+        setTimeout(() => navigate('/frontdesk'), 800)
+      } else {
+        setTimeout(() => navigate(isHost ? '/host/overall-dashboard' : '/'), 800)
+      }
     } catch (err) {
       setError(extractError(err))
       setLoading(false)

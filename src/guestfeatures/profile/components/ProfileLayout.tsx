@@ -1,13 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthContext'
-import { User, Heart, CalendarDays, TicketPercent, Star, Bell, LogOut, ChevronRight } from 'lucide-react'
+import { User, Heart, CalendarDays, Star, Bell, LogOut, ChevronRight } from 'lucide-react'
 import { Navbar } from '../../../shared/components/Navbar'
 
 const navItems = [
   { to: '/profile/about', icon: User, label: 'About Me' },
   { to: '/profile/favourites', icon: Heart, label: 'Favourite Properties' },
   { to: '/profile/bookings', icon: CalendarDays, label: 'My Bookings' },
-  { to: '/profile/coupons', icon: TicketPercent, label: 'My Coupons' },
   { to: '/profile/reviews', icon: Star, label: 'My Reviews' },
   { to: '/profile/notifications', icon: Bell, label: 'Notifications' },
 ]

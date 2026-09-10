@@ -156,13 +156,14 @@ export function useBookingDetails(id: string | undefined) {
   const bookingStatus = resolveBookingStatus(
     booking?.status || localBooking?.status || "upcoming",
     booking?.check_out || localBooking?.checkOut
-  )
+  ) ?? 'upcoming'
   const statusLabel = bookingStatus.charAt(0).toUpperCase() + bookingStatus.slice(1)
 
   const guestName = guestProfile?.name || booking?.guest_name || user?.full_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Guest"
   const guestEmail = guestProfile?.email || booking?.guest_email || user?.email || ""
   const guestPhone = guestProfile?.phone || booking?.guest_phone || ""
   const guestNationality = guestProfile?.nationality || ""
+  const specialRequests = booking?.special_requests || ""
 
   const coverImage = coverPhoto || localBooking?.hotelImage || ""
 
@@ -204,6 +205,7 @@ export function useBookingDetails(id: string | undefined) {
     guestEmail,
     guestPhone,
     guestNationality,
+    specialRequests,
     taxAmount,
     basePrice,
   }

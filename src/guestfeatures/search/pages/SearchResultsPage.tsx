@@ -8,6 +8,9 @@ import { Footer } from "../../../shared/components/Footer";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { useFavorites } from "../../../context/FavoritesContext";
 import { useSearchResults } from "../hooks/useSearchResults";
+import { useSystemRoomTypes } from "../hooks/useSystemRoomTypes";
+import { useSystemBedTypes } from "../hooks/useSystemBedTypes";
+import { useSystemAmenities } from "../hooks/useSystemAmenities";
 
 import { FilterSidebar } from "../components/FilterSidebar";
 import { SearchResultCard } from "../components/SearchResultCard";
@@ -17,23 +20,50 @@ import { EmptySearch } from "../components/EmptySearch";
 
 export default function SearchResultsPage() {
   const [searchParams] = useSearchParams();
-  const guests = searchParams.get("guests") || "2 guests";
+  const adultsParam = searchParams.get("adults") || "2";
+  const childrenParam = searchParams.get("children") || "0";
+  const roomsParam = searchParams.get("rooms") || "1";
+  const guests = searchParams.get("guests") || `${Number(adultsParam) + Number(childrenParam)} guests`;
   const whereParam = searchParams.get("where") || "";
   const propertyTypes = searchParams.get("propertyTypes") || "";
   const checkinParam = searchParams.get("checkin") || "";
   const checkoutParam = searchParams.get("checkout") || "";
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { roomTypes } = useSystemRoomTypes();
+  const { bedTypes } = useSystemBedTypes();
+  const { amenities: systemAmenities } = useSystemAmenities();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    Number(searchParams.get("min_price")) || 0,
+    Number(searchParams.get("max_price")) || 500,
+  ]);
+  const [propertyFilters, setPropertyFilters] = useState<string[]>(() => {
+    const fromUrl = searchParams.get("propertyTypes")?.split(",").filter(Boolean);
+    if (fromUrl && fromUrl.length > 0) {
+      return fromUrl;
+    }
+    return [];
+  });
+  const [selectedRoomTypeIds, setSelectedRoomTypeIds] = useState<string[]>([]);
+  const [selectedBedTypeIds, setSelectedBedTypeIds] = useState<string[]>([]);
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
 
   const { results, loading, total, pageSize } = useSearchResults(
     whereParam,
     propertyTypes,
     checkinParam,
     checkoutParam,
-    guests,
-    currentPage
+    adultsParam,
+    childrenParam,
+    roomsParam,
+    currentPage,
+    priceRange[0],
+    priceRange[1],
+    selectedRoomTypeIds,
+    selectedBedTypeIds,
+    selectedAmenityIds
   );
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -43,92 +73,55 @@ export default function SearchResultsPage() {
     return Math.ceil(Math.max(...results.map((p) => p.total_price ?? 0)));
   }, [results]);
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  const [propertyFilters, setPropertyFilters] = useState<string[]>(() => {
-    const fromUrl = searchParams.get("propertyTypes")?.split(",").filter(Boolean);
-    if (fromUrl && fromUrl.length > 0) {
-      const mapped = fromUrl.map((t) => {
-        const lower = t.toLowerCase();
-        if (lower === "hotel" || lower === "hostel") return "Hotel";
-        if (lower === "apartment") return "Apartment";
-        if (lower === "villa") return "Villa";
-        if (lower === "resort") return "Resort";
-        return "Others";
-      });
-      return [...new Set(mapped)];
-    }
-    return ["All types"];
-  });
-  const [amenities, setAmenities] = useState<string[]>([]);
-
   useEffect(() => {
     setCurrentPage(1);
-  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests]);
+  }, [whereParam, propertyTypes, checkinParam, checkoutParam, adultsParam, childrenParam, priceRange, selectedRoomTypeIds, selectedBedTypeIds, selectedAmenityIds]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
-  const togglePropertyType = (type: string) => {
-    if (type === "All types") {
-      setPropertyFilters(["All types"]);
-    } else {
-      setPropertyFilters((prev) => {
-        const next = prev.filter((t) => t !== "All types");
-        if (next.includes(type)) {
-          return next.filter((t) => t !== type);
-        }
-        return [...next, type];
-      });
-    }
-  };
-
-  const toggleAmenity = (amenity: string) => {
-    setAmenities((prev) =>
-      prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity]
-    );
-  };
-
   useEffect(() => {
-    setPriceRange(([, prevMax]) => [0, maxPrice]);
+    if (!searchParams.get("max_price")) {
+      setPriceRange(([, prevMax]) => [0, maxPrice]);
+    }
   }, [maxPrice]);
 
-  const pageResults = useMemo(() => {
-    return results.filter((property) => {
-      if (!propertyFilters.includes("All types")) {
-        const type = (property.type || "").toLowerCase().trim();
-        const matchesType = propertyFilters.some((f) => {
-          if (f === "Others") {
-            const knownTypes = ["hotel", "hostel", "apartment", "villa", "resort"];
-            return !knownTypes.some((kt) => type.includes(kt));
-          }
-          const fLower = f.toLowerCase().replace(/s$/, "");
-          const tNorm = type.replace(/s$/, "");
-          return tNorm === fLower;
-        });
-        if (!matchesType) return false;
+  const togglePropertyType = (type: string, id: string) => {
+    setPropertyFilters((prev) => {
+      if (prev.includes(type)) {
+        setSelectedRoomTypeIds((prevIds) => prevIds.filter((i) => i !== id));
+        return prev.filter((t) => t !== type);
       }
-
-      const price = property.total_price ?? 0;
-      if (price < priceRange[0] || price > priceRange[1]) return false;
-
-      if (amenities.length > 0) {
-        const matches = amenities.every((a) =>
-          (property.amenities || []).some((amenity) =>
-            amenity.toLowerCase().includes(a.toLowerCase())
-          )
-        );
-        if (!matches) return false;
-      }
-
-      return true;
+      setSelectedRoomTypeIds((prevIds) => [...prevIds, id]);
+      return [...prev, type];
     });
-  }, [results, propertyFilters, priceRange, amenities]);
+  };
+
+  const toggleBedType = (type: string, id: string) => {
+    setSelectedBedTypeIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((i) => i !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
+  const toggleAmenity = (amenity: string, id: string) => {
+    setSelectedAmenityIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((i) => i !== id);
+      }
+      return [...prev, id];
+    });
+  };
 
   const clearAll = () => {
     setPriceRange([0, maxPrice]);
-    setPropertyFilters(["All types"]);
-    setAmenities([]);
+    setPropertyFilters([]);
+    setSelectedRoomTypeIds([]);
+    setSelectedBedTypeIds([]);
+    setSelectedAmenityIds([]);
   };
 
   const buildFilterParams = () => {
@@ -136,8 +129,15 @@ export default function SearchResultsPage() {
     if (whereParam) params.set("where", whereParam);
     if (checkinParam) params.set("checkin", checkinParam);
     if (checkoutParam) params.set("checkout", checkoutParam);
+    if (adultsParam) params.set("adults", adultsParam);
+    if (childrenParam) params.set("children", childrenParam);
+    if (roomsParam) params.set("rooms", roomsParam);
     if (guests) params.set("guests", guests);
-    if (amenities.length > 0) params.set("amenities", amenities.join(","));
+    if (priceRange[0] > 0) params.set("min_price", String(priceRange[0]));
+    if (priceRange[1] < maxPrice) params.set("max_price", String(priceRange[1]));
+    if (selectedRoomTypeIds.length > 0) params.set("room_type_ids", selectedRoomTypeIds.join(","));
+    if (selectedBedTypeIds.length > 0) params.set("bed_type_ids", selectedBedTypeIds.join(","));
+    if (selectedAmenityIds.length > 0) params.set("amenity_ids", selectedAmenityIds.join(","));
     return params.toString();
   };
 
@@ -158,9 +158,14 @@ export default function SearchResultsPage() {
               priceRange={priceRange}
               onPriceRangeChange={setPriceRange}
               maxPrice={maxPrice}
+              roomTypes={roomTypes}
+              bedTypes={bedTypes}
+              systemAmenities={systemAmenities}
               propertyFilters={propertyFilters}
               onTogglePropertyType={togglePropertyType}
-              amenities={amenities}
+              selectedBedTypeIds={selectedBedTypeIds}
+              onToggleBedType={toggleBedType}
+              selectedAmenityIds={selectedAmenityIds}
               onToggleAmenity={toggleAmenity}
               onClearAll={clearAll}
             />

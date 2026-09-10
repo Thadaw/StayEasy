@@ -54,7 +54,9 @@ async function refreshAccessToken(): Promise<string> {
 function redirectToLogin() {
   const role = storageGet(ROLE_KEY)
   clearAuthStorage()
-  window.location.href = role === 'guest' ? '/login' : '/host/login'
+  if (role === 'guest') window.location.href = '/login'
+  else if (role === 'staff') window.location.href = '/staff/login'
+  else window.location.href = '/host/login'
 }
 
 api.interceptors.response.use(

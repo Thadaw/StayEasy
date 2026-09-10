@@ -15,6 +15,7 @@ import { parseJSON } from "../../../shared/utils/helpers"
 import { getDefaultDates } from "../../../shared/utils/date"
 import { allCountries } from "../../../data/countries"
 import { calculateNights } from "../../../shared/utils/time"
+import api from "../../../services/axios"
 
 const HOTEL_IMAGE_HEIGHT = "h-56"
 const MAX_AMENITIES_DISPLAY = 5
@@ -78,6 +79,8 @@ export default function BookingDetailsPage() {
     phone: "",
     country: "",
   })
+
+  const [specialRequest, setSpecialRequest] = useState("")
 
   useEffect(() => {
     if (!guestProfile) return
@@ -198,7 +201,16 @@ export default function BookingDetailsPage() {
   const couponCode = bookingData?.coupon_code || null
   const total = bookingData?.total_amount || subtotal
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (specialRequest.trim() && refNumber) {
+      try {
+        await api.patch(`/bookings/${refNumber}/special-requests`, {
+          special_requests: specialRequest.trim()
+        })
+      } catch {
+        // Continue even if special request fails
+      }
+    }
     const params = new URLSearchParams()
     if (checkIn) params.set("checkIn", checkIn)
     if (checkOut) params.set("checkOut", checkOut)
@@ -446,6 +458,18 @@ export default function BookingDetailsPage() {
               onGuestChange={setGuest}
               roomNames={roomLines.map(l => l.room.name).join(", ")}
             />
+
+            <div className="mt-5 bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Special requests</h3>
+              <p className="text-xs text-gray-500 mb-3">Special requests cannot be guaranteed, but the property will do its best to meet your needs.</p>
+              <textarea
+                value={specialRequest}
+                onChange={(e) => setSpecialRequest(e.target.value)}
+                placeholder="e.g. late check-in, extra pillows, dietary needs..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#1A3C5E] resize-none"
+              />
+            </div>
 
             <button
               onClick={handleNext}

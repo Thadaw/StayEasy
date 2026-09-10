@@ -53,7 +53,7 @@ function normalizeBooking(item: ApiBookingItem): NormalizedBooking {
   return {
     id: item.id,
     refNumber: item.ref_number,
-    status: resolveBookingStatus(item.status, item.checkout_date),
+    status: resolveBookingStatus(item.status, item.checkout_date) ?? 'upcoming',
     checkIn: item.checkin_date,
     checkOut: item.checkout_date,
     totalPrice: Number(item.total_amount) || 0,
@@ -79,7 +79,10 @@ export default function Bookings() {
     try {
       const { data } = await api.get('/bookings/me')
       const items: ApiBookingItem[] = data?.data?.items ?? data?.data ?? data?.items ?? []
-      setBookings(Array.isArray(items) ? items.map(normalizeBooking) : [])
+      const valid = Array.isArray(items)
+        ? items.filter(b => resolveBookingStatus(b.status, b.checkout_date) !== null)
+        : []
+      setBookings(valid.map(normalizeBooking))
     } catch {
       setError(true)
     } finally {
@@ -106,7 +109,7 @@ export default function Bookings() {
   const handleCancelBooking = async (booking: NormalizedBooking) => {
     setCancellingId(booking.id)
     try {
-      await api.patch(`/bookings/${booking.refNumber}/cancel`)
+      await api.post(`/bookings/${booking.refNumber}/cancel`)
       setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b))
       setCancelModal({ show: false, booking: null })
       toast.success('Booking cancelled successfully')

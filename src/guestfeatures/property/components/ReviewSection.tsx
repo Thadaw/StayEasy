@@ -13,6 +13,10 @@ export function ReviewSection({ hotel, propertyId }: ReviewSectionProps) {
   const displayRating = averageRating || hotel.rating;
   const displayCount = totalReviews || hotel.reviews;
 
+  if (!isLoading && reviews.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mb-10">
       <div className="flex items-center gap-2 mb-6">

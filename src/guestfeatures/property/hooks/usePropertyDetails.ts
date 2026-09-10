@@ -5,7 +5,7 @@ import type { ApiProperty, ApiRoom } from "../../../shared/types/api"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { getDefaultDates } from "../../../shared/utils/date"
 import { calculateNights } from "../../../shared/utils/time"
-import api from "../../../services/axios"
+import api, { type AuthRequestConfig } from "../../../services/axios"
 
 interface GuestCounts {
   adults: number
@@ -65,7 +65,17 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
   const [roomGuestCounts, setRoomGuestCounts] = useState<Record<string, number>>({})
 
   const [guests, setGuests] = useState<GuestCounts>(() => {
+    const adultsFromUrl = searchParams.get("adults")
+    const childrenFromUrl = searchParams.get("children")
+    const roomsFromUrl = searchParams.get("rooms")
     const total = parseInt(guestsParam || "0")
+    if (adultsFromUrl || childrenFromUrl) {
+      return {
+        adults: adultsFromUrl ? Number(adultsFromUrl) : (total > 0 ? total : 2),
+        children: childrenFromUrl ? Number(childrenFromUrl) : 0,
+        rooms: roomsFromUrl ? Number(roomsFromUrl) : 1,
+      }
+    }
     if (total > 0) return { adults: total, children: 0, rooms: 1 }
     return { adults: 2, children: 0, rooms: 1 }
   })
@@ -84,12 +94,13 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
         const adults = adultsParam ? Number(adultsParam) : (guestsParam ? Number(guestsParam.match(/\d+/g)?.[0] || "2") : 2)
         const children = childrenParam ? Number(childrenParam) : (guestsParam ? Number(guestsParam.match(/\d+/g)?.[1] || "0") : 0)
         const rooms = roomsParam ? Number(roomsParam) : 1
-        const propResponse = await api.get(`/properties/${id}/public`)
+        const propResponse = await api.get(`/properties/${id}/public`, { skipAuthRedirect: true } as AuthRequestConfig)
         setProperty(propResponse.data?.data || null)
         try {
           const roomsResponse = await api.get(`/properties/${id}/rooms/available-rooms`, {
             params: { checkin_date: checkInDate, checkout_date: checkOutDate, adults, children, rooms },
-          })
+            skipAuthRedirect: true,
+          } as AuthRequestConfig)
           setAvailableRooms(roomsResponse.data?.data || [])
         } catch {
           // Room availability is non-critical on initial load — UI shows a loading state instead.
@@ -121,7 +132,8 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
             children: guests.children,
             rooms: guests.rooms,
           },
-        })
+          skipAuthRedirect: true,
+        } as AuthRequestConfig)
         setAvailableRooms(roomsResponse.data?.data || [])
       } catch {
         // Keep existing rooms on error — the user can still browse the current selection.

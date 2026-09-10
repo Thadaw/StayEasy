@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import api from '../services/axios'
+import api, { type AuthRequestConfig } from '../services/axios'
 import type { SearchProperty } from '../shared/types/api'
 
 interface FavoritesContextValue {
@@ -48,20 +48,21 @@ function saveFavoritesData(data: Record<string, SearchProperty>, userId?: number
 }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites(user?.id))
   const [favoritesData, setFavoritesData] = useState<Record<string, SearchProperty>>(() => loadFavoritesData(user?.id))
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (role !== 'guest') return
     setFavorites(loadFavorites(user?.id))
     setFavoritesData(loadFavoritesData(user?.id))
-  }, [user?.id])
+  }, [user?.id, role])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || role !== 'guest') return
     setLoading(true)
-    api.get('/favorites')
+    api.get('/favorites', { skipAuthRedirect: true } as AuthRequestConfig)
       .then(({ data }) => {
         const raw: any[] = Array.isArray(data) ? data : data?.data ?? []
         const normalized: SearchProperty[] = raw.map((p: any) => ({

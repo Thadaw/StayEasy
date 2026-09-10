@@ -3,7 +3,6 @@ import { MapPin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SearchBar } from "../../../shared/components/SearchBar";
 import { heroHotels } from "../../../data/heroHotels";
-import { vibes } from "../../../data/vibes";
 import { getDefaultDates } from "../../../shared/utils/date";
 import api from "../../../services/axios";
 import { HeroCard } from "../../../shared/components/HeroCard";
@@ -19,19 +18,8 @@ interface NearbyProperty {
   distance_km?: number;
 }
 
-const vibeKeyMap: Record<string, string> = {
-  All: "vibeAll",
-  Beach: "vibeBeach",
-  Mountains: "vibeMountains",
-  City: "vibeCity",
-  Countryside: "vibeCountryside",
-  Design: "vibeDesign",
-  Trending: "vibeTrending",
-};
-
 export function HeroSection() {
   const { t } = useTranslation();
-  const [activeVibe, setActiveVibe] = useState("All");
   const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [nearbyProperties, setNearbyProperties] = useState<NearbyProperty[]>([]);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -251,7 +239,7 @@ export function HeroSection() {
       <div className="hidden md:block absolute bottom-[50%] left-[20%] w-1.5 h-1.5 rounded-full bg-brand-accent opacity-55" />
 
       <div className="relative z-10 max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6 flex flex-col lg:flex-row items-start lg:items-center gap-5 lg:gap-10 min-h-[240px] md:min-h-[280px] lg:min-h-[320px]">
-        <div className="flex-1 w-full max-w-2xl pt-2 md:pt-4 lg:pt-0">
+        <div className="flex-1 w-full pt-2 md:pt-4 lg:pt-0">
           <h1
             className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] leading-[1.05] tracking-tight mb-4 md:mb-5 font-brand font-extrabold text-brand-heading"
           >
@@ -268,32 +256,8 @@ export function HeroSection() {
             <span className="sm:hidden"> </span>{t("heroSubtext2")}
           </p>
 
-          <div className="relative z-30 mr-0 lg:mr-[-150px] xl:mr-[-57px]">
+          <div className="relative z-30">
             <SearchBar />
-          </div>
-
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-600 mb-3">{t("exploreByVibe")}</p>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide">
-              {vibes.map((vibe) => {
-                const Icon = vibe.icon;
-                const isActive = activeVibe === vibe.label;
-                return (
-                  <button
-                    key={vibe.label}
-                    onClick={() => setActiveVibe(vibe.label)}
-                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border whitespace-nowrap shrink-0 ${
-                      isActive
-                        ? "bg-brand-accent text-white border-brand-accent shadow-md shadow-brand-accent/20"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-brand-accent hover:text-brand-accent hover:bg-brand-accent-light"
-                    }`}
-                  >
-                    <Icon size={14} />
-                    {t(vibeKeyMap[vibe.label] || vibe.label)}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-5 md:mt-6">

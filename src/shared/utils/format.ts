@@ -39,11 +39,11 @@ export function buildGuestLabel(
   children: number,
   infants: number
 ): string {
-  const total = adults + children
-  if (total === 0) return i18n.t("addGuests")
-  let label = `${total} ${i18n.t("guest", { count: total })}`
-  if (infants > 0) label += `, ${infants} ${i18n.t("room", { count: infants })}`
-  return label
+  const parts: string[] = []
+  if (adults > 0) parts.push(`${adults} ${i18n.t("adults", { count: adults })}`)
+  if (children > 0) parts.push(`${children} ${i18n.t("children", { count: children })}`)
+  if (infants > 0) parts.push(`${infants} ${i18n.t("room", { count: infants })}`)
+  return parts.length > 0 ? parts.join(", ") : i18n.t("addGuests")
 }
 
 // The API returns multiple status variants (CONFIRMED, CHECKED_OUT, CANCELED)
