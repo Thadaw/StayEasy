@@ -1,28 +1,32 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api, { type AuthRequestConfig } from '../services/axios'
+import api, { type AuthRequestConfig, startTokenRefreshTimer } from '../services/axios'
 import type { User } from './types'
 
-type AuthRole = 'host' | 'guest'
+type AuthRole = 'host' | 'guest' | 'staff'
 
 interface AuthContextValue {
   user: User | null
   token: string | null
   role: AuthRole
   loading: boolean
+  mustChangePassword: boolean
+  tempPassword: string | null
   login: (token: string, remember?: boolean, userType?: AuthRole, refreshToken?: string) => Promise<void>
   credentialLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   refreshUser: () => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
+  clearMustChangePassword: () => void
 }
 
 const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
-const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
+const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -47,7 +51,10 @@ function readToken(): string | null {
 }
 
 function readRole(): AuthRole {
-  return storageGet(ROLE_KEY) === 'guest' ? 'guest' : 'host'
+  const stored = storageGet(ROLE_KEY)
+  if (stored === 'guest') return 'guest'
+  if (stored === 'staff') return 'staff'
+  return 'host'
 }
 
 function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken?: string) {
@@ -56,11 +63,11 @@ function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken
     localStorage.removeItem(k)
     sessionStorage.removeItem(k)
   })
-  const store = remember ? localStorage : sessionStorage
+  const store = remember || role === 'staff' ? localStorage : sessionStorage
   store.setItem(TOKEN_KEY, token)
   store.setItem(ROLE_KEY, role)
   if (refreshToken) store.setItem(REFRESH_KEY, refreshToken)
-  if (remember) store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
+  if (remember || role === 'staff') store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
 }
 
 function clearAuth() {
@@ -100,7 +107,8 @@ function extractApiError(err: unknown, fallback: string): string {
 }
 
 function getMeEndpoint(currentRole: AuthRole) {
-  return currentRole === 'host' ? '/auth/users/me' : '/auth/guests/me'
+  if (currentRole === 'guest') return '/auth/guests/me'
+  return '/auth/users/me'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -108,19 +116,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => readToken())
   const [role, setRole] = useState<AuthRole>(() => readRole())
   const [loading, setLoading] = useState(true)
+  const [mustChangePassword, setMustChangePassword] = useState(false)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const roleRef = useRef(role)
+  roleRef.current = role
 
   const loadCurrentUser = useCallback(async () => {
     try {
-      const response = await api.get<User>(getMeEndpoint(role), { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.get<User>(getMeEndpoint(roleRef.current), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
-      // The session can't be confirmed right now (e.g. /me is down or the role
-      // endpoint rejects the token). Keep the stored token so the user isn't
-      // force-logged-out immediately after signing in — protected pages will
-      // surface their own errors.
       setUser(null)
     }
-  }, [role])
+  }, [])
 
   useEffect(() => {
     if (!token) {
@@ -135,6 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [token, loadCurrentUser])
+
+  // Auto-refresh token before it expires
+  useEffect(() => {
+    return startTokenRefreshTimer(token, (newToken) => {
+      setToken(newToken)
+    })
+  }, [token])
 
   const login = async (newToken: string, remember = true, userType: AuthRole = 'host', refreshToken?: string) => {
     saveAuth(newToken, remember, userType, refreshToken)
@@ -170,17 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     if (!token) return
     try {
-      const response = await api.get<User>(getMeEndpoint(role), { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.get<User>(getMeEndpoint(roleRef.current), { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
     } catch {
-      // Ignore refresh errors — the existing session and user state remain usable.
-      // A failed refresh will be retried on the next navigation or focus event.
+      // Ignore refresh errors
     }
   }
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const response = await api.patch<User>(getMeEndpoint(role), data, { skipAuthRedirect: true } as AuthRequestConfig)
+      const response = await api.patch<User>(getMeEndpoint(roleRef.current), data, { skipAuthRedirect: true } as AuthRequestConfig)
       setUser(normalizeUser(response.data))
       return { success: true }
     } catch (err) {
@@ -203,6 +217,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setUser(null)
     setRole('host')
+    setMustChangePassword(false)
+    setTempPassword(null)
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+      setMustChangePassword(false)
+      setTempPassword(null)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: extractApiError(err, 'Failed to change password.') }
+    }
+  }
+
+  const clearMustChangePassword = () => {
+    setMustChangePassword(false)
+    setTempPassword(null)
   }
 
   return (
@@ -212,12 +244,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         role,
         loading,
+        mustChangePassword,
+        tempPassword,
         login,
         credentialLogin,
         signup,
         logout,
         updateProfile,
         refreshUser,
+        changePassword,
+        clearMustChangePassword,
       }}
     >
       {children}

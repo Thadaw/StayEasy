@@ -765,6 +765,12 @@ export default function ReservePage() {
         leftColumn={
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <PropertySummaryCard {...propertySummaryProps} />
+            {booking?.special_requests && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">Special Requests</h3>
+                <p className="text-sm text-gray-600">{booking.special_requests}</p>
+              </div>
+            )}
             <PriceSummaryCard {...priceSummaryProps} />
           </div>
         }

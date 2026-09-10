@@ -111,4 +111,41 @@ api.interceptors.response.use(
   }
 )
 
+export function decodeTokenExp(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.exp === 'number' ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+export function startTokenRefreshTimer(
+  token: string | null,
+  onRefresh: (newToken: string) => void
+): () => void {
+  if (!token) return () => {}
+
+  const exp = decodeTokenExp(token)
+  if (!exp) return () => {}
+
+  const refreshAt = (exp * 1000) - Date.now() - 60_000
+
+  if (refreshAt <= 0) {
+    refreshAccessToken().then(onRefresh).catch(() => {})
+    return () => {}
+  }
+
+  const timerId = setTimeout(async () => {
+    try {
+      const newToken = await refreshAccessToken()
+      onRefresh(newToken)
+    } catch {
+      // Refresh failed — interceptor will handle 401 on next request
+    }
+  }, refreshAt)
+
+  return () => clearTimeout(timerId)
+}
+
 export default api

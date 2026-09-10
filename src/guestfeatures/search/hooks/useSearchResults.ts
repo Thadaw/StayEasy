@@ -40,9 +40,16 @@ function buildParams(
   propertyType: string,
   checkIn: string,
   checkOut: string,
-  guests: string,
+  adults: string,
+  children: string,
+  rooms: string,
   limit: number,
-  skip: number
+  skip: number,
+  minPrice?: number | null,
+  maxPrice?: number | null,
+  roomTypeIds?: string[],
+  bedTypeIds?: string[],
+  amenityIds?: string[]
 ): Record<string, string> {
   const { today, tomorrow } = getDefaultDates();
   const { destination, propertyType: resolvedType } = resolveSearchTerms(location, propertyType);
@@ -54,9 +61,20 @@ function buildParams(
     limit: String(limit),
     destination,
   };
-  params.adults = guests.match(/\d+/)?.[0] || "1";
-  params.children = "0";
-  params.rooms = "1";
+  params.adults = adults || "1";
+  params.children = children || "0";
+  params.rooms = rooms || "1";
+  if (minPrice != null && minPrice > 0) params.min_price = String(minPrice);
+  if (maxPrice != null && maxPrice > 0) params.max_price = String(maxPrice);
+  if (roomTypeIds && roomTypeIds.length > 0) {
+    params.room_type_ids = roomTypeIds.join(",");
+  }
+  if (bedTypeIds && bedTypeIds.length > 0) {
+    params.bed_type_ids = bedTypeIds.join(",");
+  }
+  if (amenityIds && amenityIds.length > 0) {
+    params.amenity_ids = amenityIds.join(",");
+  }
   return params;
 }
 
@@ -65,8 +83,15 @@ export function useSearchResults(
   propertyType: string,
   checkIn: string,
   checkOut: string,
-  guests: string,
-  page: number
+  adults: string,
+  children: string,
+  rooms: string,
+  page: number,
+  minPrice?: number | null,
+  maxPrice?: number | null,
+  roomTypeIds?: string[],
+  bedTypeIds?: string[],
+  amenityIds?: string[]
 ) {
   const [results, setResults] = useState<SearchProperty[]>([]);
   const [total, setTotal] = useState(0);
@@ -86,7 +111,7 @@ export function useSearchResults(
       try {
         setLoading(true);
         const skip = (page - 1) * PAGE_SIZE;
-        const pageParams = buildParams(location, propertyType, checkIn, checkOut, guests, PAGE_SIZE, skip);
+        const pageParams = buildParams(location, propertyType, checkIn, checkOut, adults, children, rooms, PAGE_SIZE, skip, minPrice, maxPrice, roomTypeIds, bedTypeIds, amenityIds);
         const pageRes = await api.get("/search", { params: pageParams });
         if (cancelled) return;
         setResults(parseSearchResponse<SearchProperty>(pageRes.data));
@@ -105,7 +130,7 @@ export function useSearchResults(
 
     run();
     return () => { cancelled = true; };
-  }, [location, propertyType, checkIn, checkOut, guests, page]);
+  }, [location, propertyType, checkIn, checkOut, adults, children, rooms, page, minPrice, maxPrice, roomTypeIds, bedTypeIds, amenityIds]);
 
   return {
     results,

@@ -28,11 +28,12 @@ function hasCheckoutPassed(checkOut?: string | null): boolean {
 // Combines the backend status mapping with a date check so a confirmed booking
 // whose stay has already ended is shown as "completed" instead of "upcoming".
 // Cancelled bookings are never reclassified.
-export function resolveBookingStatus(status: string, checkOut?: string | null): 'upcoming' | 'completed' | 'cancelled' {
+export function resolveBookingStatus(status: string, checkOut?: string | null): 'upcoming' | 'completed' | 'cancelled' | null {
   const normalized = normalizeBookingStatus(status)
   if (normalized === 'cancelled') return 'cancelled'
+  if (normalized === 'unknown') return null
   if (normalized === 'upcoming' && hasCheckoutPassed(checkOut)) return 'completed'
-  return normalized === 'unknown' ? 'upcoming' : normalized
+  return normalized
 }
 
 // Cancellation is allowed up to 24 hours before check-in at 14:00 (the property's
@@ -113,6 +114,7 @@ export interface QrBookingData {
   paymentMethod: string
   cancellationPolicy: string
   bookedOn: string
+  specialRequests?: string
 }
 
 export function buildQrData(params: QrBookingData): string {
@@ -135,6 +137,8 @@ export function buildQrData(params: QrBookingData): string {
     `Guest: ${params.guestName}`,
     params.guestPhone ? `Phone: ${params.guestPhone}` : '',
     params.guestEmail ? `Email: ${params.guestEmail}` : '',
+    '',
+    params.specialRequests ? `Special Requests: ${params.specialRequests}` : '',
     '',
     `Total Cost: ${params.currency} ${params.totalAmount.toLocaleString()}`,
     `Payment: ${params.paymentMethod}`,

@@ -47,9 +47,18 @@ const ProfilePage = lazy(() => import('../guestfeatures/profile/pages/ProfilePag
 const AboutMe = lazy(() => import('../guestfeatures/profile/components/AboutMe'))
 const Favourites = lazy(() => import('../guestfeatures/profile/components/Favourites'))
 const Bookings = lazy(() => import('../guestfeatures/profile/components/Bookings'))
-const Coupons = lazy(() => import('../guestfeatures/profile/components/Coupons'))
 const Reviews = lazy(() => import('../guestfeatures/profile/components/Reviews'))
 const Notifications = lazy(() => import('../guestfeatures/profile/components/Notifications'))
+const FrontDeskPage = lazy(() => import('../frontdesk/pages/FrontDeskPage'))
+const StaffAccountPage = lazy(() => import('../frontdesk/pages/StaffAccountPage'))
+const ChangePasswordPage = lazy(() => import('../frontdesk/pages/ChangePassword'))
+const FrontdeskBookingsPage = lazy(() => import('../frontdesk/pages/FrontdeskBookingsPage'))
+const CheckInListPage = lazy(() => import('../frontdesk/pages/CheckInListPage'))
+const CheckOutListPage = lazy(() => import('../frontdesk/pages/CheckOutListPage'))
+const CheckoutPage = lazy(() => import('../frontdesk/pages/CheckoutPage'))
+const EditBookingPage = lazy(() => import('../frontdesk/pages/EditBookingPage'))
+const CheckoutReceiptPage = lazy(() => import('../frontdesk/pages/CheckoutReceiptPage'))
+const CollectPaymentPage = lazy(() => import('../frontdesk/pages/CollectPaymentPage'))
 const NotFoundPage = lazy(() => import('../guestfeatures/misc/pages/NotFoundPage'))
 const FooterPage = lazy(() => import('../guestfeatures/misc/pages/FooterPage'))
 
@@ -61,6 +70,8 @@ export function AppRoutes() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/host/login" element={<LoginPage />} />
       <Route path="/host/signup" element={<SignupPage />} />
+      <Route path="/staff/login" element={<LoginPage />} />
+      <Route path="/staff/signup" element={<SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/host/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/*" element={<ResetPasswordPage />} />
@@ -91,6 +102,17 @@ export function AppRoutes() {
       <Route path="/host/notifications" element={<ProtectedRoute><HostNotificationsPage /></ProtectedRoute>} />
       <Route path="/host/activity" element={<ProtectedRoute><ActivityLogsPage /></ProtectedRoute>} />
       <Route path="/host/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
+      <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/bookings" element={<ProtectedRoute><FrontdeskBookingsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/check-in" element={<ProtectedRoute><CheckInListPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/check-out" element={<ProtectedRoute><CheckOutListPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/booking/:id" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/booking/:id/edit" element={<ProtectedRoute><EditBookingPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id/receipt" element={<ProtectedRoute><CheckoutReceiptPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id/collect-payment" element={<ProtectedRoute><CollectPaymentPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/account" element={<ProtectedRoute><StaffAccountPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/country/:code" element={<CountryPage />} />
       <Route path="/hotel/:id" element={<PropertyDetailPage />} />
       <Route path="/search" element={<SearchResultsPage />} />
@@ -99,7 +121,6 @@ export function AppRoutes() {
         <Route path="about" element={<AboutMe />} />
         <Route path="favourites" element={<Favourites />} />
         <Route path="bookings" element={<Bookings />} />
-        <Route path="coupons" element={<Coupons />} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="notifications" element={<Notifications />} />
       </Route>

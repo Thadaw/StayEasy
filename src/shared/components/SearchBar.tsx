@@ -45,6 +45,16 @@ export function SearchBar() {
   const [checkIn, setCheckIn] = useState(() => urlParams.get("checkin") || "");
   const [checkOut, setCheckOut] = useState(() => urlParams.get("checkout") || "");
   const [guests, setGuests] = useState<GuestCount>(() => {
+    const adultsFromUrl = parseInt(urlParams.get("adults") || "0");
+    const childrenFromUrl = parseInt(urlParams.get("children") || "0");
+    const roomsFromUrl = parseInt(urlParams.get("rooms") || "0");
+    if (adultsFromUrl > 0) {
+      return {
+        adults: adultsFromUrl,
+        children: childrenFromUrl,
+        infants: roomsFromUrl > 0 ? roomsFromUrl : 1,
+      };
+    }
     const total = parseInt(urlParams.get("guests") || "0");
     if (total > 0) return { adults: total, children: 0, infants: 1 };
     return { adults: 2, children: 0, infants: 1 };
@@ -93,7 +103,10 @@ export function SearchBar() {
     }
     if (checkIn) params.set("checkin", checkIn);
     if (checkOut) params.set("checkout", checkOut);
-    if (totalGuests > 0) params.set("guests", String(totalGuests));
+    if (guests.adults > 0) params.set("adults", String(guests.adults));
+    if (guests.children > 0) params.set("children", String(guests.children));
+    params.set("rooms", String(guests.infants));
+    params.set("guests", String(totalGuests));
     navigate(`/search?${params}`);
   };
 
@@ -111,7 +124,7 @@ export function SearchBar() {
         <div ref={whereRef} className="relative min-w-0 md:flex-1">
           <button
             onClick={() => { setShowWhere((v) => !v); setShowDates(false); setShowGuests(false); }}
-            className="w-full px-3 sm:px-4 py-2.5 md:py-2.5 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-l-2xl md:rounded-tr-none"
+            className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-l-2xl md:rounded-tr-none"
           >
             <MapPin size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
@@ -179,7 +192,7 @@ export function SearchBar() {
         <div ref={datesRef} className="relative min-w-0 md:flex-1">
           <button
             onClick={() => { setShowDates((v) => !v); setShowWhere(false); setShowGuests(false); }}
-            className="w-full px-3 sm:px-4 py-2.5 md:py-2.5 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
+            className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
           >
             <Calendar size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
@@ -229,7 +242,7 @@ export function SearchBar() {
         <div ref={guestsRef} className="relative min-w-0 md:flex-1">
           <button
             onClick={() => { setShowGuests((v) => !v); setShowWhere(false); setShowDates(false); }}
-            className="w-full px-3 sm:px-4 py-2.5 md:py-2.5 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
+            className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
           >
             <Users size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
@@ -268,7 +281,7 @@ export function SearchBar() {
 
         <button
           onClick={handleSearch}
-          className="col-span-2 md:col-span-1 row-span-2 w-full h-full min-h-[42px] md:min-h-[48px] rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
+          className="col-span-2 md:col-span-1 row-span-2 w-full h-full min-h-[52px] md:min-h-[60px] rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
         >
           <Search size={15} />
           <span className="hidden md:inline text-sm font-semibold">Search</span>

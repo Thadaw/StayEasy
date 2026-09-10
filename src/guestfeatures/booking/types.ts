@@ -61,6 +61,7 @@ export interface ApiBooking {
   advance_payment_percentage?: number
   amount_paid?: number
   amount_due?: number
+  special_requests?: string
 }
 
 export interface LocalBooking {

@@ -21,6 +21,7 @@ export interface ReceiptParams {
   currency: string
   createdAt?: string
   paymentGateway?: string
+  specialRequests?: string
 }
 
 function formatDate(dateStr: string): string {
@@ -187,7 +188,7 @@ export function printReceipt(params: ReceiptParams) {
       <tr><td>Full name</td><td>${params.guestName || '—'}</td></tr>
       <tr><td>Phone</td><td>${params.guestPhone || '—'}</td></tr>
       <tr><td>Email</td><td>${params.guestEmail || '—'}</td></tr>
-      <tr><td>Special Notes / Comments</td><td>None</td></tr>
+      <tr><td>Special Notes / Comments</td><td>${params.specialRequests || 'None'}</td></tr>
     </table>
   </div>
 

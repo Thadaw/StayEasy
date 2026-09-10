@@ -1,14 +1,33 @@
 import { SlidersHorizontal } from "lucide-react";
-import { PROPERTY_TYPES, AMENITIES_LIST } from "../../../constants/searchFilters";
+
+interface RoomType {
+  id: string;
+  room_type_name: string;
+}
+
+interface BedType {
+  id: string;
+  bed_name: string;
+}
+
+interface Amenity {
+  id: string;
+  amenity_name: string;
+}
 
 interface FilterSidebarProps {
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
   maxPrice: number;
+  roomTypes: RoomType[];
+  bedTypes: BedType[];
+  systemAmenities: Amenity[];
   propertyFilters: string[];
-  onTogglePropertyType: (type: string) => void;
-  amenities: string[];
-  onToggleAmenity: (amenity: string) => void;
+  onTogglePropertyType: (type: string, id: string) => void;
+  selectedBedTypeIds: string[];
+  onToggleBedType: (type: string, id: string) => void;
+  selectedAmenityIds: string[];
+  onToggleAmenity: (amenity: string, id: string) => void;
   onClearAll: () => void;
 }
 
@@ -16,9 +35,14 @@ export function FilterSidebar({
   priceRange,
   onPriceRangeChange,
   maxPrice,
+  roomTypes,
+  bedTypes,
+  systemAmenities,
   propertyFilters,
   onTogglePropertyType,
-  amenities,
+  selectedBedTypeIds,
+  onToggleBedType,
+  selectedAmenityIds,
   onToggleAmenity,
   onClearAll,
 }: FilterSidebarProps) {
@@ -34,7 +58,7 @@ export function FilterSidebar({
 
         <div>
           <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--brand-heading)" }}>Price range per night</h4>
-          <p className="text-xs mb-2" style={{ color: "var(--brand-text-secondary)" }}>${priceRange[0]} - ${priceRange[1]}+</p>
+          <p className="text-xs mb-2" style={{ color: "var(--brand-text-secondary)" }}>{priceRange[0]} - {priceRange[1]} price</p>
           <input
             type="range"
             min={0}
@@ -61,48 +85,58 @@ export function FilterSidebar({
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--brand-heading)" }}>Property type</h4>
+          <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--brand-heading)" }}>Room type</h4>
           <div className="space-y-2">
-            {PROPERTY_TYPES.map((type) => {
-              const Icon = type.icon;
-              return (
-                <label key={type.label} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={propertyFilters.includes(type.label)}
-                    onChange={() => onTogglePropertyType(type.label)}
-                    className="w-4 h-4 rounded border-gray-300 accent-brand-primary"
-                  />
-                  <Icon size={14} className="text-gray-500" />
-                  <span className="text-xs flex-1" style={{ color: "var(--brand-heading)" }}>{type.label}</span>
-                </label>
-              );
-            })}
+            {roomTypes.map((roomType) => (
+              <label key={roomType.id} className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={propertyFilters.includes(roomType.room_type_name)}
+                  onChange={() => onTogglePropertyType(roomType.room_type_name, roomType.id)}
+                  className="w-4 h-4 rounded border-gray-300 accent-brand-primary"
+                />
+                <span className="text-xs flex-1" style={{ color: "var(--brand-heading)" }}>{roomType.room_type_name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--brand-heading)" }}>Bed type</h4>
+          <div className="space-y-2">
+            {bedTypes.map((bedType) => (
+              <label key={bedType.id} className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={selectedBedTypeIds.includes(bedType.id)}
+                  onChange={() => onToggleBedType(bedType.bed_name, bedType.id)}
+                  className="w-4 h-4 rounded border-gray-300 accent-brand-primary"
+                />
+                <span className="text-xs flex-1" style={{ color: "var(--brand-heading)" }}>{bedType.bed_name}</span>
+              </label>
+            ))}
           </div>
         </div>
 
         <div>
           <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--brand-heading)" }}>Amenities</h4>
           <div className="space-y-2">
-            {AMENITIES_LIST.map((amenity) => {
-              const Icon = amenity.icon;
-              return (
-                <label key={amenity.label} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={amenities.includes(amenity.label)}
-                    onChange={() => onToggleAmenity(amenity.label)}
-                    className="w-4 h-4 rounded border-gray-300 accent-brand-primary"
-                  />
-                  <Icon size={14} className="text-gray-500" />
-                  <span className="text-xs flex-1" style={{ color: "var(--brand-heading)" }}>{amenity.label}</span>
-                </label>
-              );
-            })}
+            {systemAmenities.map((amenity) => (
+              <label key={amenity.id} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedAmenityIds.includes(amenity.id)}
+                  onChange={() => onToggleAmenity(amenity.amenity_name, amenity.id)}
+                  className="w-4 h-4 rounded border-gray-300 accent-brand-primary"
+                />
+                <span className="text-xs flex-1" style={{ color: "var(--brand-heading)" }}>{amenity.amenity_name}</span>
+              </label>
+            ))}
           </div>
-          <button className="text-xs font-semibold text-brand-accent hover:underline mt-2">Show more</button>
         </div>
       </div>
     </aside>
   );
 }
+
+

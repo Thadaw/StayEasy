@@ -72,6 +72,7 @@ export default function BookingDetailsView() {
     guestNationality,
     taxAmount,
     basePrice,
+    specialRequests,
   } = useBookingDetails(id)
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -107,6 +108,7 @@ export default function BookingDetailsView() {
     paymentMethod: paymentGateway || 'Online',
     cancellationPolicy: rooms[0]?.cancellation_description || rooms[0]?.cancellation_title || '',
     bookedOn: createdAt || new Date().toISOString(),
+    specialRequests,
   })
 
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function BookingDetailsView() {
       currency,
       createdAt,
       paymentGateway,
+      specialRequests,
     })
   }
 
@@ -275,6 +278,13 @@ export default function BookingDetailsView() {
               guestPhone={guestPhone}
               guestNationality={guestNationality}
             />
+
+            {specialRequests && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">Special Requests</h3>
+                <p className="text-sm text-gray-600">{specialRequests}</p>
+              </div>
+            )}
 
             <CancellationCard
               rooms={rooms}

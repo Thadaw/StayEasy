@@ -218,3 +218,57 @@ export interface BookingCreatePayload {
   adults: number
   children: number
 }
+
+export interface WalkinBookingPayload {
+  idempotency_key: string
+  property_id: string
+  room_ids: string[]
+  check_in: string
+  check_out: string
+  adults: number
+  children: number
+  guest_full_name: string
+  guest_email: string
+  guest_phone: string
+  guest_nationality: string
+  coupon_code?: string
+  payment_method: string
+  payment_gateway?: string
+  amount_paid: number
+  advance_amount: number
+  special_requests?: string
+}
+
+export interface ArrivalGuest {
+  booking_id: string
+  ref_number: string
+  status: string
+  booking_type: string
+  guest: {
+    guest_id: string
+    full_name: string
+    email: string
+    phone: string
+    nationality: string
+  }
+  rooms: {
+    room_id: string
+    room_name: string
+    room_type: string
+    bed_type: string
+    base_rate: number
+  }[]
+  checkin_date: string
+  checkout_date: string
+  number_of_adults: number
+  number_of_children: number
+  special_requests: string
+  payment_method: string
+  payment_status: string
+  payment_gateway: string
+  amount_paid: number
+  amount_due: number
+  advance_amount: number
+  total_amount: number
+  created_at: string
+}

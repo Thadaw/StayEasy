@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import axios from "axios"
-import api from "../../../services/axios"
+import api, { type AuthRequestConfig } from "../../../services/axios"
 
 interface PropertyReview {
   id: string | number
@@ -39,7 +39,7 @@ export function usePropertyReviews(propertyId: string | undefined): UsePropertyR
       setIsLoading(true)
       setError(null)
       try {
-        const response = await api.get(`/properties/${propertyId}/reviews`, { signal: controller.signal })
+        const response = await api.get(`/properties/${propertyId}/reviews`, { signal: controller.signal, skipAuthRedirect: true } as AuthRequestConfig)
         const data = response.data?.data ?? response.data
         setReviews(Array.isArray(data) ? data : [])
       } catch (err) {

@@ -26,6 +26,7 @@ interface BookingActionParams {
   propertyImage?: string
   createdAt?: string
   paymentGateway?: string
+  specialRequests?: string
 }
 
 export function useBookingActions() {
@@ -80,6 +81,7 @@ export function useBookingActions() {
       currency: params.currency,
       createdAt: params.createdAt,
       paymentGateway: params.paymentGateway,
+      specialRequests: params.specialRequests,
     })
   }
 
