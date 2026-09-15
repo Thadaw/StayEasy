@@ -1,4 +1,4 @@
-import { CalendarPlus, LogIn, LogOut, BedDouble, Clock } from "lucide-react"
+import { CalendarPlus, LogIn, LogOut, BedDouble, ClipboardList } from "lucide-react"
 
 interface QuickAction {
   id: string
@@ -43,9 +43,9 @@ export function QuickActions({ onAction }: QuickActionsProps) {
       iconBg: "bg-blue-50 text-blue-600",
     },
     {
-      id: "history",
-      label: "History",
-      icon: <Clock size={18} />,
+      id: "activities",
+      label: "Activities",
+      icon: <ClipboardList size={18} />,
       color: "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200",
       iconBg: "bg-gray-50 text-gray-600",
     },

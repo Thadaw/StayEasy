@@ -313,7 +313,9 @@ export function FrontDeskPage() {
     } else if (actionId === "departures") {
       setShowDepartures(true)
     } else if (actionId === "rooms") {
-      setShowRooms(true)
+      navigate("/frontdesk/room-status")
+    } else if (actionId === "activities") {
+      navigate("/frontdesk/tasks")
     }
     console.log("Quick action:", actionId)
   }

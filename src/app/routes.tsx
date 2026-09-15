@@ -53,6 +53,11 @@ const CheckoutPage = lazy(() => import('../frontdesk/pages/CheckoutPage'))
 const EditBookingPage = lazy(() => import('../frontdesk/pages/EditBookingPage'))
 const CheckoutReceiptPage = lazy(() => import('../frontdesk/pages/CheckoutReceiptPage'))
 const CollectPaymentPage = lazy(() => import('../frontdesk/pages/CollectPaymentPage'))
+const FrontDeskPaymentsPage = lazy(() => import('../frontdesk/pages/FrontDeskPaymentsPage'))
+const FrontDeskRoomStatusPage = lazy(() => import('../frontdesk/pages/FrontDeskRoomStatusPage'))
+const FrontDeskGuestsPage = lazy(() => import('../frontdesk/pages/FrontDeskGuestsPage'))
+const FrontDeskTasksPage = lazy(() => import('../frontdesk/pages/FrontDeskTasksPage'))
+const FrontDeskNotificationsPage = lazy(() => import('../frontdesk/pages/FrontDeskNotificationsPage'))
 const NotFoundPage = lazy(() => import('../guestfeatures/misc/pages/NotFoundPage'))
 const FooterPage = lazy(() => import('../guestfeatures/misc/pages/FooterPage'))
 
@@ -92,6 +97,11 @@ export function AppRoutes() {
       <Route path="/host/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
       <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskPage /></ProtectedRoute>} />
       <Route path="/frontdesk/bookings" element={<ProtectedRoute><FrontdeskBookingsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/payments" element={<ProtectedRoute><FrontDeskPaymentsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/room-status" element={<ProtectedRoute><FrontDeskRoomStatusPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/guests" element={<ProtectedRoute><FrontDeskGuestsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/tasks" element={<ProtectedRoute><FrontDeskTasksPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/notifications" element={<ProtectedRoute><FrontDeskNotificationsPage /></ProtectedRoute>} />
       <Route path="/frontdesk/check-in" element={<ProtectedRoute><CheckInListPage /></ProtectedRoute>} />
       <Route path="/frontdesk/check-out" element={<ProtectedRoute><CheckOutListPage /></ProtectedRoute>} />
       <Route path="/frontdesk/booking/:id" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />

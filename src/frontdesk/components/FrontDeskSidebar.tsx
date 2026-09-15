@@ -2,7 +2,6 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { 
   LayoutDashboard, 
   CalendarDays, 
-  LogIn, 
   LogOut, 
   BedDouble, 
   Users, 
@@ -18,8 +17,6 @@ import api from "../../services/axios"
 const navItems = [
   { to: "/frontdesk", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/frontdesk/bookings", icon: CalendarDays, label: "Bookings" },
-  { to: "/frontdesk/check-in", icon: LogIn, label: "Check-In" },
-  { to: "/frontdesk/check-out", icon: LogOut, label: "Check-Out" },
   { to: "/frontdesk/room-status", icon: BedDouble, label: "Room Status" },
   { to: "/frontdesk/guests", icon: Users, label: "Guests" },
   { to: "/frontdesk/payments", icon: CreditCard, label: "Payments" },
