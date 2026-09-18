@@ -104,7 +104,7 @@ export default function EditBookingPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
       </div>
     )
   }
@@ -137,7 +137,7 @@ export default function EditBookingPage() {
           {/* Guest Information */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-base font-bold text-gray-900 mb-4">Guest Information</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
                 <input
@@ -180,7 +180,7 @@ export default function EditBookingPage() {
           {/* Stay Details */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-base font-bold text-gray-900 mb-4">Stay Details</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Check-In Date</label>
                 <input
@@ -234,7 +234,7 @@ export default function EditBookingPage() {
           {/* Payment Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-base font-bold text-gray-900 mb-4">Payment Information</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Total Amount</label>
                 <input

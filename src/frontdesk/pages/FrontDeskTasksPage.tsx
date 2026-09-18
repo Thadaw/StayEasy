@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react"
 import {
   Search,
-  Download,
-  ChevronDown,
   ChevronRight,
+  ChevronDown,
   CheckCircle,
   Calendar,
+  Download,
 } from "lucide-react"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -23,7 +23,7 @@ interface Activity {
   created_at: string
 }
 
-type StatusTab = "active" | "upcoming" | "completed"
+type StatusTab = "active" | "completed"
 
 function getTypeStyle(type: string): string {
   const lower = type?.toLowerCase() || ""
@@ -154,38 +154,30 @@ export default function FrontDeskTasksPage() {
   const [completedExpanded, setCompletedExpanded] = useState(true)
 
   const { data: activitiesData, isLoading } = useQuery({
-    queryKey: ["frontdesk-housekeeping", currentPropertyId, searchQuery],
+    queryKey: ["frontdesk-booking-activities", currentPropertyId, searchQuery],
     queryFn: async () => {
       if (!currentPropertyId) return DEMO_ACTIVITIES
       try {
-        let allActivities: Activity[] = []
-        let skip = 0
-        let hasMore = true
-
-        while (hasMore) {
-          const params: Record<string, string> = { limit: "100", skip: String(skip) }
-          const { data: result } = await api.get(
-            `/staff/properties/${currentPropertyId}/activities/housekeeping`,
-            { params }
-          )
-          const wrapped = result as {
-            data?: Activity[]
-            meta?: { has_more?: boolean }
-            has_more?: boolean
-          }
-          const apiData = (wrapped?.data ?? result) as Activity[]
-          allActivities = [...allActivities, ...apiData]
-          hasMore = wrapped?.meta?.has_more ?? wrapped?.has_more ?? false
-          skip += 100
+        const params: Record<string, string> = { limit: "100", skip: "0" }
+        const { data: result } = await api.get(
+          `/staff/properties/${currentPropertyId}/activities/booking`,
+          { params }
+        )
+        
+        const apiResult = result as { success?: boolean; data?: Activity[] }
+        if (apiResult.success === false) {
+          console.error("API error:", result)
+          return DEMO_ACTIVITIES
         }
-
-        return allActivities.length > 0 ? allActivities : DEMO_ACTIVITIES
-      } catch {
+        
+        const apiData = apiResult.data ?? []
+        return apiData.length > 0 ? apiData : DEMO_ACTIVITIES
+      } catch (error) {
+        console.error("Failed to fetch booking activities:", error)
         return DEMO_ACTIVITIES
       }
     },
     enabled: !!currentPropertyId,
-    placeholderData: DEMO_ACTIVITIES,
   })
 
   const filteredActivities = useMemo(() => {
@@ -221,11 +213,13 @@ export default function FrontDeskTasksPage() {
   }
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex min-h-screen bg-gray-50">
       <FrontDeskSidebar />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -244,7 +238,7 @@ export default function FrontDeskTasksPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Tasks Today</p>
@@ -364,14 +358,14 @@ export default function FrontDeskTasksPage() {
 
                   {activeExpanded && (
                     <>
-                      <div className="grid grid-cols-[2fr_1fr_1.2fr_1fr_1fr] gap-4 px-6 py-2 bg-gray-50 border-t border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <div className="hidden lg:grid grid-cols-[2fr_1fr_1.2fr_1fr_1fr] gap-4 px-6 py-2 bg-gray-50 border-t border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <div>Request / Task</div>
                         <div>Type</div>
                         <div>Description</div>
                         <div>Staff</div>
                         <div>Time</div>
                       </div>
-                      <div className="divide-y divide-gray-50">
+                      <div className="hidden lg:grid divide-y divide-gray-50">
                         {activeTasks.map((activity) => (
                           <div key={activity.id} className="grid grid-cols-[2fr_1fr_1.2fr_1fr_1fr] gap-4 px-6 py-4 hover:bg-gray-50 transition-colors items-center">
                             <div className="flex items-center gap-3">
@@ -394,6 +388,34 @@ export default function FrontDeskTasksPage() {
                             </div>
                             <div>
                               <span className="text-sm text-gray-500">{formatTime(activity.created_at)}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {activeTasks.length === 0 && (
+                          <div className="px-6 py-8 text-center text-sm text-gray-400">No active tasks</div>
+                        )}
+                      </div>
+                      <div className="lg:hidden divide-y divide-gray-100">
+                        {activeTasks.map((activity) => (
+                          <div key={activity.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getPriorityDot(activity.activity_type)}`} />
+                                <span className="text-sm font-medium text-gray-900 truncate">{activity.description || "—"}</span>
+                              </div>
+                              <span className={`shrink-0 ml-2 inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(activity.activity_type)}`}>
+                                {activity.activity_type || "—"}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2 line-clamp-2">{activity.description || "—"}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatarColor(activity.staff_name)}`}>
+                                  {getInitials(activity.staff_name)}
+                                </span>
+                                <span className="text-xs text-gray-600">{activity.staff_name || "—"}</span>
+                              </div>
+                              <span className="text-xs text-gray-400">{formatTime(activity.created_at)}</span>
                             </div>
                           </div>
                         ))}
@@ -424,33 +446,70 @@ export default function FrontDeskTasksPage() {
                   </button>
 
                   {completedExpanded && (
-                    <div className="divide-y divide-gray-50">
-                      {completedTasks.map((activity) => (
-                        <div key={activity.id} className="grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr] gap-4 px-6 py-4 hover:bg-gray-50 transition-colors items-center opacity-60">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle size={18} className="text-emerald-500 shrink-0" />
-                            <span className="text-sm font-medium text-gray-700 line-through truncate">{activity.description || "—"}</span>
+                    <>
+                      <div className="hidden lg:grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr] gap-4 px-6 py-2 bg-gray-50 border-t border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <div>Request / Task</div>
+                        <div>Type</div>
+                        <div>Description</div>
+                        <div>Staff</div>
+                        <div>Time</div>
+                      </div>
+                      <div className="hidden lg:grid divide-y divide-gray-50">
+                        {completedTasks.map((activity) => (
+                          <div key={activity.id} className="grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr] gap-4 px-6 py-4 hover:bg-gray-50 transition-colors items-center opacity-60">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle size={18} className="text-emerald-500 shrink-0" />
+                              <span className="text-sm font-medium text-gray-700 line-through truncate">{activity.description || "—"}</span>
+                            </div>
+                            <div>
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(activity.activity_type)}`}>
+                                {activity.activity_type || "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-gray-500 truncate">{activity.description || "—"}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-gray-500">{activity.staff_name || "—"}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-medium text-emerald-600">✓ {formatTime(activity.created_at)}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(activity.activity_type)}`}>
-                              {activity.activity_type || "—"}
-                            </span>
+                        ))}
+                        {completedTasks.length === 0 && (
+                          <div className="px-6 py-8 text-center text-sm text-gray-400">No completed tasks</div>
+                        )}
+                      </div>
+                      <div className="lg:hidden divide-y divide-gray-100">
+                        {completedTasks.map((activity) => (
+                          <div key={activity.id} className="px-6 py-4 hover:bg-gray-50 transition-colors opacity-60">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+                                <span className="text-sm font-medium text-gray-700 line-through truncate">{activity.description || "—"}</span>
+                              </div>
+                              <span className={`shrink-0 ml-2 inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(activity.activity_type)}`}>
+                                {activity.activity_type || "—"}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2 line-clamp-2">{activity.description || "—"}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatarColor(activity.staff_name)}`}>
+                                  {getInitials(activity.staff_name)}
+                                </span>
+                                <span className="text-xs text-gray-600">{activity.staff_name || "—"}</span>
+                              </div>
+                              <span className="text-xs font-medium text-emerald-600">✓ {formatTime(activity.created_at)}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-sm text-gray-500 truncate">{activity.description || "—"}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">{activity.staff_name || "—"}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm font-medium text-emerald-600">✓ {formatTime(activity.created_at)}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {completedTasks.length === 0 && (
-                        <div className="px-6 py-8 text-center text-sm text-gray-400">No completed tasks</div>
-                      )}
-                    </div>
+                        ))}
+                        {completedTasks.length === 0 && (
+                          <div className="px-6 py-8 text-center text-sm text-gray-400">No completed tasks</div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -464,5 +523,6 @@ export default function FrontDeskTasksPage() {
         </div>
       </main>
     </div>
+    </FrontDeskSidebarProvider>
   )
 }

@@ -12,7 +12,7 @@ interface AuthContextValue {
   loading: boolean
   mustChangePassword: boolean
   tempPassword: string | null
-  login: (token: string, remember?: boolean, userType?: AuthRole, refreshToken?: string) => Promise<void>
+  login: (token: string, remember?: boolean, userType?: AuthRole, refreshToken?: string, mustChangePw?: boolean, tempPw?: string | null) => Promise<void>
   credentialLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
@@ -151,10 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [token])
 
-  const login = async (newToken: string, remember = true, userType: AuthRole = 'host', refreshToken?: string) => {
+  const login = async (newToken: string, remember = true, userType: AuthRole = 'host', refreshToken?: string, mustChangePw?: boolean, tempPw?: string | null) => {
     saveAuth(newToken, remember, userType, refreshToken)
     setRole(userType)
     setToken(newToken)
+    if (mustChangePw) {
+      setMustChangePassword(true)
+      setTempPassword(tempPw ?? null)
+    }
   }
 
   const credentialLogin = async (email: string, password: string) => {
@@ -223,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      await api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+      await api.post('/auth/user/change-password', { current_password: currentPassword, new_password: newPassword })
       setMustChangePassword(false)
       setTempPassword(null)
       return { success: true }

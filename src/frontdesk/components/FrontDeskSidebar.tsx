@@ -1,33 +1,105 @@
 import { NavLink, useNavigate } from "react-router-dom"
-import { 
-  LayoutDashboard, 
-  CalendarDays, 
-  LogOut, 
-  BedDouble, 
-  Users, 
-  CreditCard, 
-  CheckSquare, 
-  Bell
+import { useState, useEffect, createContext, useContext } from "react"
+import {
+  LayoutDashboard,
+  CalendarDays,
+  LogOut,
+  BedDouble,
+  Users,
+  CreditCard,
+  CheckSquare,
+  Bell,
+  FileText,
+  LogIn,
+  Menu,
+  X,
+  Home,
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 
+interface SidebarContextType {
+  isMobileOpen: boolean
+  setIsMobileOpen: (open: boolean) => void
+  toggle: () => void
+  isMobile: boolean
+}
+
+const SidebarContext = createContext<SidebarContextType>({
+  isMobileOpen: false,
+  setIsMobileOpen: () => {},
+  toggle: () => {},
+  isMobile: false,
+})
+
+export function useFrontDeskSidebar() {
+  return useContext(SidebarContext)
+}
+
+export function FrontDeskSidebarProvider({ children }: { children: React.ReactNode }) {
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    check()
+    window.addEventListener("resize", check)
+    return () => window.removeEventListener("resize", check)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile && isMobileOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [isMobile, isMobileOpen])
+
+  const toggle = () => setIsMobileOpen((prev) => !prev)
+
+  return (
+    <SidebarContext.Provider value={{ isMobileOpen, setIsMobileOpen, toggle, isMobile }}>
+      {children}
+    </SidebarContext.Provider>
+  )
+}
+
+export function MobileMenuButton() {
+  const { toggle, isMobile } = useFrontDeskSidebar()
+  if (!isMobile) return null
+  return (
+    <button
+      onClick={toggle}
+      className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors lg:hidden"
+      aria-label="Toggle menu"
+    >
+      <Menu size={20} className="text-gray-700" />
+    </button>
+  )
+}
+
 const navItems = [
   { to: "/frontdesk", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/frontdesk/bookings", icon: CalendarDays, label: "Bookings" },
+  { to: "/frontdesk/check-in", icon: LogIn, label: "Check-In" },
+  { to: "/frontdesk/check-out", icon: LogOut, label: "Check-Out" },
+  { to: "/frontdesk/in-house", icon: Home, label: "In House" },
   { to: "/frontdesk/room-status", icon: BedDouble, label: "Room Status" },
   { to: "/frontdesk/guests", icon: Users, label: "Guests" },
   { to: "/frontdesk/payments", icon: CreditCard, label: "Payments" },
+  { to: "/frontdesk/folios", icon: FileText, label: "Folios" },
   { to: "/frontdesk/tasks", icon: CheckSquare, label: "Tasks" },
   { to: "/frontdesk/notifications", icon: Bell, label: "Notifications" },
 ]
 
-export function FrontDeskSidebar() {
+function SidebarContent() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { currentPropertyId } = usePropertyStore()
+  const { setIsMobileOpen } = useFrontDeskSidebar()
 
   const { data: property } = useQuery({
     queryKey: ["property", currentPropertyId],
@@ -41,6 +113,25 @@ export function FrontDeskSidebar() {
       }
     },
     enabled: !!currentPropertyId,
+  })
+
+  const { data: inHouseCount = 0 } = useQuery({
+    queryKey: ["in-house-count", currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId) return 0
+      try {
+        const { data: result } = await api.get(`/staff/properties/${currentPropertyId}/booking-guests`, {
+          params: { skip: 0, limit: 1 },
+        })
+        const wrapped = result as { data?: unknown[]; total?: number }
+        return wrapped?.total ?? wrapped?.data?.length ?? 0
+      } catch {
+        return 0
+      }
+    },
+    enabled: !!currentPropertyId,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   })
 
   const hotelName = property?.name || "StayEasy"
@@ -58,8 +149,12 @@ export function FrontDeskSidebar() {
     navigate('/staff/login')
   }
 
+  const handleNavClick = () => {
+    setIsMobileOpen(false)
+  }
+
   return (
-    <aside className="w-64 text-white flex flex-col sticky top-0 h-screen" style={{ backgroundColor: brandColor }}>
+    <aside className="w-64 text-white flex flex-col h-full" style={{ backgroundColor: brandColor }}>
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
           {property?.brand_logo_url ? (
@@ -73,8 +168,8 @@ export function FrontDeskSidebar() {
               {hotelName.charAt(0)}
             </div>
           )}
-          <div>
-            <h1 className="font-bold text-lg leading-tight text-white">{hotelName}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-lg leading-tight text-white truncate">{hotelName}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               {property?.is_active !== undefined && (
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
@@ -88,16 +183,23 @@ export function FrontDeskSidebar() {
               <p className="text-xs text-white font-semibold uppercase tracking-wider">Front Desk</p>
             </div>
           </div>
+          <button
+            onClick={() => setIsMobileOpen(false)}
+            className="lg:hidden p-1 hover:bg-white/10 rounded-lg"
+          >
+            <X size={18} />
+          </button>
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
                 end={item.to === "/frontdesk"}
+                onClick={handleNavClick}
                 style={({ isActive }) =>
                   isActive
                     ? { backgroundColor: "white", color: brandColor }
@@ -113,6 +215,7 @@ export function FrontDeskSidebar() {
               >
                 <item.icon size={18} />
                 <span className="text-sm">{item.label}</span>
+
               </NavLink>
             </li>
           ))}
@@ -122,7 +225,7 @@ export function FrontDeskSidebar() {
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-4 py-2">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold uppercase text-white"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold uppercase text-white shrink-0"
             style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
           >
             {initials}
@@ -133,7 +236,7 @@ export function FrontDeskSidebar() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-white/40 hover:text-white transition-colors"
+            className="text-white/40 hover:text-white transition-colors shrink-0"
             title="Sign out"
           >
             <LogOut size={16} />
@@ -141,5 +244,35 @@ export function FrontDeskSidebar() {
         </div>
       </div>
     </aside>
+  )
+}
+
+export function FrontDeskSidebar() {
+  const { isMobileOpen, setIsMobileOpen, isMobile } = useFrontDeskSidebar()
+
+  if (isMobile) {
+    return (
+      <>
+        {isMobileOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+        <div
+          className={`fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out lg:hidden ${
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <SidebarContent />
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="sticky top-0 h-screen shrink-0">
+      <SidebarContent />
+    </div>
   )
 }

@@ -91,6 +91,7 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
     mutationFn: (refNumber: string) => checkInGuest(refNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-arrivals", currentPropertyId] })
+      queryClient.invalidateQueries({ queryKey: ["arrivals-for-folio", currentPropertyId] })
     },
   })
 

@@ -56,7 +56,7 @@ export default function Login() {
       const isStaff = responseRole === 'front_desk'
       const userRole = isStaff ? 'staff' : isHost ? 'host' : 'guest'
 
-      await authLogin(res.data.access_token, remember, userRole, res.data.refresh_token)
+      await authLogin(res.data.access_token, remember, userRole, res.data.refresh_token, res.data.must_change_password, res.data.temp_password)
 
       if (isStaff && res.data.property?.id) {
         setCurrentPropertyId(res.data.property.id)

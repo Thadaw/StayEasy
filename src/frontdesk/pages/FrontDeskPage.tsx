@@ -5,7 +5,6 @@ import {
   CalendarCheck, 
   CalendarX, 
   BedDouble, 
-  DollarSign, 
   Users, 
   TrendingUp,
   Clock,
@@ -20,7 +19,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { ErrorBoundary } from "../../shared/components/ErrorBoundary"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { getFrontDeskSummary } from "../../services/pmsApi"
@@ -55,6 +54,9 @@ export function FrontDeskPage() {
   const [showRooms, setShowRooms] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [initialRoomId, setInitialRoomId] = useState<string | null>(null)
+  const [initialCheckinDate, setInitialCheckinDate] = useState<string | null>(null)
+  const [initialCheckoutDate, setInitialCheckoutDate] = useState<string | null>(null)
   const bookingFormRef = useRef<HTMLDivElement>(null)
   const arrivalsRef = useRef<HTMLDivElement>(null)
   const departuresRef = useRef<HTMLDivElement>(null)
@@ -95,6 +97,12 @@ export function FrontDeskPage() {
     const panel = searchParams.get("panel")
     if (panel === "new-booking") {
       setShowNewBooking(true)
+      const roomId = searchParams.get("roomId")
+      const checkinDate = searchParams.get("checkinDate")
+      const checkoutDate = searchParams.get("checkoutDate")
+      if (roomId) setInitialRoomId(roomId)
+      if (checkinDate) setInitialCheckinDate(checkinDate)
+      if (checkoutDate) setInitialCheckoutDate(checkoutDate)
     } else if (panel === "arrivals") {
       setShowArrivals(true)
     } else if (panel === "departures") {
@@ -252,7 +260,7 @@ export function FrontDeskPage() {
     queryFn: async () => {
       if (!currentPropertyId) return []
       try {
-        const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params: { limit: "200" } })
+        const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params: { limit: "50", skip: "0" } })
         const wrapped = result as { data?: any[] }
         return (wrapped?.data ?? result) as any[]
       } catch {
@@ -326,21 +334,23 @@ export function FrontDeskPage() {
   }
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <FrontDeskSidebar />
       
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>
             
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative w-full sm:w-80">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search booking, guest, phone..."
-                  className="pl-10 pr-4 py-2 w-80 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">
                   Ctrl + K
@@ -371,7 +381,7 @@ export function FrontDeskPage() {
                       onClick={() => setShowNotifications(false)} 
                       className="fixed inset-0 z-40"
                     />
-                    <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
                       <div className="flex items-center justify-between p-4 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
                         <button 
@@ -442,7 +452,7 @@ export function FrontDeskPage() {
                       onClick={() => setShowUserMenu(false)} 
                       className="fixed inset-0 z-40"
                     />
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
                       <div className="p-4 border-b border-gray-100">
                         <p className="font-semibold text-gray-900">{displayName}</p>
                         <p className="text-sm text-gray-500 capitalize">{user?.role?.replace('_', ' ') || 'Staff'}</p>
@@ -488,13 +498,13 @@ export function FrontDeskPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
             {stats.map((stat, index) => (
               <StatCard key={index} {...stat} />
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <OccupancyChart 
               data={occupancyData}
               totalRooms={summary?.total_rooms ?? 0}
@@ -518,9 +528,17 @@ export function FrontDeskPage() {
               <ErrorBoundary>
                 <NewBookingForm
                   onComplete={handleNewBookingComplete}
-                  onCancel={() => setShowNewBooking(false)}
+                  onCancel={() => {
+                    setShowNewBooking(false)
+                    setInitialRoomId(null)
+                    setInitialCheckinDate(null)
+                    setInitialCheckoutDate(null)
+                  }}
                   formatAmount={formatAmount}
                   currency={currency}
+                  initialRoomId={initialRoomId}
+                  initialCheckinDate={initialCheckinDate}
+                  initialCheckoutDate={initialCheckoutDate}
                 />
               </ErrorBoundary>
             </div>
@@ -546,6 +564,7 @@ export function FrontDeskPage() {
         </div>
       </main>
     </div>
+    </FrontDeskSidebarProvider>
   )
 }
 

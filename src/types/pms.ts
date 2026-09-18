@@ -132,6 +132,22 @@ export interface AvailableRoom {
   custom_amenities: { name: string; icon: string | null }[]
 }
 
+export interface RoomCalendarDay {
+  date: string
+  status: string
+  booking_ref: string
+  guest_name: string
+}
+
+export interface RoomCalendarRoom {
+  room_id: string
+  room_name: string
+  room_type: string
+  bed_type: string
+  floor_number: number
+  days: RoomCalendarDay[]
+}
+
 export interface SpecialOfferPayload {
   title: string
   description: string

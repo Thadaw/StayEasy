@@ -10,7 +10,7 @@ import {
   Users,
   Star,
 } from "lucide-react"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 
 type TabKey = "all" | "guest_requests" | "housekeeping" | "payments" | "staff_handoff"
 
@@ -125,11 +125,13 @@ export default function FrontDeskNotificationsPage() {
   }
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex min-h-screen bg-gray-50">
       <FrontDeskSidebar />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -215,5 +217,6 @@ export default function FrontDeskNotificationsPage() {
         </div>
       </main>
     </div>
+    </FrontDeskSidebarProvider>
   )
 }

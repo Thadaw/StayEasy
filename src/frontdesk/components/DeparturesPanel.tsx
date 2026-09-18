@@ -45,41 +45,148 @@ function getNights(booking: ArrivalGuest): number {
   return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
 }
 
-const MOCK_DEPARTURE: ArrivalGuest = {
-  booking_id: "mock-002",
-  ref_number: "MOCK02",
-  status: "CHECKED_IN",
-  booking_type: "ONLINE",
-  guest: {
-    guest_id: "g-002",
-    full_name: "Sarah Johnson",
-    email: "sarah.j@email.com",
-    phone: "+977 9851234567",
-    nationality: "United States",
-  },
-  rooms: [
-    {
-      room_id: "r-002",
-      room_name: "Room 305",
-      room_type: "Deluxe Queen",
-      bed_type: "Queen",
-      base_rate: 4500,
+const MOCK_DEPARTURES: ArrivalGuest[] = [
+  {
+    booking_id: "dep-001",
+    ref_number: "BK-19842",
+    status: "CHECKED_IN",
+    booking_type: "ONLINE",
+    guest: {
+      guest_id: "g-001",
+      full_name: "Amelia Thompson",
+      email: "amelia.t@email.com",
+      phone: "+1 555-0101",
+      nationality: "United Kingdom",
     },
-  ],
-  checkin_date: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
-  checkout_date: new Date().toISOString().split("T")[0],
-  number_of_adults: 2,
-  number_of_children: 0,
-  special_requests: "",
-  payment_method: "STRIPE",
-  payment_status: "PAID",
-  payment_gateway: "stripe",
-  amount_paid: 9000,
-  amount_due: 0,
-  advance_amount: 0,
-  total_amount: 9000,
-  created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-}
+    rooms: [
+      {
+        room_id: "r-001",
+        room_name: "Suite 804",
+        room_type: "Executive Suite",
+        bed_type: "King",
+        base_rate: 350,
+      },
+    ],
+    checkin_date: new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0],
+    checkout_date: new Date().toISOString().split("T")[0],
+    number_of_adults: 2,
+    number_of_children: 1,
+    special_requests: "Late checkout if possible",
+    payment_method: "STRIPE",
+    payment_status: "PAID",
+    payment_gateway: "stripe",
+    amount_paid: 1200,
+    amount_due: 0,
+    advance_amount: 0,
+    total_amount: 1200,
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    booking_id: "dep-002",
+    ref_number: "BK-19835",
+    status: "CHECKED_IN",
+    booking_type: "WALK_IN",
+    guest: {
+      guest_id: "g-002",
+      full_name: "Noah Williams",
+      email: "noah.w@email.com",
+      phone: "+1 555-0202",
+      nationality: "United States",
+    },
+    rooms: [
+      {
+        room_id: "r-002",
+        room_name: "Room 412",
+        room_type: "Deluxe King",
+        bed_type: "King",
+        base_rate: 160,
+      },
+    ],
+    checkin_date: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
+    checkout_date: new Date().toISOString().split("T")[0],
+    number_of_adults: 1,
+    number_of_children: 0,
+    special_requests: "",
+    payment_method: "CASH",
+    payment_status: "PAID",
+    payment_gateway: "",
+    amount_paid: 350,
+    amount_due: 0,
+    advance_amount: 0,
+    total_amount: 350,
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    booking_id: "dep-003",
+    ref_number: "BK-19821",
+    status: "CHECKED_IN",
+    booking_type: "ONLINE",
+    guest: {
+      guest_id: "g-003",
+      full_name: "Sofia Martinez",
+      email: "sofia.m@email.com",
+      phone: "+34 612-345-678",
+      nationality: "Spain",
+    },
+    rooms: [
+      {
+        room_id: "r-003",
+        room_name: "Garden Villa 2",
+        room_type: "Garden Villa",
+        bed_type: "King",
+        base_rate: 250,
+      },
+    ],
+    checkin_date: new Date(Date.now() - 5 * 86400000).toISOString().split("T")[0],
+    checkout_date: new Date().toISOString().split("T")[0],
+    number_of_adults: 2,
+    number_of_children: 2,
+    special_requests: "Extra towels and pillows",
+    payment_method: "STRIPE",
+    payment_status: "PARTIALLY_PAID",
+    payment_gateway: "stripe",
+    amount_paid: 800,
+    amount_due: 450,
+    advance_amount: 0,
+    total_amount: 1250,
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+  {
+    booking_id: "dep-004",
+    ref_number: "BK-19794",
+    status: "CHECKED_IN",
+    booking_type: "ONLINE",
+    guest: {
+      guest_id: "g-004",
+      full_name: "Theo Bennett",
+      email: "theo.b@email.com",
+      phone: "+44 7911-123456",
+      nationality: "United Kingdom",
+    },
+    rooms: [
+      {
+        room_id: "r-004",
+        room_name: "Room 207",
+        room_type: "Standard Twin",
+        bed_type: "Twin",
+        base_rate: 95,
+      },
+    ],
+    checkin_date: new Date(Date.now() - 1 * 86400000).toISOString().split("T")[0],
+    checkout_date: new Date().toISOString().split("T")[0],
+    number_of_adults: 2,
+    number_of_children: 0,
+    special_requests: "",
+    payment_method: "KHALTI",
+    payment_status: "PAID",
+    payment_gateway: "khalti",
+    amount_paid: 215,
+    amount_due: 0,
+    advance_amount: 0,
+    total_amount: 215,
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+]
 
 export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
   const navigate = useNavigate()
@@ -91,12 +198,12 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
   const { data: departures = [], isLoading } = useQuery({
     queryKey: ["today-departures", currentPropertyId],
     queryFn: async () => {
-      if (!currentPropertyId) return [MOCK_DEPARTURE]
+      if (!currentPropertyId) return MOCK_DEPARTURES
       try {
         const result = await getTodayDepartures(currentPropertyId)
-        return result.length > 0 ? result : [MOCK_DEPARTURE]
+        return result.length > 0 ? result : MOCK_DEPARTURES
       } catch {
-        return [MOCK_DEPARTURE]
+        return MOCK_DEPARTURES
       }
     },
     enabled: !!currentPropertyId,

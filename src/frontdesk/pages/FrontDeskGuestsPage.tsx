@@ -1,15 +1,12 @@
 import { useState, useMemo } from "react"
 import {
   Search,
-  Download,
-  Plus,
-  Grid3X3,
-  List,
   ChevronDown,
+  Users,
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
@@ -98,7 +95,9 @@ function deriveGuestsFromBookings(bookings: Booking[]): GuestProfile[] {
     const email = b.guest_email.toLowerCase()
     const existing = guestMap.get(email)
 
-    const isCurrentlyCheckedIn = b.status === "checked_in" || b.status === "in_house"
+    const s = b.status?.toUpperCase() || ""
+    const isCurrentlyCheckedIn = s === "CHECKED_IN" || s === "IN_HOUSE" || s === "CHECKED-IN" || s === "IN HOUSE"
+    const isCheckedOut = s === "CHECKED_OUT" || s === "CHECKED-OUT" || s === "COMPLETED" || s === "CANCELLED"
     const roomNumber = isCurrentlyCheckedIn ? b.room_names?.[0] : undefined
 
     if (existing) {
@@ -115,7 +114,7 @@ function deriveGuestsFromBookings(bookings: Booking[]): GuestProfile[] {
         last_stay: b.checkin_date,
         total_spent: parseFloat(b.total_amount) || 0,
         preferences: [],
-        status: isCurrentlyCheckedIn ? "in_house" : "active",
+        status: isCurrentlyCheckedIn ? "in_house" : isCheckedOut ? "departed" : "active",
         room_number: roomNumber,
       })
     }
@@ -173,7 +172,6 @@ export default function FrontDeskGuestsPage() {
       }
     },
     enabled: !!currentPropertyId,
-    placeholderData: EMPTY_BOOKINGS,
   })
 
   const allGuests = useMemo(() => deriveGuestsFromBookings(bookingsData ?? []), [bookingsData])
@@ -215,11 +213,13 @@ export default function FrontDeskGuestsPage() {
   }
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex min-h-screen bg-gray-50">
       <FrontDeskSidebar />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           {/* Header */}
           <div className="mb-6">
             <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
@@ -280,7 +280,7 @@ export default function FrontDeskGuestsPage() {
               <div className="relative">
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1) }}
                   className="appearance-none pl-3 pr-8 py-2.5 border border-gray-200 rounded-lg text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="recent">Sort: Most Recent Stays</option>
@@ -303,20 +303,36 @@ export default function FrontDeskGuestsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
+                <p className="text-sm text-gray-500">Loading guest records...</p>
               </div>
             ) : paginatedGuests.length === 0 ? (
               <div className="text-center py-16">
-                <p className="text-gray-500 font-medium">No guests found</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {searchQuery ? "Try a different search term" : "No guest records yet"}
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-700 font-semibold">
+                  {searchQuery ? "No guests match your search" : "No guest records yet"}
                 </p>
+                <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  {searchQuery
+                    ? "Try adjusting your search terms or clear the filter to see all guests."
+                    : "Guest profiles will appear here once bookings are created and guests check in."}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={handleReset}
+                    className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             ) : (
               <>
                 {/* Table Header */}
-                <div className="grid grid-cols-[2fr_1.2fr_0.8fr_1.5fr_1.2fr] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="hidden lg:grid grid-cols-[2fr_1.2fr_0.8fr_1.5fr_1.2fr] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   <div>Guest Profile</div>
                   <div>Stays & Recency</div>
                   <div>Total Spent</div>
@@ -325,7 +341,7 @@ export default function FrontDeskGuestsPage() {
                 </div>
 
                 {/* Table Rows */}
-                <div className="divide-y divide-gray-50">
+                <div className="hidden lg:block divide-y divide-gray-50">
                   {paginatedGuests.map((guest) => {
                     const statusStyle = getStatusStyle(guest.status, guest.room_number)
                     return (
@@ -401,6 +417,74 @@ export default function FrontDeskGuestsPage() {
                   })}
                 </div>
 
+                {/* Mobile Card View */}
+                <div className="lg:hidden divide-y divide-gray-50">
+                  {paginatedGuests.map((guest) => {
+                    const statusStyle = getStatusStyle(guest.status, guest.room_number)
+                    return (
+                      <div
+                        key={guest.id}
+                        className="px-4 py-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${avatarColor(
+                              guest.name
+                            )}`}
+                          >
+                            {getInitials(guest.name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {guest.name}
+                                </p>
+                                <p className="text-xs text-gray-400 truncate">{guest.email}</p>
+                              </div>
+                              {guest.room_number ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 shrink-0">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  In-House
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                              <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Stay Dates</p>
+                                <p className="text-sm text-gray-700">
+                                  {guest.total_stays} stay{guest.total_stays !== 1 ? "s" : ""} · Last: {formatDate(guest.last_stay)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Total Spent</p>
+                                <p className="text-sm font-semibold text-gray-900">{formatAmount(guest.total_spent)}</p>
+                              </div>
+                            </div>
+
+                            {guest.preferences.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium mb-1">Preferences</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {guest.preferences.slice(0, 3).map((pref, i) => (
+                                    <span
+                                      key={i}
+                                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-full"
+                                    >
+                                      {pref}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
                 {/* Pagination */}
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                   <p className="text-sm text-gray-500">
@@ -447,5 +531,6 @@ export default function FrontDeskGuestsPage() {
         </div>
       </main>
     </div>
+    </FrontDeskSidebarProvider>
   )
 }
