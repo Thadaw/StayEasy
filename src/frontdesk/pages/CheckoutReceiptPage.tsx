@@ -28,6 +28,7 @@ interface Booking {
   amount_paid: number
   amount_due: number
   rooms: BookingRoom[]
+  payment_method?: string
 }
 
 export default function CheckoutReceiptPage() {

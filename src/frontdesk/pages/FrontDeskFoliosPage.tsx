@@ -865,7 +865,7 @@ export default function FrontDeskFoliosPage() {
                     </button>
                   </div>
                   <div className="space-y-3">
-                    {displaySelected.charges.map((charge) => (
+                    {displaySelected.charges.map((charge: Charge) => (
                       <div key={charge.id} className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-xl">
                         <ChargeIcon type={charge.icon} />
                         <div className="flex-1 min-w-0">

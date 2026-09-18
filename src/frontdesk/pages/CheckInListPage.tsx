@@ -309,8 +309,8 @@ export default function CheckInListPage() {
                     const nights = Math.max(1, Math.ceil(
                       (new Date(booking.checkout_date).getTime() - new Date(booking.checkin_date).getTime()) / (1000 * 60 * 60 * 24)
                     ))
-                    const amountPaid = parseFloat(booking.amount_paid) || 0
-                    const balance = parseFloat(booking.amount_due) || 0
+                    const amountPaid = Number(booking.amount_paid) || 0
+                    const balance = Number(booking.amount_due) || 0
 
                     return (
                       <tr
@@ -444,7 +444,7 @@ export default function CheckInListPage() {
                 <div className="flex-1">
                   <h4 className="text-base font-bold text-gray-900">{selectedBooking.guest_name || "—"}</h4>
                   <p className="text-sm text-gray-500">{selectedBooking.guest_email || "—"}</p>
-                  <p className="text-xs text-gray-400">#{selectedBooking.booking_number}</p>
+                  <p className="text-xs text-gray-400">#{selectedBooking.ref_number}</p>
                 </div>
               </div>
             </div>

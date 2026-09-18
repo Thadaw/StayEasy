@@ -42,6 +42,7 @@ interface Booking {
   amount_due: number
   rooms: BookingRoom[]
   folio: BookingFolio | null
+  payment_method?: string
 }
 
 function getInitials(name: string): string {

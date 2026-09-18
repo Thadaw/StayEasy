@@ -174,7 +174,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
           cancellation_title: r.cancellation_title || null,
           cancellation_description: r.cancellation_description || null,
           system_amenities: [],
-          custom_amenities: r.custom_amenities || [],
+          custom_amenities: (r.custom_amenities || []).map((a) => ({ name: a.name, icon: a.icon ?? null })),
         }))
 
         setAvailableRooms(rooms)
