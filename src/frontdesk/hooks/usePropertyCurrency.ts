@@ -22,7 +22,7 @@ export function usePropertyCurrency() {
   const currency = property?.currency || "NPR"
 
   const formatAmount = (amount: number) => {
-    return `${currency} ${amount.toLocaleString()}`
+    return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
   }
 
   return { currency, formatAmount, property }

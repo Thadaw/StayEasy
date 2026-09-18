@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import * as XLSX from "xlsx"
 import {
@@ -12,20 +12,35 @@ import {
   CheckCircle,
   Pencil,
   Eye,
+  X,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Bed,
+  CreditCard,
+  FileText,
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { getBookingStatuses, getPaymentStatuses, getPaymentGateways, getPaymentMethods, getBookingTypes } from "../../services/pmsApi"
 import { Pagination } from "../../guestfeatures/search/components/Pagination"
+import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 
 interface Booking {
   id: string
-  guest_name: string
-  guest_email: string
+  guest_name?: string
+  guest_email?: string
+  guest_phone?: string
+  booking_guest?: {
+    full_name?: string
+    email?: string
+    phone?: string
+  }
   booking_number: string
   room_names: string[]
   checkin_date: string
@@ -40,6 +55,65 @@ interface Booking {
   amount_paid?: string
   amount_due?: string
   created_at: string
+}
+
+function getBookingGuestName(b: Booking): string {
+  return b.booking_guest?.full_name || b.guest_name || "—"
+}
+
+function getBookingGuestEmail(b: Booking): string {
+  return b.booking_guest?.email || b.guest_email || "—"
+}
+
+interface RoomDetail {
+  id?: string
+  room_name?: string
+  room_number?: string
+  name?: string
+}
+
+interface BookingDetail {
+  id: string
+  booking_id?: string
+  ref_number?: string
+  booking_number?: string
+  guest_name?: string
+  guest_email?: string
+  guest_phone?: string
+  guest?: {
+    name?: string
+    email?: string
+    phone?: string
+  }
+  booking_guest?: {
+    full_name?: string
+    email?: string
+    phone?: string
+  }
+  room_names?: string[]
+  rooms?: (string | RoomDetail)[]
+  room_numbers?: string[]
+  room?: string
+  checkin_date: string
+  checkout_date: string
+  status: string
+  payment_status?: string
+  payment_method?: string
+  payment_gateway?: string
+  booking_type?: string
+  subtotal: string | number
+  total_amount: string | number
+  amount_paid?: string | number
+  amount_due?: string | number
+  coupon_code?: string
+  coupon_discount?: number
+  number_of_adults?: number
+  number_of_children?: number
+  special_requests?: string
+  notes?: string
+  created_at: string
+  adults?: number
+  children?: number
 }
 
 interface Filters {
@@ -105,15 +179,79 @@ function getPaymentLabel(booking: Booking): string {
   return "Paid"
 }
 
+function extractRoomNames(detail: any): string[] {
+  if (detail.rooms && Array.isArray(detail.rooms) && detail.rooms.length > 0) {
+    return detail.rooms.map((r: any) => {
+      if (typeof r === "string") return r
+      if (r && typeof r === "object") return r.room_name || r.room_number || r.name || "Room"
+      return String(r)
+    })
+  }
+  if (detail.room_names && Array.isArray(detail.room_names)) {
+    return detail.room_names.map((r: any) => typeof r === "string" ? r : r.room_name || "Room")
+  }
+  return []
+}
+
+function extractGuestName(detail: any): string {
+  if (detail.booking_guest?.full_name) return detail.booking_guest.full_name
+  if (detail.booking_guest?.name) return detail.booking_guest.name
+  if (detail.guest_name) return detail.guest_name
+  if (detail.guest?.name) return detail.guest.name
+  return "—"
+}
+
+function extractGuestEmail(detail: any): string {
+  if (detail.booking_guest?.email) return detail.booking_guest.email
+  if (detail.guest_email) return detail.guest_email
+  if (detail.guest?.email) return detail.guest.email
+  if (detail.customer_email) return detail.customer_email
+  return "—"
+}
+
+function extractGuestPhone(detail: any): string {
+  if (detail.booking_guest?.phone) return detail.booking_guest.phone
+  if (detail.guest_phone) return detail.guest_phone
+  if (detail.guest?.phone) return detail.guest.phone
+  if (detail.customer_phone) return detail.customer_phone
+  return ""
+}
+
 const EMPTY_BOOKINGS: Booking[] = []
 
 export default function FrontdeskBookingsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { currentPropertyId } = usePropertyStore()
+  const { formatAmount } = usePropertyCurrency()
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchInput, setSearchInput] = useState("")
+  const [selectedBookingRef, setSelectedBookingRef] = useState<string | null>(null)
+  const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
+  const [cancelBookingName, setCancelBookingName] = useState<string>("")
+  const [cancelReason, setCancelReason] = useState("")
+  const [toastMessage, setToastMessage] = useState("")
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toastMessage) return
+    const timer = setTimeout(() => setToastMessage(""), 4000)
+    return () => clearTimeout(timer)
+  }, [toastMessage])
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    guest_name: "",
+    guest_email: "",
+    guest_phone: "",
+    checkin_date: "",
+    checkout_date: "",
+    special_requests: "",
+    notes: "",
+    number_of_adults: 0,
+    number_of_children: 0,
+  })
   const [filters, setFilters] = useState<Filters>({
     status: "",
     payment_status: "",
@@ -122,6 +260,14 @@ export default function FrontdeskBookingsPage() {
     booking_type: "",
   })
   const { isCheckedIn } = useBookingCheckInStore()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!activeMenu) return
+    const handler = () => setActiveMenu(null)
+    document.addEventListener("click", handler)
+    return () => document.removeEventListener("click", handler)
+  }, [activeMenu])
 
   const { data: statusOptions = [] } = useQuery({
     queryKey: ["booking-statuses"],
@@ -147,6 +293,112 @@ export default function FrontdeskBookingsPage() {
     queryKey: ["booking-types"],
     queryFn: getBookingTypes,
   })
+
+  const { data: bookingDetail, isLoading: isLoadingDetail } = useQuery({
+    queryKey: ["booking-detail", selectedBookingRef],
+    queryFn: async (): Promise<BookingDetail | null> => {
+      if (!selectedBookingRef) return null
+      try {
+        const response = await api.get(`/staff/bookings/${selectedBookingRef}`)
+        const res = response.data
+        
+        console.log("API Response:", res)
+        
+        // Structure: { success: true, data: { booking_id, ref_number, ... } }
+        if (res?.success && res?.data) {
+          console.log("Booking guest data:", res.data.booking_guest)
+          return res.data as BookingDetail
+        }
+        
+        // Fallback: data is directly in response
+        if (res?.data && (res.data.ref_number || res.data.booking_id)) {
+          return res.data as BookingDetail
+        }
+        
+        // Fallback: response is the booking directly
+        if (res?.ref_number || res?.booking_id) {
+          return res as BookingDetail
+        }
+        
+        console.log("No booking detail found in:", res)
+        return null
+      } catch (err) {
+        console.error("Failed to fetch booking detail:", err)
+        return null
+      }
+    },
+    enabled: !!selectedBookingRef,
+    retry: false,
+  })
+
+  // Auto-populate edit form when opening in edit mode
+  useEffect(() => {
+    if (isEditing && bookingDetail) {
+      startEditing()
+    }
+  }, [isEditing, bookingDetail])
+
+  const queryClient = useQueryClient()
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { bookingId: string; payload: any }) => {
+      const response = await api.patch(`/staff/bookings/${data.bookingId}`, data.payload)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["booking-detail", selectedBookingRef] })
+      queryClient.invalidateQueries({ queryKey: ["frontdesk-bookings"] })
+      setIsEditing(false)
+    },
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: async (data: { refNumber: string; reason: string }) => {
+      const response = await api.post(`/staff/cancel-booking/${data.refNumber}`, { reason: data.reason, idempotency_key: crypto.randomUUID() })
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["frontdesk-bookings"] })
+      setCancelBookingId(null)
+      setCancelBookingName("")
+      setCancelReason("")
+    },
+  })
+
+  const startEditing = () => {
+    if (!bookingDetail) return
+    setEditForm({
+      guest_name: extractGuestName(bookingDetail),
+      guest_email: extractGuestEmail(bookingDetail),
+      guest_phone: extractGuestPhone(bookingDetail),
+      checkin_date: bookingDetail.checkin_date || "",
+      checkout_date: bookingDetail.checkout_date || "",
+      special_requests: (bookingDetail as any).special_requests || "",
+      notes: (bookingDetail as any).notes || "",
+      number_of_adults: (bookingDetail as any).number_of_adults || 0,
+      number_of_children: (bookingDetail as any).number_of_children || 0,
+    })
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = () => {
+    if (!bookingDetail) return
+    const bookingId = (bookingDetail as any).booking_id || bookingDetail.id
+    updateMutation.mutate({
+      bookingId,
+      payload: {
+        guest_name: editForm.guest_name,
+        guest_email: editForm.guest_email,
+        guest_phone: editForm.guest_phone,
+        checkin_date: editForm.checkin_date,
+        checkout_date: editForm.checkout_date,
+        special_requests: editForm.special_requests || null,
+        notes: editForm.notes || null,
+        number_of_adults: editForm.number_of_adults,
+        number_of_children: editForm.number_of_children,
+      },
+    })
+  }
 
   const paymentStatusLabelMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -197,8 +449,8 @@ export default function FrontdeskBookingsPage() {
       }
 
       const exportData = apiData.map((b) => ({
-        "Guest Name": b.guest_name,
-        "Email": b.guest_email,
+        "Guest Name": getBookingGuestName(b),
+        "Email": getBookingGuestEmail(b),
         "Booking Number": b.booking_number,
         "Room(s)": b.room_names?.join(", ") || "",
         "Check-In": b.checkin_date,
@@ -273,7 +525,6 @@ export default function FrontdeskBookingsPage() {
       }
     },
     enabled: !!currentPropertyId,
-    placeholderData: { data: EMPTY_BOOKINGS, total: 0, skip: 0, limit: PAGE_SIZE, has_more: false },
   })
 
   const bookings = bookingsData?.data ?? EMPTY_BOOKINGS
@@ -283,13 +534,15 @@ export default function FrontdeskBookingsPage() {
   const paginatedBookings = bookings
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex min-h-screen bg-gray-50">
       <FrontDeskSidebar />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           {/* Title + New Booking */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Reservations</p>
               <h2 className="text-2xl font-bold text-gray-900">Bookings</h2>
@@ -379,10 +632,10 @@ export default function FrontdeskBookingsPage() {
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleExport}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <Download size={14} />
                   Export
@@ -393,7 +646,7 @@ export default function FrontdeskBookingsPage() {
 
           {/* Bookings Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <CalendarCheck size={16} className="text-blue-600" />
@@ -407,8 +660,8 @@ export default function FrontdeskBookingsPage() {
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative w-full sm:w-auto">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
@@ -421,7 +674,7 @@ export default function FrontdeskBookingsPage() {
                         setCurrentPage(1)
                       }
                     }}
-                    className="pl-9 pr-4 py-2 w-64 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    className="pl-9 pr-4 py-2 w-full sm:w-64 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
                 <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
@@ -431,21 +684,76 @@ export default function FrontdeskBookingsPage() {
             </div>
 
             {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
+                <p className="text-sm text-gray-500">Loading bookings...</p>
               </div>
             ) : paginatedBookings.length === 0 ? (
               <div className="text-center py-16">
-                <CalendarCheck size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500 font-medium">No bookings found</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {searchQuery ? "Try a different search term" : "No reservations yet"}
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CalendarCheck size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-700 font-semibold">
+                  {searchQuery ? "No bookings match your search" : "No bookings yet"}
                 </p>
+                <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  {searchQuery
+                    ? "Try adjusting your search terms or clear the filter to see all bookings."
+                    : "Bookings will appear here once guests make reservations."}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchInput(""); setSearchQuery(""); setCurrentPage(1) }}
+                    className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             ) : (
               <>
+                {/* Mobile Card View */}
+                <div className="lg:hidden space-y-3 px-4 py-4">
+                  {paginatedBookings.map((booking) => (
+                    <div key={booking.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-700 shrink-0">
+                          {getInitials(getBookingGuestName(booking))}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 truncate">{getBookingGuestName(booking)}</p>
+                          <p className="text-xs text-gray-500 truncate">{getBookingGuestEmail(booking)}</p>
+                        </div>
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${booking.status === "confirmed" ? "bg-green-100 text-green-700" : booking.status === "checked_in" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                          {booking.status?.replace("_", " ") || "—"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-400">Stay</p>
+                          <p className="text-gray-900">{formatDate(booking.checkin_date)} – {formatDate(booking.checkout_date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Room</p>
+                          <p className="text-gray-900">{booking.room_names?.[0] || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Booking ID</p>
+                          <p className="text-gray-600 font-mono text-xs">#{booking.booking_number?.slice(0, 8) || booking.id?.slice(0, 8)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Type</p>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${booking.booking_type === "WALK_IN" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                            {booking.booking_type?.replace("_", " ") || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {/* Table Header */}
-                <div className="grid grid-cols-[2fr_1.5fr_1.2fr_1fr_0.8fr_1fr_0.8fr_0.8fr] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="hidden lg:grid grid-cols-[2fr_1.5fr_1.2fr_1fr_0.8fr_1fr_0.8fr_0.8fr] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   <div>Guest</div>
                   <div>Stay</div>
                   <div>Room</div>
@@ -457,7 +765,7 @@ export default function FrontdeskBookingsPage() {
                 </div>
 
                 {/* Table Rows */}
-                <div className="divide-y divide-gray-50">
+                <div className="hidden lg:grid divide-y divide-gray-50">
                   {paginatedBookings.map((booking) => (
                     <div
                       key={booking.id}
@@ -466,11 +774,11 @@ export default function FrontdeskBookingsPage() {
                       {/* Guest */}
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-700 shrink-0">
-                          {getInitials(booking.guest_name)}
+                          {getInitials(getBookingGuestName(booking))}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{booking.guest_name}</p>
-                          <p className="text-xs text-gray-500 truncate">{booking.guest_email}</p>
+                          <p className="font-medium text-gray-900 truncate">{getBookingGuestName(booking)}</p>
+                          <p className="text-xs text-gray-500 truncate">{getBookingGuestEmail(booking)}</p>
                         </div>
                       </div>
 
@@ -484,9 +792,15 @@ export default function FrontdeskBookingsPage() {
 
                       {/* Room */}
                       <div>
-                        <p className="text-sm text-gray-900 truncate">
-                          {booking.room_names?.join(", ") || "—"}
-                        </p>
+                        {booking.room_names && booking.room_names.length > 0 ? (
+                          <ul className="text-sm text-gray-900 space-y-0.5">
+                            {booking.room_names.map((room, idx) => (
+                              <li key={idx}>{room}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-900">—</p>
+                        )}
                       </div>
 
                       {/* Booking ID */}
@@ -532,24 +846,48 @@ export default function FrontdeskBookingsPage() {
 
                       {/* Action */}
                       <div className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="relative inline-block">
                           <button
-                            onClick={() => navigate(`/frontdesk/booking/${booking.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View Details"
+                            onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === booking.id ? null : booking.id) }}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                           >
-                            <Eye size={14} />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/frontdesk/booking/${booking.id}/edit`)}
-                            className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                             <MoreHorizontal size={16} />
                           </button>
+                          {activeMenu === booking.id && (
+                            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-10 py-1">
+                              <button
+                                onClick={() => { setSelectedBookingRef(booking.booking_number || booking.id); setIsEditing(false); setActiveMenu(null) }}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <Eye size={14} />
+                                View
+                              </button>
+                              <button
+                                onClick={() => { setSelectedBookingRef(booking.booking_number || booking.id); setIsEditing(true); setActiveMenu(null) }}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <Pencil size={14} />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const status = booking.status?.toUpperCase()
+                                  if (status === "CHECKED_IN" || status === "CHECKED-OUT" || status === "IN_HOUSE") {
+                                    setToastMessage("Booking in status CHECKED_IN cannot be cancelled. Only PENDING, CONFIRMED, or EXPIRED bookings can be cancelled.")
+                                    setActiveMenu(null)
+                                    return
+                                  }
+                                  setCancelBookingId(booking.booking_number || booking.id)
+                                  setCancelBookingName(getBookingGuestName(booking))
+                                  setActiveMenu(null)
+                                }}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <X size={14} />
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -557,14 +895,43 @@ export default function FrontdeskBookingsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-500 mb-3">
+                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-sm text-gray-500">
                     Showing {(bookingsData?.skip ?? 0) + 1} to{" "}
                     {(bookingsData?.skip ?? 0) + bookings.length} of{" "}
                     {totalBookings} reservations
                   </p>
                   {(hasMore || currentPage < totalPages) && (
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                          currentPage === 1
+                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(currentPage)}
+                        className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-semibold"
+                      >
+                        {currentPage}
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                          currentPage >= totalPages
+                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </div>
                   )}
                 </div>
               </>
@@ -572,6 +939,387 @@ export default function FrontdeskBookingsPage() {
           </div>
         </div>
       </main>
+
+      {/* Booking Detail Slide-Over */}
+      {selectedBookingRef && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/30" onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }} />
+          <div className="relative w-full max-w-4xl max-h-[calc(100vh-3rem)] bg-white shadow-xl rounded-xl overflow-y-auto">
+            {isLoadingDetail ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              </div>
+            ) : bookingDetail ? (
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Booking Details</h2>
+                    <p className="text-sm text-gray-500">#{bookingDetail.ref_number || bookingDetail.booking_number || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={updateMutation.isPending}
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {updateMutation.isPending ? "Saving..." : "Save"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={startEditing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X size={18} className="text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="mb-6">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(bookingDetail.status)}`}>
+                    {statusLabelMap[bookingDetail.status] || bookingDetail.status?.replace("_", " ") || "—"}
+                  </span>
+                </div>
+
+                {/* Guest Info */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Guest Information</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <User size={16} className="text-gray-400" />
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editForm.guest_name}
+                            onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-gray-900">{extractGuestName(bookingDetail)}</p>
+                            <p className="text-xs text-gray-500">Guest</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Mail size={16} className="text-gray-400" />
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <input
+                            type="email"
+                            value={editForm.guest_email}
+                            onChange={(e) => setEditForm({ ...editForm, guest_email: e.target.value })}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm text-gray-900">{extractGuestEmail(bookingDetail)}</p>
+                            <p className="text-xs text-gray-500">Email</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Phone size={16} className="text-gray-400" />
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <input
+                            type="tel"
+                            value={editForm.guest_phone}
+                            onChange={(e) => setEditForm({ ...editForm, guest_phone: e.target.value })}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm text-gray-900">{extractGuestPhone(bookingDetail) || "—"}</p>
+                            <p className="text-xs text-gray-500">Phone</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stay Info */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Stay Details</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Calendar size={16} className="text-gray-400" />
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="date"
+                              value={editForm.checkin_date}
+                              onChange={(e) => setEditForm({ ...editForm, checkin_date: e.target.value })}
+                              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-gray-400">→</span>
+                            <input
+                              type="date"
+                              value={editForm.checkout_date}
+                              onChange={(e) => setEditForm({ ...editForm, checkout_date: e.target.value })}
+                              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-sm text-gray-900">
+                              {new Date(bookingDetail.checkin_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              {" → "}
+                              {new Date(bookingDetail.checkout_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </p>
+                            <p className="text-xs text-gray-500">Check-in / Check-out</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Bed size={16} className="text-gray-400 mt-0.5" />
+                      <div>
+                        {(() => {
+                          const rooms = (bookingDetail as any).rooms
+                          if (rooms && Array.isArray(rooms) && rooms.length > 0) {
+                            return (
+                              <ul className="text-sm text-gray-900 space-y-1">
+                                {rooms.map((room: any, idx: number) => (
+                                  <li key={idx} className="flex items-center justify-between">
+                                    <span>
+                                      <span className="font-medium">{room.room_name}</span>
+                                      <span className="text-gray-500 text-xs ml-1">({room.room_type}{room.bed_type ? `, ${room.bed_type}` : ""})</span>
+                                    </span>
+                                    {room.base_rate != null && (
+                                      <span className="text-xs text-gray-600 font-medium">{formatAmount(Number(room.base_rate))}</span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            )
+                          }
+                          return <p className="text-sm text-gray-900">—</p>
+                        })()}
+                        <p className="text-xs text-gray-500">Room(s)</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <User size={16} className="text-gray-400" />
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={editForm.number_of_adults}
+                              onChange={(e) => setEditForm({ ...editForm, number_of_adults: parseInt(e.target.value) || 0 })}
+                              className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-600">adults</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editForm.number_of_children}
+                              onChange={(e) => setEditForm({ ...editForm, number_of_children: parseInt(e.target.value) || 0 })}
+                              className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-600">children</span>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-sm text-gray-900">
+                              {(bookingDetail as any).number_of_adults || bookingDetail.adults || 0} adults
+                              {((bookingDetail as any).number_of_children || bookingDetail.children) 
+                                ? `, ${(bookingDetail as any).number_of_children || bookingDetail.children} children` 
+                                : ""}
+                            </p>
+                            <p className="text-xs text-gray-500">Guests</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileText size={16} className="text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-900">{bookingDetail.booking_type?.replace("_", " ") || "—"}</p>
+                        <p className="text-xs text-gray-500">Booking Type</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Details</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <CreditCard size={16} className="text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-900">{(bookingDetail.payment_method || bookingDetail.payment_gateway || "—").replace(/_/g, " ")}</p>
+                        <p className="text-xs text-gray-500">Payment Method</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                      <span className="text-sm text-gray-600">Subtotal</span>
+                      <span className="text-sm font-medium text-gray-900">{formatAmount(Number(bookingDetail.subtotal) || 0)}</span>
+                    </div>
+                    {(bookingDetail as any).coupon_discount > 0 && (
+                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                        <span className="text-sm text-gray-600">
+                          Coupon{((bookingDetail as any).coupon_code ? ` (${(bookingDetail as any).coupon_code})` : "")}
+                        </span>
+                        <span className="text-sm font-medium text-green-600">-{formatAmount(Number((bookingDetail as any).coupon_discount))}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                      <span className="text-sm text-gray-600">Total Amount</span>
+                      <span className="text-sm font-bold text-gray-900">{formatAmount(Number(bookingDetail.total_amount) || 0)}</span>
+                    </div>
+                    {Number(bookingDetail.amount_paid) > 0 && (
+                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                        <span className="text-sm text-gray-600">Total Paid</span>
+                        <span className="text-sm font-medium text-green-600">{formatAmount(Number(bookingDetail.amount_paid))}</span>
+                      </div>
+                    )}
+                    {Number(bookingDetail.amount_due) > 0 && (
+                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                        <span className="text-sm text-gray-600">Amount Due</span>
+                        <span className="text-sm font-medium text-orange-600">{formatAmount(Number(bookingDetail.amount_due))}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Special Requests */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Special Requests</h3>
+                  {isEditing ? (
+                    <textarea
+                      value={editForm.special_requests}
+                      onChange={(e) => setEditForm({ ...editForm, special_requests: e.target.value })}
+                      placeholder="No special requests"
+                      rows={2}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-600">{bookingDetail.special_requests || "—"}</p>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Notes</h3>
+                  {isEditing ? (
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      placeholder="No notes"
+                      rows={2}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-600">{bookingDetail.notes || "—"}</p>
+                  )}
+                </div>
+
+                {/* View Folio Button */}
+                <button
+                  onClick={() => navigate(`/frontdesk/folios?booking=${bookingDetail.booking_number || bookingDetail.ref_number || bookingDetail.id}`)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors border border-blue-200"
+                >
+                  <FileText size={16} />
+                  View Folio
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">No details found</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Booking Confirmation */}
+      {cancelBookingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setCancelBookingId(null); setCancelBookingName(""); setCancelReason("") }} />
+          <div className="relative bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <X size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Cancel Booking</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to cancel the booking for <span className="font-semibold text-gray-900">{cancelBookingName}</span>? The guest will be notified and the booking status will be updated to cancelled.
+            </p>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason for cancellation</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Guest requested cancellation"
+                rows={3}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setCancelBookingId(null); setCancelBookingName(""); setCancelReason("") }}
+                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={() => cancelMutation.mutate({ refNumber: cancelBookingId, reason: cancelReason || "No reason provided" })}
+                disabled={cancelMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-red-600 text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 max-w-sm">
+            <X size={20} className="flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{toastMessage}</p>
+            </div>
+            <button onClick={() => setToastMessage("")} className="text-red-200 hover:text-white flex-shrink-0">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+    </FrontDeskSidebarProvider>
   )
 }

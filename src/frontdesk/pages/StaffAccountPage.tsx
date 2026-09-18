@@ -13,7 +13,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
-import { FrontDeskSidebar } from "../components/FrontDeskSidebar"
+import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 
 interface StaffProfile {
   firstName: string
@@ -151,11 +151,13 @@ export function StaffAccountPage() {
   }
 
   return (
+    <FrontDeskSidebarProvider>
     <div className="flex min-h-screen bg-gray-50">
       <FrontDeskSidebar />
       
       <main className="flex-1 overflow-auto">
-        <div className="p-6">
+        <MobileMenuButton />
+        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
             <p className="text-sm text-gray-500 mt-1">Manage your profile, password, and notification preferences</p>
@@ -168,8 +170,8 @@ export function StaffAccountPage() {
             </div>
           )}
 
-          <div className="flex gap-6">
-            <div className="w-64 shrink-0">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="w-full lg:w-64 shrink-0">
               <div className="bg-white rounded-xl border border-gray-100 p-4">
                 <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
                   <div className="relative">
@@ -186,10 +188,10 @@ export function StaffAccountPage() {
                   </div>
                 </div>
 
-                <nav className="space-y-1">
+                <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible">
                   <button
                     onClick={() => setActiveTab("profile")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`shrink-0 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === "profile"
                         ? "bg-blue-50 text-blue-600"
                         : "text-gray-600 hover:bg-gray-50"
@@ -200,7 +202,7 @@ export function StaffAccountPage() {
                   </button>
                   <button
                     onClick={() => setActiveTab("password")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`shrink-0 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === "password"
                         ? "bg-blue-50 text-blue-600"
                         : "text-gray-600 hover:bg-gray-50"
@@ -211,7 +213,7 @@ export function StaffAccountPage() {
                   </button>
                   <button
                     onClick={() => setActiveTab("notifications")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`shrink-0 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === "notifications"
                         ? "bg-blue-50 text-blue-600"
                         : "text-gray-600 hover:bg-gray-50"
@@ -230,7 +232,7 @@ export function StaffAccountPage() {
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h2>
                   
                   <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                         <input
@@ -277,7 +279,7 @@ export function StaffAccountPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                         <input
@@ -518,6 +520,7 @@ export function StaffAccountPage() {
         </div>
       </main>
     </div>
+    </FrontDeskSidebarProvider>
   )
 }
 

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { ChevronLeft, ChevronRight, Check, User, Bed, Calendar, CreditCard, AlertCircle } from "lucide-react"
-import { getAvailableRooms, createWalkinBooking } from "../../services/pmsApi"
+import { ChevronLeft, ChevronRight, Check, User, Bed, Calendar, CreditCard, AlertCircle, Upload, X } from "lucide-react"
+import { getRooms, getRoomTypes, getBedTypes, getAvailableRooms, getRoomCalendar, createWalkinBooking } from "../../services/pmsApi"
 import { usePropertyStore } from "../../stores/propertyStore"
-import type { AvailableRoom } from "../../types/pms"
+import type { AvailableRoom, RoomCalendarRoom } from "../../types/pms"
 
 interface GuestInfo {
   fullName: string
@@ -11,6 +11,8 @@ interface GuestInfo {
   phone: string
   countryCode: string
   country: string
+  verificationDocFront: File | null
+  verificationDocBack: File | null
 }
 
 interface StayDetails {
@@ -34,16 +36,19 @@ interface NewBookingFormProps {
   onCancel?: () => void
   formatAmount?: (amount: number) => string
   currency?: string
+  initialRoomId?: string | null
+  initialCheckinDate?: string | null
+  initialCheckoutDate?: string | null
 }
 
 const steps = [
-  { id: 1, label: "Guest details", icon: User },
-  { id: 2, label: "Stay & room", icon: Bed },
+  { id: 1, label: "Stay & room", icon: Bed },
+  { id: 2, label: "Guest details", icon: User },
   { id: 3, label: "Rate & payment", icon: CreditCard },
   { id: 4, label: "Review & confirm", icon: Check },
 ]
 
-export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number) => `${n}`, currency = "NPR" }: NewBookingFormProps) {
+export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number) => `${n}`, currency = "NPR", initialRoomId, initialCheckinDate, initialCheckoutDate }: NewBookingFormProps) {
   const navigate = useNavigate()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [currentStep, setCurrentStep] = useState(1)
@@ -54,10 +59,17 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     phone: "",
     countryCode: "+977",
     country: "Nepal",
+    verificationDocFront: null,
+    verificationDocBack: null,
   })
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const formatDate = (d: Date) => d.toISOString().split("T")[0]
+
   const [stayDetails, setStayDetails] = useState<StayDetails>({
-    checkInDate: "",
-    checkOutDate: "",
+    checkInDate: initialCheckinDate || formatDate(today),
+    checkOutDate: initialCheckoutDate || formatDate(tomorrow),
     adults: 2,
     children: 0,
     roomType: "standard",
@@ -66,8 +78,10 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   const [paymentMethod, setPaymentMethod] = useState("cash")
   const [paymentType, setPaymentType] = useState("full")
   const [advanceReceived, setAdvanceReceived] = useState("")
+  const [discount, setDiscount] = useState("")
   const [selectedRooms, setSelectedRooms] = useState<string[]>([])
   const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([])
+  const [calendarRooms, setCalendarRooms] = useState<RoomCalendarRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [roomsError, setRoomsError] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -86,17 +100,17 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {}
     if (step === 1) {
-      if (!guestInfo.fullName.trim()) newErrors.fullName = "Full name is required"
-      if (!guestInfo.email.trim()) newErrors.email = "Email is required"
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) newErrors.email = "Invalid email format"
-      if (!guestInfo.phone.trim()) newErrors.phone = "Phone number is required"
-    }
-    if (step === 2) {
       if (!stayDetails.checkInDate) newErrors.checkInDate = "Check-in date is required"
       if (!stayDetails.checkOutDate) newErrors.checkOutDate = "Check-out date is required"
       else if (stayDetails.checkInDate && stayDetails.checkOutDate && stayDetails.checkOutDate <= stayDetails.checkInDate) newErrors.checkOutDate = "Check-out must be after check-in"
       if (selectedRooms.length === 0) newErrors.rooms = "Select at least one room"
       else if (capacityError) newErrors.rooms = `Selected room(s) fit ${capacityAdults} Adult${capacityAdults !== 1 ? "s" : ""}, ${capacityChildren} Children but ${stayDetails.adults} Adult${stayDetails.adults !== 1 ? "s" : ""}, ${stayDetails.children} Children needed.`
+    }
+    if (step === 2) {
+      if (!guestInfo.fullName.trim()) newErrors.fullName = "Full name is required"
+      if (!guestInfo.email.trim()) newErrors.email = "Email is required"
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) newErrors.email = "Invalid email format"
+      if (!guestInfo.phone.trim()) newErrors.phone = "Phone number is required"
     }
     if (step === 3 && paymentType === "advance") {
       if (!advanceReceived || advanceReceivedNum <= 0) newErrors.advance = "Enter advance amount"
@@ -123,21 +137,76 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   }
 
   useEffect(() => {
-    if (!currentPropertyId || !stayDetails.checkInDate || !stayDetails.checkOutDate) {
+    if (!currentPropertyId) {
       setAvailableRooms([])
+      setCalendarRooms([])
       setSelectedRooms([])
       return
     }
     let cancelled = false
     setRoomsLoading(true)
     setRoomsError("")
-    setSelectedRooms([])
-    getAvailableRooms(currentPropertyId, stayDetails.checkInDate, stayDetails.checkOutDate, stayDetails.adults, stayDetails.children)
-      .then((rooms) => { if (!cancelled) setAvailableRooms(rooms) })
-      .catch(() => { if (!cancelled) setRoomsError("Failed to load available rooms") })
-      .finally(() => { if (!cancelled) setRoomsLoading(false) })
+
+    const loadRooms = async () => {
+      try {
+        const [rawRooms, roomTypes, bedTypes] = await Promise.all([
+          getRooms(currentPropertyId),
+          getRoomTypes(currentPropertyId),
+          getBedTypes(currentPropertyId),
+        ])
+        if (cancelled) return
+
+        const rtMap = Object.fromEntries(roomTypes.map((rt) => [rt.id, rt.room_type_name]))
+        const btMap = Object.fromEntries(bedTypes.map((bt) => [bt.id, bt.bed_name]))
+
+        const rooms: AvailableRoom[] = rawRooms.map((r) => ({
+          id: r.id,
+          room_name: r.room_name,
+          room_type: rtMap[r.room_type_id] || r.room_type_id,
+          bed_type: btMap[r.bed_type_id] || r.bed_type_id,
+          base_rate: String(r.base_rate),
+          photos: r.photos || { cover: null, gallery: [] },
+          max_adults: r.max_adults,
+          max_children: r.max_children,
+          status: r.status || "AVAILABLE",
+          floor_number: r.floor_number,
+          cancellation_policy: r.cancellation_policy || "",
+          cancellation_title: r.cancellation_title || null,
+          cancellation_description: r.cancellation_description || null,
+          system_amenities: [],
+          custom_amenities: (r.custom_amenities || []).map((a) => ({ name: a.name, icon: a.icon ?? null })),
+        }))
+
+        setAvailableRooms(rooms)
+      } catch {
+        if (!cancelled) setRoomsError("Failed to load rooms")
+      }
+    }
+
+    loadRooms().finally(() => { if (!cancelled) setRoomsLoading(false) })
     return () => { cancelled = true }
-  }, [currentPropertyId, stayDetails.checkInDate, stayDetails.checkOutDate, stayDetails.adults, stayDetails.children])
+  }, [currentPropertyId])
+
+  useEffect(() => {
+    if (!currentPropertyId || !stayDetails.checkInDate || !stayDetails.checkOutDate) {
+      setCalendarRooms([])
+      return
+    }
+    let cancelled = false
+    getRoomCalendar(currentPropertyId, stayDetails.checkInDate, stayDetails.checkOutDate)
+      .then((calendar) => { if (!cancelled) setCalendarRooms(calendar) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [currentPropertyId, stayDetails.checkInDate, stayDetails.checkOutDate])
+
+  useEffect(() => {
+    if (initialRoomId && availableRooms.length > 0 && selectedRooms.length === 0) {
+      const room = availableRooms.find((r) => r.id === initialRoomId)
+      if (room) {
+        setSelectedRooms([initialRoomId])
+      }
+    }
+  }, [initialRoomId, availableRooms])
 
   const groupedByFloor = availableRooms.reduce((acc, room) => {
     const floor = room.floor_number
@@ -189,6 +258,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
         amount_paid: paymentType === "full" ? grandTotal : advanceReceivedNum,
         advance_amount: advanceReceivedNum,
         special_requests: stayDetails.specialRequests || undefined,
+        discount: discountNum || undefined,
       }
       await createWalkinBooking(payload)
       setBookingSuccess(true)
@@ -206,13 +276,30 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     ? Math.max(0, Math.ceil((new Date(stayDetails.checkOutDate).getTime() - new Date(stayDetails.checkInDate).getTime()) / (1000 * 60 * 60 * 24)))
     : 0
 
+  const stayDates: string[] = (() => {
+    if (!stayDetails.checkInDate || !stayDetails.checkOutDate) return []
+    const dates: string[] = []
+    const d = new Date(stayDetails.checkInDate)
+    const end = new Date(stayDetails.checkOutDate)
+    while (d < end) {
+      dates.push(d.toISOString().slice(0, 10))
+      d.setDate(d.getDate() + 1)
+    }
+    return dates
+  })()
+
+  const getCalendarDay = (roomId: string, date: string) => {
+    const cal = calendarRooms.find((r) => r.room_id === roomId)
+    return cal?.days.find((d) => d.date === date)
+  }
+
   const totalRate = selectedRooms.reduce((sum, id) => {
     const room = availableRooms.find((r) => r.id === id)
     return sum + (room ? Number(room.base_rate) * nights : 0)
   }, 0)
 
-  const taxes = totalRate * 0.12
-  const grandTotal = totalRate + taxes
+  const discountNum = parseFloat(discount) || 0
+  const grandTotal = totalRate - discountNum
   const advanceReceivedNum = parseFloat(advanceReceived) || 0
   const remainingAfterAdvance = grandTotal - advanceReceivedNum
 
@@ -222,8 +309,205 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
+              <Bed size={18} className="text-blue-600" />
+              <h3 className="text-base font-semibold text-gray-900">1. Stay & room</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-In Date *</label>
+                <input
+                  type="date"
+                  value={stayDetails.checkInDate}
+                  onChange={(e) => { handleStayDetailsChange("checkInDate", e.target.value); clearError("checkInDate") }}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkInDate ? "border-red-400" : "border-gray-200"}`}
+                />
+                {errors.checkInDate && <p className="text-xs text-red-500 mt-1">{errors.checkInDate}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-Out Date *</label>
+                <input
+                  type="date"
+                  value={stayDetails.checkOutDate}
+                  onChange={(e) => { handleStayDetailsChange("checkOutDate", e.target.value); clearError("checkOutDate") }}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkOutDate ? "border-red-400" : "border-gray-200"}`}
+                />
+                {errors.checkOutDate && <p className="text-xs text-red-500 mt-1">{errors.checkOutDate}</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Adults</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStayDetailsChange("adults", Math.max(1, stayDetails.adults - 1))}
+                    className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
+                  >
+                    -
+                  </button>
+                  <span className="w-10 text-center text-lg font-semibold">{stayDetails.adults}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleStayDetailsChange("adults", stayDetails.adults + 1)}
+                    className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Children</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStayDetailsChange("children", Math.max(0, stayDetails.children - 1))}
+                    className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
+                  >
+                    -
+                  </button>
+                  <span className="w-10 text-center text-lg font-semibold">{stayDetails.children}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleStayDetailsChange("children", stayDetails.children + 1)}
+                    className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700">Available Rooms</label>
+                <span className="text-xs text-gray-500">{availableRooms.length} rooms available · {selectedRooms.length} selected</span>
+              </div>
+              {errors.rooms && <p className="text-xs text-red-500 mb-2">{errors.rooms}</p>}
+              {capacityError && (
+                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-2">
+                  <AlertCircle size={16} />
+                  <span>Selected room(s) fit {capacityAdults} Adult{capacityAdults !== 1 ? "s" : ""}, {capacityChildren} Children but {stayDetails.adults} Adult{stayDetails.adults !== 1 ? "s" : ""}, {stayDetails.children} Children needed.</span>
+                </div>
+              )}
+              {roomsLoading && (
+                <div className="text-center py-8 text-gray-500 text-sm">Loading available rooms...</div>
+              )}
+              {roomsError && (
+                <div className="text-center py-8 text-red-500 text-sm">{roomsError}</div>
+              )}
+              {!roomsLoading && !roomsError && stayDetails.checkInDate && stayDetails.checkOutDate && availableRooms.length > 0 && (
+                <div className="flex items-center gap-4 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={13} className="text-blue-500" />
+                    <span>{stayDetails.checkInDate} → {stayDetails.checkOutDate}</span>
+                  </div>
+                  <div className="w-px h-3 bg-blue-200" />
+                  <div className="flex items-center gap-1.5">
+                    <User size={13} className="text-blue-500" />
+                    <span>{stayDetails.adults} Adult{stayDetails.adults !== 1 ? "s" : ""}{stayDetails.children > 0 ? `, ${stayDetails.children} Child${stayDetails.children !== 1 ? "ren" : ""}` : ""}</span>
+                  </div>
+                  <div className="w-px h-3 bg-blue-200" />
+                  <span className="font-medium">{availableRooms.length} room{availableRooms.length !== 1 ? "s" : ""} found</span>
+                  {calendarRooms.length > 0 && (
+                    <>
+                      <div className="w-px h-3 bg-blue-200" />
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> Available</span>
+                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> Booked/Occupied</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {!roomsLoading && !roomsError && stayDetails.checkInDate && stayDetails.checkOutDate && availableRooms.length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">No available rooms for selected dates</div>
+              )}
+              {!roomsLoading && !roomsError && availableRooms.length > 0 && (
+              <div className="space-y-4">
+                {Object.entries(groupedByFloor).map(([floor, rooms]) => (
+                  <div key={floor}>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Floor {floor}</h4>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div
+                        className="grid gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider"
+                        style={{ gridTemplateColumns: stayDates.length > 0 ? `1fr 1fr 1fr 0.8fr repeat(${stayDates.length}, minmax(0, 1fr)) 0.8fr` : "1fr 1.2fr 1fr 0.8fr 0.8fr" }}
+                      >
+                        <div>Room</div>
+                        <div>Type</div>
+                        <div>Bed</div>
+                        <div>Guests</div>
+                        {stayDates.length > 0 ? stayDates.map((date) => (
+                          <div key={date} className="text-center">{new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric" })}</div>
+                        )) : null}
+                        <div>Rate</div>
+                      </div>
+                      {rooms.map((room) => {
+                        const isSelected = selectedRooms.includes(room.id)
+                        const allDaysAvailable = stayDates.length > 0 && stayDates.every((date) => {
+                          const day = getCalendarDay(room.id, date)
+                          return !day || (day.booking_ref === null && day.guest_name === null)
+                        })
+                        return (
+                          <div
+                            key={room.id}
+                            onClick={() => allDaysAvailable && toggleRoom(room.id)}
+                            className={`grid gap-2 px-4 py-3 border-b border-gray-50 transition-colors items-center ${
+                              isSelected ? "bg-blue-50" : allDaysAvailable ? "hover:bg-blue-50/50 cursor-pointer" : "bg-gray-50 opacity-60"
+                            }`}
+                            style={{ gridTemplateColumns: stayDates.length > 0 ? `1fr 1fr 1fr 0.8fr repeat(${stayDates.length}, minmax(0, 1fr)) 0.8fr` : "1fr 1.2fr 1fr 0.8fr 0.8fr" }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {allDaysAvailable && (
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                  isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                                }`}>
+                                  {isSelected && (
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M20 6 9 17l-5-5" />
+                                    </svg>
+                                  )}
+                                </div>
+                              )}
+                              <span className="text-sm font-semibold text-gray-900">{room.room_name}</span>
+                            </div>
+                            <span className="text-sm text-gray-600">{room.room_type}</span>
+                            <span className="text-sm text-gray-600">{room.bed_type}</span>
+                            <div className="text-sm text-gray-600">
+                              <span className="font-medium text-gray-700">{room.max_adults}A</span>
+                              {room.max_children > 0 && <span className="font-medium text-gray-700">/{room.max_children}C</span>}
+                            </div>
+                            {stayDates.length > 0 ? stayDates.map((date) => {
+                              const day = getCalendarDay(room.id, date)
+                              const isAvailable = !day || (day.booking_ref === null && day.guest_name === null)
+                              return (
+                                <div key={date} className="flex justify-center">
+                                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded text-[10px] font-semibold ${
+                                    isAvailable ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                                  }`}>
+                                    {isAvailable ? "AVA" : day?.status?.slice(0, 3) || "—"}
+                                  </span>
+                                </div>
+                              )
+                            }) : null}
+                            <span className="text-sm font-medium text-gray-900">{formatAmount(Number(room.base_rate))}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              )}
+            </div>
+          </div>
+        )
+
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
               <User size={18} className="text-blue-600" />
-              <h3 className="text-base font-semibold text-gray-900">1. Guest details</h3>
+              <h3 className="text-base font-semibold text-gray-900">2. Guest details</h3>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full name *</label>
@@ -285,167 +569,92 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <option value="India">India</option>
               </select>
             </div>
-          </div>
-        )
-
-      case 2:
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Bed size={18} className="text-blue-600" />
-              <h3 className="text-base font-semibold text-gray-900">2. Stay & room</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check-In Date *</label>
-                <input
-                  type="date"
-                  value={stayDetails.checkInDate}
-                  onChange={(e) => { handleStayDetailsChange("checkInDate", e.target.value); clearError("checkInDate") }}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkInDate ? "border-red-400" : "border-gray-200"}`}
-                />
-                {errors.checkInDate && <p className="text-xs text-red-500 mt-1">{errors.checkInDate}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check-Out Date *</label>
-                <input
-                  type="date"
-                  value={stayDetails.checkOutDate}
-                  onChange={(e) => { handleStayDetailsChange("checkOutDate", e.target.value); clearError("checkOutDate") }}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkOutDate ? "border-red-400" : "border-gray-200"}`}
-                />
-                {errors.checkOutDate && <p className="text-xs text-red-500 mt-1">{errors.checkOutDate}</p>}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Adults</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleStayDetailsChange("adults", Math.max(1, stayDetails.adults - 1))}
-                    className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50"
-                  >
-                    -
-                  </button>
-                  <span className="w-12 text-center text-lg font-semibold">{stayDetails.adults}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleStayDetailsChange("adults", stayDetails.adults + 1)}
-                    className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Children</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleStayDetailsChange("children", Math.max(0, stayDetails.children - 1))}
-                    className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50"
-                  >
-                    -
-                  </button>
-                  <span className="w-12 text-center text-lg font-semibold">{stayDetails.children}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleStayDetailsChange("children", stayDetails.children + 1)}
-                    className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-gray-700">Available Rooms</label>
-                <span className="text-xs text-gray-500">{availableRooms.length} rooms available · {selectedRooms.length} selected</span>
-              </div>
-              {errors.rooms && <p className="text-xs text-red-500 mb-2">{errors.rooms}</p>}
-              {capacityError && (
-                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-2">
-                  <AlertCircle size={16} />
-                  <span>Selected room(s) fit {capacityAdults} Adult{capacityAdults !== 1 ? "s" : ""}, {capacityChildren} Children but {stayDetails.adults} Adult{stayDetails.adults !== 1 ? "s" : ""}, {stayDetails.children} Children needed.</span>
-                </div>
-              )}
-              {roomsLoading && (
-                <div className="text-center py-8 text-gray-500 text-sm">Loading available rooms...</div>
-              )}
-              {roomsError && (
-                <div className="text-center py-8 text-red-500 text-sm">{roomsError}</div>
-              )}
-              {!roomsLoading && !roomsError && stayDetails.checkInDate && stayDetails.checkOutDate && availableRooms.length > 0 && (
-                <div className="flex items-center gap-4 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar size={13} className="text-blue-500" />
-                    <span>{stayDetails.checkInDate} → {stayDetails.checkOutDate}</span>
-                  </div>
-                  <div className="w-px h-3 bg-blue-200" />
-                  <div className="flex items-center gap-1.5">
-                    <User size={13} className="text-blue-500" />
-                    <span>{stayDetails.adults} Adult{stayDetails.adults !== 1 ? "s" : ""}{stayDetails.children > 0 ? `, ${stayDetails.children} Child${stayDetails.children !== 1 ? "ren" : ""}` : ""}</span>
-                  </div>
-                  <div className="w-px h-3 bg-blue-200" />
-                  <span className="font-medium">{availableRooms.length} room{availableRooms.length !== 1 ? "s" : ""} found</span>
-                </div>
-              )}
-              {!roomsLoading && !roomsError && stayDetails.checkInDate && stayDetails.checkOutDate && availableRooms.length === 0 && (
-                <div className="text-center py-8 text-gray-500 text-sm">No available rooms for selected dates</div>
-              )}
-              {!roomsLoading && !roomsError && availableRooms.length > 0 && (
-              <div className="space-y-4">
-                {Object.entries(groupedByFloor).map(([floor, rooms]) => (
-                  <div key={floor}>
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Floor {floor}</h4>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.8fr] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                        <div>Room</div>
-                        <div>Type</div>
-                        <div>Bed</div>
-                        <div>Guests</div>
-                        <div>Rate</div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Document</label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Front */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Front</p>
+                  {guestInfo.verificationDocFront ? (
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                        <Check size={14} className="text-blue-600" />
                       </div>
-                      {rooms.map((room) => {
-                        const isSelected = selectedRooms.includes(room.id)
-                        return (
-                          <div
-                            key={room.id}
-                            onClick={() => toggleRoom(room.id)}
-                            className={`grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.8fr] gap-2 px-4 py-3 border-b border-gray-50 hover:bg-blue-50/50 transition-colors cursor-pointer items-center ${
-                              isSelected ? "bg-blue-50" : ""
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"
-                              }`}>
-                                {isSelected && (
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M20 6 9 17l-5-5" />
-                                  </svg>
-                                )}
-                              </div>
-                              <span className="text-sm font-semibold text-gray-900">{room.room_name}</span>
-                            </div>
-                            <span className="text-sm text-gray-600">{room.room_type}</span>
-                            <span className="text-sm text-gray-600">{room.bed_type}</span>
-                            <div className="text-sm text-gray-600">
-                              <span className="font-medium text-gray-700">{room.max_adults} Adult{room.max_adults !== 1 ? "s" : ""}</span>
-                              {room.max_children > 0 && <span>, {room.max_children} Child{room.max_children !== 1 ? "ren" : ""}</span>}
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">{formatAmount(Number(room.base_rate))}</span>
-                          </div>
-                        )
-                      })}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 truncate">{guestInfo.verificationDocFront.name}</p>
+                        <p className="text-[10px] text-gray-500">{(guestInfo.verificationDocFront.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGuestInfo({ ...guestInfo, verificationDocFront: null })}
+                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                      >
+                        <X size={12} className="text-gray-500" />
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                      <Upload size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-600">Upload front</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          setGuestInfo({ ...guestInfo, verificationDocFront: file })
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                {/* Back */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Back</p>
+                  {guestInfo.verificationDocBack ? (
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                        <Check size={14} className="text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 truncate">{guestInfo.verificationDocBack.name}</p>
+                        <p className="text-[10px] text-gray-500">{(guestInfo.verificationDocBack.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGuestInfo({ ...guestInfo, verificationDocBack: null })}
+                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                      >
+                        <X size={12} className="text-gray-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                      <Upload size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-600">Upload back</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          setGuestInfo({ ...guestInfo, verificationDocBack: file })
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
-              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+              <textarea
+                value={stayDetails.specialRequests}
+                onChange={(e) => handleStayDetailsChange("specialRequests", e.target.value)}
+                placeholder="Any special requests or notes..."
+                rows={3}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
             </div>
           </div>
         )
@@ -504,22 +713,40 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   />
                 </div>
                 {errors.advance && <p className="text-xs text-red-500 mt-1">{errors.advance}</p>}
-                <p className="text-xs text-gray-500 mt-1">Total: ${formatAmount(grandTotal)}</p>
+                <p className="text-xs text-gray-500 mt-1">Total: {formatAmount(grandTotal)}</p>
               </div>
             )}
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Discount ({currency})</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-sm pointer-events-none">{currency}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalRate}
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  className="w-full pl-14 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Room ({nights} nights × {selectedRooms.length} room{selectedRooms.length !== 1 ? "s" : ""})</span>
-                <span className="font-medium">${formatAmount(totalRate)}</span>
+                <span className="text-gray-600">Room ({nights} nights × {selectedRooms.length} room{selectedRooms.length !== 1 ? "s" : ""}, incl. tax)</span>
+                <span className="font-medium">{formatAmount(totalRate)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Taxes & Fees (12%)</span>
-                <span className="font-medium">${formatAmount(taxes)}</span>
-              </div>
+              {discountNum > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Discount</span>
+                  <span className="font-medium text-red-600">-{formatAmount(discountNum)}</span>
+                </div>
+              )}
               <div className="border-t border-gray-200 pt-3 flex justify-between">
                 <span className="font-semibold text-gray-900">Total</span>
-                <span className="text-xl font-bold text-blue-600">${formatAmount(grandTotal)}</span>
+                <span className="text-xl font-bold text-blue-600">{formatAmount(grandTotal)}</span>
               </div>
 
               <div className="border-t border-gray-200 pt-3 space-y-2">
@@ -527,12 +754,12 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Advance Received</span>
-                      <span className="font-semibold text-green-600">${formatAmount(advanceReceivedNum)}</span>
+                      <span className="font-semibold text-green-600">{formatAmount(advanceReceivedNum)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Remaining Balance</span>
                       <span className={`font-semibold ${remainingAfterAdvance > 0 ? "text-orange-600" : "text-green-600"}`}>
-                        ${formatAmount(remainingAfterAdvance)}
+                        {formatAmount(remainingAfterAdvance)}
                       </span>
                     </div>
                   </>
@@ -540,13 +767,13 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 {paymentType === "full" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Amount to pay now</span>
-                    <span className="font-semibold text-green-600">${formatAmount(grandTotal)}</span>
+                    <span className="font-semibold text-green-600">{formatAmount(grandTotal)}</span>
                   </div>
                 )}
                 {paymentType === "checkout" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Amount due at checkout</span>
-                    <span className="font-semibold text-orange-600">${formatAmount(grandTotal)}</span>
+                    <span className="font-semibold text-orange-600">{formatAmount(grandTotal)}</span>
                   </div>
                 )}
               </div>
@@ -586,6 +813,12 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                     <span className="text-gray-500">Country</span>
                     <span className="text-gray-900 font-medium">{guestInfo.country || "—"}</span>
                   </div>
+                  {stayDetails.specialRequests && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <span className="text-gray-500 text-xs">Special Requests</span>
+                      <p className="text-gray-900 text-sm mt-0.5">{stayDetails.specialRequests}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -626,21 +859,21 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <CreditCard size={16} className="text-blue-600" />
                 <h4 className="text-sm font-semibold text-gray-900">Payment Details</h4>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div className="flex justify-between">
+              <div className={`grid gap-4 text-sm ${paymentType === "advance" ? "grid-cols-3" : "grid-cols-2"}`}>
+                <div>
                   <span className="text-gray-500">Method</span>
-                  <span className="text-gray-900 font-medium capitalize">{paymentMethod.replace("_", " ")}</span>
+                  <p className="text-gray-900 font-medium capitalize">{paymentMethod.replace("_", " ")}</p>
                 </div>
-                <div className="flex justify-between">
+                <div>
                   <span className="text-gray-500">Type</span>
-                  <span className="text-gray-900 font-medium">
+                  <p className="text-gray-900 font-medium">
                     {paymentType === "full" ? "Full Payment" : paymentType === "advance" ? "Advance Payment" : "Pay at Checkout"}
-                  </span>
+                  </p>
                 </div>
                 {paymentType === "advance" && (
-                  <div className="flex justify-between">
+                  <div>
                     <span className="text-gray-500">Advance Received</span>
-                    <span className="text-green-600 font-semibold">${formatAmount(advanceReceivedNum)}</span>
+                    <p className="text-green-600 font-semibold">{formatAmount(advanceReceivedNum)}</p>
                   </div>
                 )}
               </div>
@@ -650,16 +883,18 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-semibold text-gray-900">Pricing Summary</h4>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Room ({nights} nights × {selectedRooms.length} room{selectedRooms.length !== 1 ? "s" : ""})</span>
-                <span className="text-gray-900 font-medium">${formatAmount(totalRate)}</span>
+                <span className="text-gray-600">Room ({nights} nights × {selectedRooms.length} room{selectedRooms.length !== 1 ? "s" : ""}, incl. tax)</span>
+                <span className="text-gray-900 font-medium">{formatAmount(totalRate)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Taxes & Fees (12%)</span>
-                <span className="text-gray-900 font-medium">${formatAmount(taxes)}</span>
-              </div>
+              {discountNum > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Discount</span>
+                  <span className="text-red-600 font-medium">-{formatAmount(discountNum)}</span>
+                </div>
+              )}
               <div className="border-t border-gray-200 pt-3 flex justify-between">
-                <span className="font-semibold text-gray-900">Total</span>
-                <span className="text-xl font-bold text-blue-600">${formatAmount(grandTotal)}</span>
+                <span className="font-semibold text-gray-900">Total (incl. tax)</span>
+                <span className="text-xl font-bold text-blue-600">{formatAmount(grandTotal)}</span>
               </div>
 
               <div className="border-t border-gray-200 pt-3 space-y-2">
@@ -667,12 +902,12 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Advance Received</span>
-                      <span className="font-semibold text-green-600">${formatAmount(advanceReceivedNum)}</span>
+                      <span className="font-semibold text-green-600">{formatAmount(advanceReceivedNum)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Remaining Balance</span>
                       <span className={`font-semibold ${remainingAfterAdvance > 0 ? "text-orange-600" : "text-green-600"}`}>
-                        ${formatAmount(remainingAfterAdvance)}
+                        {formatAmount(remainingAfterAdvance)}
                       </span>
                     </div>
                   </>
@@ -680,13 +915,13 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 {paymentType === "full" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Amount to pay now</span>
-                    <span className="font-semibold text-green-600">${formatAmount(grandTotal)}</span>
+                    <span className="font-semibold text-green-600">{formatAmount(grandTotal)}</span>
                   </div>
                 )}
                 {paymentType === "checkout" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Amount due at checkout</span>
-                    <span className="font-semibold text-orange-600">${formatAmount(grandTotal)}</span>
+                    <span className="font-semibold text-orange-600">{formatAmount(grandTotal)}</span>
                   </div>
                 )}
               </div>
@@ -749,13 +984,13 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
       </div>
 
       <div className="grid grid-cols-3 gap-8">
-        <div className={currentStep === 1 || currentStep === 4 ? "col-span-3" : "col-span-2"}>
+        <div className={currentStep === 4 ? "col-span-3" : "col-span-2"}>
           {renderStep()}
         </div>
         
-        {currentStep !== 1 && currentStep !== 4 && (
+        {currentStep !== 4 && (
           <div className="border-l border-gray-100 pl-8">
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="sticky top-4 bg-gray-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                 <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Reservation Summary</h4>
@@ -808,7 +1043,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                     const room = availableRooms.find((r) => r.id === id)
                     return room ? (
                       <div key={id} className="flex justify-between text-sm">
-                        <span className="text-gray-500">{room.room_name}</span>
+                        <span className="text-gray-500">{room.room_name} (incl. tax)</span>
                         <span className="text-gray-900 font-medium">{formatAmount(Number(room.base_rate) * nights)}</span>
                       </div>
                     ) : null
@@ -818,20 +1053,22 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                       <span className="text-gray-900 font-medium">—</span>
                     </div>
                   )}
+                  {discountNum > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Discount</span>
+                      <span className="text-red-600 font-medium">-{formatAmount(discountNum)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Room Rate</span>
-                    <span className="text-gray-900 font-medium">{totalRate > 0 ? formatAmount(totalRate) : "—"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Taxes & Fees</span>
-                    <span className="text-gray-900 font-medium">{totalRate > 0 ? formatAmount(taxes) : "—"}</span>
+                    <span className="text-gray-500">Total</span>
+                    <span className="text-gray-900 font-medium">{totalRate > 0 ? formatAmount(grandTotal) : "—"}</span>
                   </div>
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">
                   <div className="flex justify-between">
                     <span className="font-semibold text-gray-900">Total</span>
-                    <span className="text-xl font-bold text-blue-600">{totalRate > 0 ? formatAmount(totalRate + taxes) : formatAmount(0)}</span>
+                    <span className="text-xl font-bold text-blue-600">{totalRate > 0 ? formatAmount(grandTotal) : formatAmount(0)}</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{nights > 0 ? `${nights} nights` : "0 nights"} · taxes included</p>
                 </div>

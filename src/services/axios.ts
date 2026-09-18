@@ -66,7 +66,8 @@ async function refreshAccessToken(): Promise<string> {
   if (!refreshToken) throw new Error('No refresh token available')
 
   const role = storageGet(ROLE_KEY) === 'guest' ? 'guests' : 'users'
-  const { data } = await axios.post(`${api.defaults.baseURL}/auth/${role}/refresh`, {
+  const baseURL = (api.defaults.baseURL || '').replace(/\/+$/, '')
+  const { data } = await axios.post(`${baseURL}/auth/${role}/refresh`, {
     refresh_token: refreshToken,
   })
 

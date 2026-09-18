@@ -12,6 +12,7 @@ import type {
   RoomTypeResponse,
   BedTypeResponse,
   AvailableRoom,
+  RoomCalendarRoom,
   SpecialOfferPayload,
   SpecialOfferResponse,
   DiscountCodePayload,
@@ -144,6 +145,14 @@ export const getAvailableRooms = async (propertyId: string, checkinDate: string,
   return Array.isArray(data) ? data : []
 }
 
+export const getRoomCalendar = async (propertyId: string, startDate: string, endDate: string): Promise<RoomCalendarRoom[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/room-calendar`, {
+    params: { start_date: startDate, end_date: endDate },
+  })
+  const data = unwrapBody<{ rooms: RoomCalendarRoom[] }>(result)
+  return data?.rooms ?? (Array.isArray(data) ? data : [])
+}
+
 // ─── Room Types ─────────────────────────────────────────────
 
 export const getRoomTypes = async (propertyId: string): Promise<RoomTypeResponse[]> => {
@@ -274,20 +283,38 @@ export const createBooking = async (data: BookingCreatePayload): Promise<Propert
 }
 
 export const createWalkinBooking = async (data: WalkinBookingPayload): Promise<PropertyBooking> => {
-  const { data: result } = await api.post('/staff/create-walkin-booking', data)
+  const fd = new FormData()
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      fd.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+    }
+  })
+  const TOKEN_KEY = 'token'
+  const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
+  const baseURL = (api.defaults.baseURL || '').replace(/\/+$/, '')
+  const response = await fetch(`${baseURL}/staff/create-walkin-booking`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err?.error || `Request failed with status ${response.status}`)
+  }
+  const result = await response.json()
   return unwrapBody<PropertyBooking>(result)
 }
 
 // ─── Staff Arrivals ──────────────────────────────────────────
 
 export const getTodayArrivals = async (propertyId: string): Promise<ArrivalGuest[]> => {
-  const { data: result } = await api.get(`/staff/properties/${propertyId}/today/arrivals`)
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/arrivals`)
   const data = unwrapBody<ArrivalGuest[]>(result)
   return Array.isArray(data) ? data : []
 }
 
 export const getTodayDepartures = async (propertyId: string): Promise<ArrivalGuest[]> => {
-  const { data: result } = await api.get(`/staff/properties/${propertyId}/today/departures`)
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/departures`)
   const data = unwrapBody<ArrivalGuest[]>(result)
   return Array.isArray(data) ? data : []
 }
@@ -302,7 +329,9 @@ export const checkInGuest = async (refNumber: string): Promise<string> => {
 // ─── Staff Check-Out ─────────────────────────────────────────
 
 export const checkOutGuest = async (refNumber: string): Promise<string> => {
-  const { data: result } = await api.post(`/staff/check-out/${refNumber}`)
+  const { data: result } = await api.post(`/staff/check-out/${refNumber}`, {
+    idempotency_key: crypto.randomUUID(),
+  })
   return typeof result === "string" ? result : result?.data ?? "Checked out"
 }
 
