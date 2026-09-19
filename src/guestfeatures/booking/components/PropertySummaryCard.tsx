@@ -97,7 +97,7 @@ export function PropertySummaryCard({
       <img
         src={hotelImage || ''}
         alt={hotelName}
-        className="w-full h-56 object-cover"
+        className="w-full h-44 sm:h-56 object-cover"
       />
       <div className="p-5">
         <div className="flex items-center gap-1 mb-2">

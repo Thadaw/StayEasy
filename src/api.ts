@@ -1,4 +1,8 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+
+export interface AuthRequestConfig extends AxiosRequestConfig {
+  skipAuthRedirect?: boolean
+}
 
 const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
@@ -20,14 +24,6 @@ function storageGet(key: string): string | null {
 function updateAccessToken(token: string) {
   if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, token)
   else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(TOKEN_KEY, token)
-}
-
-function clearAuthStorage() {
-  const keys = [TOKEN_KEY, REFRESH_KEY, ROLE_KEY, EXPIRY_KEY]
-  keys.forEach((k) => {
-    localStorage.removeItem(k)
-    sessionStorage.removeItem(k)
-  })
 }
 
 api.interceptors.request.use((config) => {
@@ -53,7 +49,6 @@ async function refreshAccessToken(): Promise<string> {
 
 function redirectToLogin() {
   const role = storageGet(ROLE_KEY)
-  clearAuthStorage()
   if (role === 'guest') window.location.href = '/login'
   else if (role === 'staff') window.location.href = '/staff/login'
   else window.location.href = '/host/login'
@@ -63,22 +58,29 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-    if (error.response?.status === 401 && original && !original._retry) {
-      original._retry = true
-      try {
-        if (!refreshPromise) {
-          refreshPromise = refreshAccessToken().finally(() => {
-            refreshPromise = null
-          })
-        }
-        const newToken = await refreshPromise
-        original.headers.Authorization = `Bearer ${newToken}`
-        return api(original)
-      } catch {
-        redirectToLogin()
-      }
+
+    if (error.response?.status !== 401 || !original || original._retry) {
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+
+    if ((original as AuthRequestConfig).skipAuthRedirect) {
+      return Promise.reject(error)
+    }
+
+    original._retry = true
+    try {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null
+        })
+      }
+      const newToken = await refreshPromise
+      original.headers.Authorization = `Bearer ${newToken}`
+      return api(original)
+    } catch {
+      redirectToLogin()
+      return Promise.reject(error)
+    }
   }
 )
 

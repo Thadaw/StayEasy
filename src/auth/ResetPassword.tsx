@@ -70,7 +70,7 @@ export default function ResetPassword() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: "'Segoe UI', sans-serif",
         position: 'relative',
       }}
@@ -87,29 +87,32 @@ export default function ResetPassword() {
       />
       <div
         style={{
-          width: 640,
-          height: 440,
+          width: '100%',
+          maxWidth: 640,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
+          flexDirection: 'row',
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
+          flexWrap: 'wrap',
         }}
       >
         <div
           className="custom-scroll"
           style={{
-            width: '50%',
+            width: '100%',
             background: '#fff',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: '28px 32px 32px',
+            padding: '28px 24px 32px',
             order: 1,
             flexShrink: 0,
             overflowY: 'auto',
+            boxSizing: 'border-box',
           }}
         >
           {!done ? (
@@ -141,6 +144,7 @@ export default function ResetPassword() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -175,6 +179,7 @@ export default function ResetPassword() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -267,7 +272,16 @@ export default function ResetPassword() {
           )}
         </div>
 
-        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            width: '100%',
+            background: '#000',
+            order: 2,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block"
+        >
           <video
             src={resetPassAni}
             autoPlay
@@ -277,7 +291,7 @@ export default function ResetPassword() {
             preload="auto"
             onLoadedData={() => setVideoReady(true)}
             onError={() => setVideoReady(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', minHeight: 280 }}
           />
         </div>
       </div>

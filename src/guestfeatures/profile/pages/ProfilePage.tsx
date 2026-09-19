@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthContext'
-import { User, Heart, CalendarDays, Star, Bell, LogOut, ChevronRight } from 'lucide-react'
+import { User, Heart, CalendarDays, Star, Bell, LogOut, ChevronRight, Menu, X } from 'lucide-react'
 import { Navbar } from '../../../shared/components/Navbar'
 
 const navItems = [
@@ -14,6 +15,7 @@ const navItems = [
 export default function ProfilePage() {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -24,10 +26,79 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-brand-background font-jakarta">
       <Navbar compact />
 
-      <div className="max-w-screen-2xl mx-auto px-6">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6">
+        {/* Mobile Nav Toggle */}
+        <div className="lg:hidden sticky top-[56px] sm:top-[60px] md:top-[68px] z-30 bg-white border-b border-brand-card-border px-4 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-bold" style={{ color: 'var(--brand-heading)' }}>Profile</h1>
+          <button
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            className="p-2 rounded-lg hover:bg-brand-secondary-surface transition-colors"
+          >
+            {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {/* Mobile Nav Drawer */}
+        {mobileNavOpen && (
+          <div className="lg:hidden fixed inset-0 z-40">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileNavOpen(false)} />
+            <div className="absolute top-[56px] sm:top-[60px] md:top-[68px] left-0 right-0 bg-white border-b border-brand-card-border shadow-lg z-40 max-h-[70vh] overflow-y-auto">
+              <nav className="px-3 py-3">
+                <div className="flex flex-col gap-1">
+                  {navItems.map(item => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileNavOpen(false)}
+                      className={({ isActive }) =>
+                        `group flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 ${
+                          isActive ? 'bg-brand-secondary-surface' : 'hover:bg-brand-secondary-surface'
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            size={18}
+                            className={
+                              isActive
+                                ? 'text-brand-accent'
+                                : 'text-brand-text-secondary group-hover:text-brand-heading transition-colors duration-150'
+                            }
+                          />
+                          <span
+                            className={`text-sm flex-1 transition-colors duration-150 ${
+                              isActive
+                                ? 'text-brand-heading font-medium'
+                                : 'text-brand-text-secondary group-hover:text-brand-heading'
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                          {isActive ? <ChevronRight size={14} className="text-brand-accent" /> : null}
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </nav>
+              <div className="px-3 pb-3 border-t border-brand-card-border pt-3">
+                <button
+                  onClick={() => { handleLogout(); setMobileNavOpen(false) }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-150 text-brand-text-secondary hover:text-brand-danger hover:bg-brand-danger-light"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex min-h-[calc(100vh-68px)]">
+          {/* Desktop Sidebar */}
           <aside
-            className="w-[300px] shrink-0 sticky top-[68px] self-start bg-white border-r border-brand-card-border flex flex-col"
+            className="hidden lg:flex w-[300px] shrink-0 sticky top-[68px] self-start bg-white border-r border-brand-card-border flex-col"
             style={{ minHeight: 'calc(100vh - 68px)' }}
           >
             <div className="px-3 pt-4 pb-2">
@@ -107,7 +178,7 @@ export default function ProfilePage() {
             </div>
           </aside>
 
-          <main className="flex-1 p-8">
+          <main className="flex-1 p-4 sm:p-6 lg:p-8">
             <div>
               <Outlet />
             </div>

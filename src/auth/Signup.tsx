@@ -118,23 +118,35 @@ export default function Signup() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: "'Segoe UI', sans-serif",
         position: 'relative',
       }}
     >
       <div
         style={{
-          width: 820,
-          height: 470,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 820,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
+          flexDirection: 'row',
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
           visibility: videoReady ? 'visible' : 'hidden',
+          flexWrap: 'wrap',
         }}
       >
         {/* Form panel — on the LEFT for sign up */}
@@ -146,10 +158,11 @@ export default function Signup() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            padding: '22px 32px 28px',
+            padding: '22px 24px 28px',
             order: 1,
             flexShrink: 0,
             overflowY: 'auto',
+            boxSizing: 'border-box',
           }}
         >
           {/* Tabs */}
@@ -214,6 +227,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 4px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -238,6 +252,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -263,6 +278,7 @@ export default function Signup() {
                     style={{
                       width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                       padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -288,6 +304,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -314,6 +331,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -391,6 +409,7 @@ export default function Signup() {
                         padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
                         letterSpacing: 8,
                         fontWeight: 600,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -450,8 +469,17 @@ export default function Signup() {
           )}
         </div>
 
-        {/* Animated video panel — on the RIGHT for sign up */}
-        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+        {/* Animated video panel — on the RIGHT for sign up, hidden on mobile */}
+        <div
+          style={{
+            width: '50%',
+            background: '#000',
+            order: 2,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block"
+        >
           <video
             src={signupAni}
             autoPlay
@@ -461,7 +489,7 @@ export default function Signup() {
             preload="auto"
             onLoadedData={() => setVideoReady(true)}
             onError={() => setVideoReady(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
           />
         </div>
       </div>

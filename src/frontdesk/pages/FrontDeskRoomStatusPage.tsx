@@ -432,8 +432,8 @@ export default function FrontDeskRoomStatusPage() {
           </div>
 
           {/* Top Controls */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 mb-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 sm:gap-4">
               {/* Date Navigation */}
               <div className="flex items-center gap-2">
                 <button
@@ -444,9 +444,9 @@ export default function FrontDeskRoomStatusPage() {
                 </button>
                 <button
                   onClick={goToToday}
-                  className="px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Today · {dateRangeLabel}
+                  <span className="hidden sm:inline">Today · </span>{dateRangeLabel}
                 </button>
                 <button
                   onClick={() => navigateWeek(1)}
@@ -495,25 +495,25 @@ export default function FrontDeskRoomStatusPage() {
               </div>
 
               {/* View Mode */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 rounded-lg p-0.5 sm:p-1">
                 {(["day", "7days", "14days", "month"] as ViewMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    className={`px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold rounded-md transition-colors ${
                       viewMode === mode
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    {mode === "day" ? "Day" : mode === "7days" ? "7 Days" : mode === "14days" ? "14 Days" : "Month"}
+                    {mode === "day" ? "Day" : mode === "7days" ? "7D" : mode === "14days" ? "14D" : "Mo"}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-5 mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-3 sm:gap-5 mt-4 pt-4 border-t border-gray-100 flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-400" />
                 <span className="text-xs font-medium text-gray-600">Available</span>
@@ -533,8 +533,71 @@ export default function FrontDeskRoomStatusPage() {
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Mobile Card View */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden lg:hidden">
+            {calendarLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
+                <p className="text-sm text-gray-500">Loading room calendar...</p>
+              </div>
+            ) : filteredFloors.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BedDouble size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-700 font-semibold">No rooms found</p>
+                <p className="text-sm text-gray-500 mt-1">{roomStatusFilter ? "Try a different filter." : "No rooms available."}</p>
+                {roomStatusFilter && (
+                  <button onClick={() => setRoomStatusFilter("")} className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg">Clear filter</button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {filteredFloors.map((floor) => (
+                  <div key={floor.label}>
+                    <div className="px-4 py-2 bg-gray-50 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{floor.label}</span>
+                      <span className="text-[10px] text-gray-400">— {floor.rooms.length} rooms</span>
+                    </div>
+                    {floor.rooms.map((room) => {
+                      const todayKey = getDateKey(today)
+                      const dayStatus = getRoomDayStatus(room, todayKey)
+                      const status = dayStatus.status || "available"
+                      const style = STATUS_STYLES[status] || STATUS_STYLES.available
+                      return (
+                        <div
+                          key={room.room_id}
+                          onClick={() => handleRoomClick(room, today, dayStatus)}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${style.bg} ${style.border} border`}>                        
+                            <BedDouble size={16} className={style.text} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-gray-900 truncate">{room.room_name}</p>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${style.bg} ${style.text}`}>{status}</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">{room.room_type} · {formatAmount(room.base_rate ?? 0)}/night</p>
+                            {dayStatus.guest_name && (
+                              <p className="text-xs text-gray-600 mt-0.5 truncate">Guest: {dayStatus.guest_name}</p>
+                            )}
+                          </div>
+                          {status === "available" && (
+                            <span className="text-[10px] font-semibold text-blue-600 shrink-0">Book →</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Calendar Grid */}
+          <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
             {calendarLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
@@ -547,17 +610,10 @@ export default function FrontDeskRoomStatusPage() {
                 </div>
                 <p className="text-gray-700 font-semibold">No rooms found</p>
                 <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-                  {roomStatusFilter
-                    ? "No rooms match the selected status filter. Try a different filter."
-                    : "Add rooms to your property to see the room calendar grid."}
+                  {roomStatusFilter ? "No rooms match the selected filter. Try a different filter." : "Add rooms to your property to see the room calendar grid."}
                 </p>
                 {roomStatusFilter && (
-                  <button
-                    onClick={() => setRoomStatusFilter("")}
-                    className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    Clear filter
-                  </button>
+                  <button onClick={() => setRoomStatusFilter("")} className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg">Clear filter</button>
                 )}
               </div>
             ) : (
@@ -671,8 +727,8 @@ export default function FrontDeskRoomStatusPage() {
       </main>
 
       {showBookingModal && selectedRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowBookingModal(false); resetBookingForm() }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50" onClick={() => { setShowBookingModal(false); resetBookingForm() }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between p-6 pb-0">
               <div>
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">New Booking</p>
@@ -944,8 +1000,8 @@ export default function FrontDeskRoomStatusPage() {
 
       {/* Room Detail Modal */}
       {showRoomDetail && selectedRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowRoomDetail(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50" onClick={() => setShowRoomDetail(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between p-6 pb-0">
               <div>
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Room Details</p>

@@ -36,19 +36,35 @@ export default function CheckoutReceiptPage() {
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: booking, isLoading } = useQuery({
-    queryKey: ["checkout-booking", id],
-    queryFn: async (): Promise<Booking | null> => {
-      if (!id) return null
+  const { data: property } = useQuery({
+    queryKey: ["property", currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId) return null
       try {
-        const { data: result } = await api.get(`/bookings/${id}`)
+        const { data } = await api.get(`/properties/${currentPropertyId}`)
+        return data?.data || data
+      } catch {
+        return null
+      }
+    },
+    enabled: !!currentPropertyId,
+  })
+
+  const { data: booking, isLoading } = useQuery({
+    queryKey: ["checkout-receipt-booking", currentPropertyId, id],
+    queryFn: async (): Promise<Booking | null> => {
+      if (!currentPropertyId || !id) return null
+      try {
+        const { data: result } = await api.get(
+          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
+        )
         const wrapped = result as { data?: Booking }
         return (wrapped?.data ?? result) as Booking
       } catch {
         return null
       }
     },
-    enabled: !!id,
+    enabled: !!currentPropertyId && !!id,
   })
 
   useEffect(() => {
@@ -109,7 +125,7 @@ export default function CheckoutReceiptPage() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <FileText size={16} className="text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">StayEasy</span>
+              <span className="text-xl font-bold text-gray-900">{property?.name || "StayEasy"}</span>
             </div>
             <div className="text-right">
               <h2 className="text-xl font-bold text-gray-900">INVOICE</h2>

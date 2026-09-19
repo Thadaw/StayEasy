@@ -23,7 +23,7 @@ export function OccupancyChart({
   const getPercentage = (value: number) => ((value / total) * 100).toFixed(1)
   
   const segments = [
-    { label: "Occupied", value: data.occupied, color: "#3b82f6", percentage: getPercentage(data.occupied) },
+    { label: "Occupied", value: data.occupied, color: "var(--chart-1, #3b82f6)", percentage: getPercentage(data.occupied) },
     { label: "Available", value: data.available, color: "#22c55e", percentage: getPercentage(data.available) },
     { label: "Cleaning", value: data.cleaning, color: "#f97316", percentage: getPercentage(data.cleaning) },
     { label: "Maintenance", value: data.maintenance, color: "#ef4444", percentage: getPercentage(data.maintenance) },
@@ -51,7 +51,7 @@ export function OccupancyChart({
               cy="65"
               r="50"
               fill="none"
-              stroke="#e5e7eb"
+              stroke="var(--chart-track, #e5e7eb)"
               strokeWidth="18"
             />
             {segments.reduce((acc, segment, index) => {

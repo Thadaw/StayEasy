@@ -51,14 +51,14 @@ export default function AboutMe() {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="p-8">
-          <div className="flex items-start gap-8">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
             <div className="flex flex-col items-center shrink-0">
               <div className="relative">
                 {photoUrl ? (
-                  <img src={photoUrl} alt="Profile" className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-card" />
+                  <img src={photoUrl} alt="Profile" className="w-20 h-20 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-card" />
                 ) : (
-                  <div className="w-28 h-28 rounded-full bg-brand-accent flex items-center justify-center text-3xl font-bold text-white shadow-card">
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-brand-accent flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-card">
                     {displayInitials}
                   </div>
                 )}
@@ -92,10 +92,10 @@ export default function AboutMe() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-brand-heading mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-xl sm:text-2xl font-bold text-brand-heading mb-1 text-center sm:text-left" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {user?.full_name || `${firstName} ${lastName}`}
               </h1>
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 justify-center sm:justify-start">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-accent-light text-brand-primary">
                   <User size={12} /> Guest
                 </span>
@@ -105,7 +105,7 @@ export default function AboutMe() {
               </div>
 
               {user?.country && (
-                <div className="flex items-center gap-1.5 mb-4 text-sm text-brand-text-secondary">
+                <div className="flex items-center gap-1.5 mb-4 text-sm text-brand-text-secondary justify-center sm:justify-start">
                   {user?.countryFlag && <span>{user.countryFlag}</span>}
                   <span>{user?.country}</span>
                   {user?.joinedDate && (
@@ -114,7 +114,7 @@ export default function AboutMe() {
                 </div>
               )}
 
-              <div className="flex items-center gap-6 py-3 px-5 rounded-lg bg-brand-background border border-brand-card-border mb-5">
+              <div className="flex items-center gap-4 sm:gap-6 py-3 px-4 sm:px-5 rounded-lg bg-brand-background border border-brand-card-border mb-5 justify-center sm:justify-start">
                 <StatBadge icon={Star} value={0} label="Reviews" />
                 <div className="w-px h-5 bg-brand-card-border" />
                 <StatBadge icon={Calendar} value={yearsOnPlatform} label={yearsOnPlatform === 1 ? 'Year on ServeIQ' : 'Years on ServeIQ'} />
@@ -169,7 +169,7 @@ export default function AboutMe() {
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 flex flex-col sm:flex-row gap-2">
                 {editingProfile ? (
                   <div className="flex gap-2">
                     <button
@@ -201,7 +201,7 @@ export default function AboutMe() {
       </div>
 
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-card-border">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border">
           <div className="flex items-center gap-2">
             <Pencil size={15} className="text-brand-text-secondary" />
             <h2 className="text-base font-semibold text-brand-heading">About Me</h2>
@@ -215,7 +215,7 @@ export default function AboutMe() {
             </button>
           )}
         </div>
-        <div className="px-6 py-5">
+        <div className="px-4 sm:px-6 py-4 sm:py-5">
           {editingBio ? (
             <div>
               <textarea

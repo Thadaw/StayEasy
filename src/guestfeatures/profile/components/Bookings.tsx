@@ -134,7 +134,7 @@ export default function Bookings() {
   return (
     <div className="max-w-4xl">
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-brand-card-border flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border flex items-center justify-between">
           <h2 className="text-base font-semibold text-brand-heading">My Bookings</h2>
           {!loading && !error && (
             <button
@@ -146,7 +146,7 @@ export default function Bookings() {
           )}
         </div>
 
-        <div className="flex border-b border-brand-card-border px-6">
+        <div className="flex border-b border-brand-card-border px-4 sm:px-6 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -163,7 +163,7 @@ export default function Bookings() {
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center py-12">
               <LoadingSpinner className="mb-3" />
@@ -205,8 +205,8 @@ export default function Bookings() {
                   key={booking.id}
                   className="rounded-xl border border-brand-card-border overflow-hidden hover:shadow-card transition-shadow"
                 >
-                  <div className="flex gap-4 p-4">
-                    <div className="w-24 h-24 rounded-lg bg-brand-secondary-surface overflow-hidden flex items-center justify-center shrink-0">
+                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-brand-secondary-surface overflow-hidden flex items-center justify-center shrink-0">
                       {booking.coverPhoto ? (
                         <img src={booking.coverPhoto} alt={booking.propertyName || 'Booking'} className="w-full h-full object-cover" />
                       ) : (

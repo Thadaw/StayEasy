@@ -8,6 +8,7 @@ import {
   Download,
 } from "lucide-react"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { ResetButton } from "../components/ResetButton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -82,69 +83,6 @@ function formatTime(dateStr: string): string {
 
 const EMPTY_ACTIVITIES: Activity[] = []
 
-const DEMO_ACTIVITIES: Activity[] = [
-  {
-    id: "demo-1",
-    staff_name: "Camila R.",
-    activity_type: "Guest Request",
-    description: "Shampoo - Qty: 2, Razors - Qty: 1",
-    booking_id: "",
-    room_id: "504",
-    extra_data: {},
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "demo-2",
-    staff_name: "Front Desk",
-    activity_type: "Guest Request",
-    description: "Sheets - Qty: 2 Extra Pillows",
-    booking_id: "",
-    room_id: "1010",
-    extra_data: {},
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "demo-3",
-    staff_name: "Amelia W.",
-    activity_type: "Room Turnover",
-    description: "Bedding Linens - Turnover (Qty: 1)",
-    booking_id: "",
-    room_id: "802",
-    extra_data: {},
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "demo-4",
-    staff_name: "Lucia R.",
-    activity_type: "Maintenance",
-    description: "Entry ceiling light fixture flickers",
-    booking_id: "",
-    room_id: "Main Entrance",
-    extra_data: {},
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "demo-5",
-    staff_name: "Darle R.",
-    activity_type: "Completed",
-    description: "Creamers & Sugar Restock - Qty: 12",
-    booking_id: "",
-    room_id: "Floor 1 Pantry",
-    extra_data: {},
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "demo-6",
-    staff_name: "Riley M.",
-    activity_type: "Completed",
-    description: "Extra Duvet & Linens - Qty: 1",
-    booking_id: "",
-    room_id: "Floor 4 (412)",
-    extra_data: {},
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-]
-
 export default function FrontDeskTasksPage() {
   const { currentPropertyId } = usePropertyStore()
   const [activeTab, setActiveTab] = useState<StatusTab>("active")
@@ -156,7 +94,7 @@ export default function FrontDeskTasksPage() {
   const { data: activitiesData, isLoading } = useQuery({
     queryKey: ["frontdesk-booking-activities", currentPropertyId, searchQuery],
     queryFn: async () => {
-      if (!currentPropertyId) return DEMO_ACTIVITIES
+      if (!currentPropertyId) return EMPTY_ACTIVITIES
       try {
         const params: Record<string, string> = { limit: "100", skip: "0" }
         const { data: result } = await api.get(
@@ -167,14 +105,14 @@ export default function FrontDeskTasksPage() {
         const apiResult = result as { success?: boolean; data?: Activity[] }
         if (apiResult.success === false) {
           console.error("API error:", result)
-          return DEMO_ACTIVITIES
+          return EMPTY_ACTIVITIES
         }
         
         const apiData = apiResult.data ?? []
-        return apiData.length > 0 ? apiData : DEMO_ACTIVITIES
+        return apiData
       } catch (error) {
         console.error("Failed to fetch booking activities:", error)
-        return DEMO_ACTIVITIES
+        return EMPTY_ACTIVITIES
       }
     },
     enabled: !!currentPropertyId,
@@ -324,12 +262,7 @@ export default function FrontDeskTasksPage() {
                 })}
               </div>
 
-              <button
-                onClick={handleReset}
-                className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Reset Filters
-              </button>
+              <ResetButton onClick={handleReset} label="Reset Filters" />
             </div>
           </div>
 
@@ -516,10 +449,6 @@ export default function FrontDeskTasksPage() {
             </>
           )}
 
-          {/* Footer */}
-          <p className="text-center text-xs text-gray-400 mt-6">
-            All task logs are synchronized real-time across PMS & Housekeeping mobile hand-terminals.
-          </p>
         </div>
       </main>
     </div>

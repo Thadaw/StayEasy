@@ -312,7 +312,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <Bed size={18} className="text-blue-600" />
               <h3 className="text-base font-semibold text-gray-900">1. Stay & room</h3>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Check-In Date *</label>
                 <input
@@ -378,7 +378,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
                 <label className="text-sm font-medium text-gray-700">Available Rooms</label>
                 <span className="text-xs text-gray-500">{availableRooms.length} rooms available · {selectedRooms.length} selected</span>
               </div>
@@ -396,7 +396,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <div className="text-center py-8 text-red-500 text-sm">{roomsError}</div>
               )}
               {!roomsLoading && !roomsError && stayDetails.checkInDate && stayDetails.checkOutDate && availableRooms.length > 0 && (
-                <div className="flex items-center gap-4 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-3">
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-blue-500" />
                     <span>{stayDetails.checkInDate} → {stayDetails.checkOutDate}</span>
@@ -429,10 +429,12 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Floor {floor}</h4>
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       <div
-                        className="grid gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider"
-                        style={{ gridTemplateColumns: stayDates.length > 0 ? `1fr 1fr 1fr 0.8fr repeat(${stayDates.length}, minmax(0, 1fr)) 0.8fr` : "1fr 1.2fr 1fr 0.8fr 0.8fr" }}
+                        className="overflow-x-auto"
                       >
-                        <div>Room</div>
+                      <div
+                        className="grid gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[600px]"
+                        style={{ gridTemplateColumns: stayDates.length > 0 ? `1fr 1fr 1fr 0.8fr repeat(${stayDates.length}, minmax(0, 1fr)) 0.8fr` : "1fr 1.2fr 1fr 0.8fr 0.8fr" }}
+                      >                          <div>Room</div>
                         <div>Type</div>
                         <div>Bed</div>
                         <div>Guests</div>
@@ -493,6 +495,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                           </div>
                         )
                       })}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -537,7 +540,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <select
                   value={guestInfo.countryCode}
                   onChange={(e) => handleGuestInfoChange("countryCode", e.target.value)}
-                  className="w-28 px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-20 sm:w-28 px-2 sm:px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="+977">NP +977</option>
                   <option value="+1">US +1</option>
@@ -571,7 +574,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Verification Document</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {/* Front */}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Front</p>
@@ -666,7 +669,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <CreditCard size={18} className="text-blue-600" />
               <h3 className="text-base font-semibold text-gray-900">3. Rate & payment</h3>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                 <select
@@ -789,7 +792,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <h3 className="text-base font-semibold text-gray-900">4. Review & confirm</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Guest Details */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -859,7 +862,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <CreditCard size={16} className="text-blue-600" />
                 <h4 className="text-sm font-semibold text-gray-900">Payment Details</h4>
               </div>
-              <div className={`grid gap-4 text-sm ${paymentType === "advance" ? "grid-cols-3" : "grid-cols-2"}`}>
+              <div className={`grid gap-4 text-sm ${paymentType === "advance" ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
                 <div>
                   <span className="text-gray-500">Method</span>
                   <p className="text-gray-900 font-medium capitalize">{paymentMethod.replace("_", " ")}</p>
@@ -940,26 +943,27 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">New Booking</h2>
-          <p className="text-sm text-gray-500 mt-1">Create a reservation with clear guest, stay, room, and payment details.</p>
+    <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">New Booking</h2>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">Create a reservation with clear guest, stay, room, and payment details.</p>
         </div>
         <button
           onClick={onCancel}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
         >
           <span className="text-lg">×</span>
-          Cancel
+          <span className="hidden sm:inline">Cancel</span>
         </button>
       </div>
 
-      <div className="flex items-center mb-8">
+      {/* Step indicator - scrollable on mobile */}
+      <div className="flex items-center mb-6 sm:mb-8 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         {steps.map((step, index) => (
-          <div key={step.id} className="flex items-center flex-1">
+          <div key={step.id} className="flex items-center flex-1 min-w-0">
             <div className={`flex flex-col items-center ${currentStep >= step.id ? "text-blue-600" : "text-gray-400"}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
                 currentStep > step.id
                   ? "bg-green-500 text-white"
                   : currentStep === step.id
@@ -967,15 +971,15 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   : "bg-gray-200 text-gray-500"
               }`}>
                 {currentStep > step.id ? (
-                  <Check size={18} />
+                  <Check size={16} />
                 ) : (
-                  <span className="text-sm font-semibold">{step.id}</span>
+                  <span className="text-xs sm:text-sm font-semibold">{step.id}</span>
                 )}
               </div>
-              <span className="text-xs font-medium mt-2">{step.label}</span>
+              <span className="text-[10px] sm:text-xs font-medium mt-1.5 sm:mt-2 whitespace-nowrap hidden sm:block">{step.label}</span>
             </div>
             {index < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-4 ${
+              <div className={`flex-1 h-0.5 mx-2 sm:mx-4 ${
                 currentStep > step.id ? "bg-green-500" : "bg-gray-200"
               }`} />
             )}
@@ -983,13 +987,13 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-8">
-        <div className={currentStep === 4 ? "col-span-3" : "col-span-2"}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className={currentStep === 4 ? "col-span-1 lg:col-span-3" : "col-span-1 lg:col-span-2"}>
           {renderStep()}
         </div>
         
         {currentStep !== 4 && (
-          <div className="border-l border-gray-100 pl-8">
+          <div className="border-t lg:border-t-0 lg:border-l border-gray-100 pt-6 lg:pt-0 lg:pl-8">
             <div className="sticky top-4 bg-gray-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
@@ -1083,11 +1087,11 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
         )}
       </div>
 
-      <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+      <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-100">
         <button
           onClick={prevStep}
           disabled={currentStep === 1}
-          className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
+          className={`px-5 sm:px-6 py-2.5 rounded-lg font-medium transition-colors ${
             currentStep === 1
               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -1100,16 +1104,17 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
         {currentStep < steps.length ? (
           <button
             onClick={nextStep}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="px-5 sm:px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
-            Next: {steps[currentStep].label}
+            Next
+            <span className="hidden sm:inline">: {steps[currentStep].label}</span>
             <ChevronRight size={16} className="inline ml-1" />
           </button>
         ) : (
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 sm:px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Creating..." : "Complete Booking"}
             <Check size={16} className="inline ml-1" />
@@ -1123,8 +1128,8 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
       )}
 
       {bookingSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-sm mx-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-200">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check size={32} className="text-green-600" />
             </div>

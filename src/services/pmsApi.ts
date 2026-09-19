@@ -328,9 +328,11 @@ export const checkInGuest = async (refNumber: string): Promise<string> => {
 
 // ─── Staff Check-Out ─────────────────────────────────────────
 
-export const checkOutGuest = async (refNumber: string): Promise<string> => {
+export const checkOutGuest = async (refNumber: string, amount?: number, paymentGateway?: string): Promise<string> => {
   const { data: result } = await api.post(`/staff/check-out/${refNumber}`, {
     idempotency_key: crypto.randomUUID(),
+    amount: amount || 0,
+    payment_gateway: paymentGateway || "CASH",
   })
   return typeof result === "string" ? result : result?.data ?? "Checked out"
 }
@@ -388,4 +390,23 @@ export const getBookingTypes = async (): Promise<EnumOption[]> => {
   const { data: result } = await api.get('/staff/enums/booking-types')
   const data = unwrapBody<EnumOption[]>(result)
   return Array.isArray(data) ? data : []
+}
+
+export const uploadCitizenshipPhotos = async (
+  refNumber: string,
+  front: File | null,
+  back: File | null
+): Promise<{ front: string; back: string }> => {
+  const formData = new FormData()
+  if (front) formData.append('front', front)
+  if (back) formData.append('back', back)
+
+  const { data: result } = await api.post(
+    `/staff/check-in/${refNumber}/citizenship-photos`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  )
+  return unwrapBody<{ front: string; back: string }>(result)
 }

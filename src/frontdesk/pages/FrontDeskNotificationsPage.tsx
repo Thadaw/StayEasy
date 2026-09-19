@@ -35,72 +35,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "staff_handoff", label: "Staff Handoff" },
 ]
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    title: "New message from Marcus Chen",
-    description: "Guest asked about late checkout for room 317.",
-    category: "guest_requests",
-    time: "6 min ago",
-    read: false,
-    icon_bg: "bg-blue-50",
-    icon_color: "text-blue-500",
-    dot_color: "bg-blue-500",
-    Icon: MessageSquare,
-  },
-  {
-    id: "2",
-    title: "Room 203 needs attention",
-    description: "Housekeeping marked a turnover as high priority.",
-    category: "housekeeping",
-    time: "18 min ago",
-    read: false,
-    icon_bg: "bg-amber-50",
-    icon_color: "text-amber-500",
-    dot_color: "bg-amber-500",
-    Icon: Wrench,
-  },
-  {
-    id: "3",
-    title: "Payment captured",
-    description: "$480.00 from Sofia Alvarez was recorded.",
-    category: "payments",
-    time: "42 min ago",
-    read: false,
-    icon_bg: "bg-emerald-50",
-    icon_color: "text-emerald-500",
-    dot_color: "bg-emerald-500",
-    Icon: CreditCard,
-  },
-  {
-    id: "4",
-    title: "Shift handoff received",
-    description: "Camila Rivera shared the evening desk notes.",
-    category: "staff_handoff",
-    time: "1 hr ago",
-    read: false,
-    icon_bg: "bg-purple-50",
-    icon_color: "text-purple-500",
-    dot_color: "bg-purple-500",
-    Icon: Users,
-  },
-  {
-    id: "5",
-    title: "VIP Guest Arrival imminent",
-    description: "Olivia Martin (#HH6B2X) scheduled check-in at 2:30 PM.",
-    category: "guest_requests",
-    time: "2 hr ago",
-    read: false,
-    icon_bg: "bg-teal-50",
-    icon_color: "text-teal-500",
-    dot_color: "bg-teal-500",
-    Icon: Star,
-  },
-]
-
 export default function FrontDeskNotificationsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all")
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState<Notification[]>([])
 
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") return notifications

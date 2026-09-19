@@ -25,9 +25,9 @@ export function SearchResultCard({
 
   return (
     <div
-      className="flex bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 h-[200px]"
+      className="flex flex-col sm:flex-row bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 sm:h-[200px]"
     >
-      <div className="relative w-[280px] h-[200px] shrink-0 overflow-hidden">
+      <div className="relative w-full sm:w-[280px] h-48 sm:h-[200px] shrink-0 overflow-hidden">
         {property.cover_photo ? (
           <img src={property.cover_photo} alt={property.name} className="w-full h-full object-cover" />
         ) : (
@@ -38,7 +38,7 @@ export function SearchResultCard({
         <FavouriteButton isFavourite={isFavorite} onToggle={() => onToggleFavorite(property.property_id)} size={16} />
       </div>
 
-      <div className="flex-1 p-5 flex justify-between">
+      <div className="flex-1 p-4 sm:p-5 flex flex-col sm:flex-row sm:justify-between gap-3">
         <div>
           <h3 className="text-base font-bold mb-1" style={{ color: "var(--brand-heading)" }}>{property.name}</h3>
           <p className="text-xs flex items-center gap-1 mb-2" style={{ color: "var(--brand-text-secondary)" }}>
@@ -61,7 +61,7 @@ export function SearchResultCard({
           </p>
         </div>
 
-        <div className="text-right flex flex-col justify-between">
+        <div className="text-right flex flex-row sm:flex-col justify-between sm:justify-end items-end gap-2">
           <div className="mt-4">
             <p className="text-[10px]" style={{ color: "var(--brand-text-secondary)" }}>{property.nights} night{property.nights && property.nights > 1 ? "s" : ""}, {guests} guest{guests !== "1" ? "s" : ""}</p>
             <p className="text-lg font-bold mt-0.5" style={{ color: "var(--brand-heading)" }}><span className="font-normal" style={{ fontSize: "12px" }}>Starting from</span> {property.currency} {property.total_price}</p>

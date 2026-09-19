@@ -31,7 +31,8 @@ const clearAuthAndRedirect = () => {
   })
 
   const isHost = localStorage.getItem('authRole') === 'host' || sessionStorage.getItem('authRole') === 'host'
-  const loginPath = isHost ? '/host/login' : '/login'
+  const isStaff = localStorage.getItem('authRole') === 'staff' || sessionStorage.getItem('authRole') === 'staff'
+  const loginPath = isHost ? '/host/login' : isStaff ? '/staff/login' : '/login'
 
   if (window.location.pathname !== loginPath) {
     const redirect = encodeURIComponent(window.location.pathname + window.location.search)

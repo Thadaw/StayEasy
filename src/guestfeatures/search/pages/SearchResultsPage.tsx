@@ -35,6 +35,7 @@ export default function SearchResultsPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([
     Number(searchParams.get("min_price")) || 0,
     Number(searchParams.get("max_price")) || 500,
@@ -153,7 +154,8 @@ export default function SearchResultsPage() {
 
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex gap-6">
-          <div className="sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
             <FilterSidebar
               priceRange={priceRange}
               onPriceRangeChange={setPriceRange}
@@ -172,10 +174,19 @@ export default function SearchResultsPage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowMobileFilters(true)}
+                className="lg:hidden flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                Filters
+              </button>
               <h2 className="text-xl font-bold font-brand text-brand-heading">
                 {loading ? "Searching..." : `${total} stays${whereParam ? ` in ${whereParam}` : propertyTypes ? ` - ${propertyTypes}` : ""}`}
               </h2>
+              </div>
               <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode("list")}
@@ -236,6 +247,41 @@ export default function SearchResultsPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Filter Drawer */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileFilters(false)} />
+          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-white shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-base font-bold text-gray-900">Filters</h3>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <FilterSidebar
+                priceRange={priceRange}
+                onPriceRangeChange={setPriceRange}
+                maxPrice={maxPrice}
+                roomTypes={roomTypes}
+                bedTypes={bedTypes}
+                systemAmenities={systemAmenities}
+                propertyFilters={propertyFilters}
+                onTogglePropertyType={togglePropertyType}
+                selectedBedTypeIds={selectedBedTypeIds}
+                onToggleBedType={toggleBedType}
+                selectedAmenityIds={selectedAmenityIds}
+                onToggleAmenity={toggleAmenity}
+                onClearAll={clearAll}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
