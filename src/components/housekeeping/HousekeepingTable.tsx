@@ -1,4 +1,4 @@
-import { Eye, MoreVertical } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import type { HousekeepingRoom } from '../../types/housekeeping'
 
 interface HousekeepingTableProps {
@@ -7,16 +7,16 @@ interface HousekeepingTableProps {
   onMoreActions?: (room: HousekeepingRoom, action: string) => void
 }
 
-const statusBadgeColors: Record<string, { bg: string; text: string }> = {
-  Clean: { bg: '#D1FAE5', text: '#065F46' },
-  Dirty: { bg: '#FEE2E2', text: '#991B1B' },
-  'In Progress': { bg: '#EDE9FE', text: '#5B21B6' },
-  'Out of Service': { bg: '#FEE2E2', text: '#991B1B' },
+const statusBadgeColors: Record<string, { bg: string; text: string; dot: string }> = {
+  Clean: { bg: '#DCFCE7', text: '#166534', dot: '#16A34A' },
+  Dirty: { bg: '#FEE2E2', text: '#991B1B', dot: '#DC2626' },
+  'In Progress': { bg: '#FEF3C7', text: '#92400E', dot: '#D97706' },
+  'Out of Service': { bg: '#FEE2E2', text: '#991B1B', dot: '#DC2626' },
 }
 
 const avatarColors = [
-  'var(--primary)', '#2563EB', '#059669', '#D97706',
-  '#DC2626', '#0891B2', '#4F46E5', '#065F46',
+  '#8B5CF6', '#2563EB', '#10B981', '#F59E0B',
+  '#EF4444', '#0891B2', '#4F46E5', '#065F46',
 ]
 
 const getInitials = (name: string) => {
@@ -43,7 +43,7 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-            {['ROOM', 'ROOM TYPE', 'FLOOR', 'STATUS', 'ASSIGNED TO', 'LAST CLEANED', 'NEXT CLEANING', 'ACTIONS'].map(col => (
+            {['ROOM', 'TYPE', 'FLOOR', 'STATUS', 'ASSIGNED TO', 'LAST CLEANED', 'NEXT CLEANING', 'ACTIONS'].map(col => (
               <th
                 key={col}
                 style={{
@@ -64,7 +64,7 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
         </thead>
         <tbody>
           {rooms.map((room, idx) => {
-            const colors = statusBadgeColors[room.status] || { bg: '#F3F4F6', text: '#374151' }
+            const colors = statusBadgeColors[room.status] || { bg: '#F3F4F6', text: '#374151', dot: '#9CA3AF' }
             const thumb = roomThumbnails[idx % roomThumbnails.length]
 
             return (
@@ -72,12 +72,13 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
                 key={room.id}
                 style={{ borderBottom: '1px solid #F3F4F6' }}
               >
+                {/* Room Number + Thumbnail */}
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div
                       style={{
-                        width: 48,
-                        height: 36,
+                        width: 56,
+                        height: 40,
                         borderRadius: 6,
                         overflow: 'hidden',
                         flexShrink: 0,
@@ -93,20 +94,29 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{room.roomNumber}</span>
                   </div>
                 </td>
+
+                {/* Type + Bed */}
                 <td style={{ padding: '14px 16px' }}>
                   <div>
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111827' }}>{room.roomType}</p>
-                    <p style={{ margin: 0, fontSize: 13, color: '#9CA3AF' }}>{room.bedDescription}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#9CA3AF' }}>{room.bedDescription}</p>
                   </div>
                 </td>
+
+                {/* Floor */}
                 <td style={{ padding: '14px 16px', fontSize: 14, color: '#374151' }}>
                   {room.floor}
                 </td>
+
+                {/* Status Badge with Dot */}
                 <td style={{ padding: '14px 16px' }}>
                   <span
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: 6,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '5px 12px',
+                      borderRadius: 20,
                       fontSize: 12,
                       fontWeight: 600,
                       background: colors.bg,
@@ -114,9 +124,20 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
                       whiteSpace: 'nowrap',
                     }}
                   >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: colors.dot,
+                        flexShrink: 0,
+                      }}
+                    />
                     {room.status}
                   </span>
                 </td>
+
+                {/* Assigned To */}
                 <td style={{ padding: '14px 16px' }}>
                   {room.assignedTo ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -143,32 +164,20 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
                     <span style={{ fontSize: 14, color: '#D1D5DB' }}>-</span>
                   )}
                 </td>
+
+                {/* Last Cleaned */}
                 <td style={{ padding: '14px 16px', fontSize: 14, color: '#374151', whiteSpace: 'nowrap' }}>
                   {room.lastCleaned || '-'}
                 </td>
+
+                {/* Next Cleaning */}
                 <td style={{ padding: '14px 16px', fontSize: 14, color: '#374151', whiteSpace: 'nowrap' }}>
                   {room.nextCleaning || '-'}
                 </td>
+
+                {/* Actions - Three dot menu only */}
                 <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <button
-                      title="View"
-                      onClick={() => onViewRoom?.(room)}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6B7280',
-                      }}
-                    >
-                      <Eye size={16} />
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <button
                       title="More options"
                       onClick={() => onMoreActions?.(room, 'menu')}

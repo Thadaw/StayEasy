@@ -1,4 +1,5 @@
-import { Search, ChevronDown, Plus } from 'lucide-react'
+import { Search, ChevronDown, Plus, BarChart3 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 interface StaffFiltersProps {
   search: string
@@ -26,7 +27,7 @@ const selectStyle: React.CSSProperties = {
   cursor: 'pointer',
   outline: 'none',
   backgroundImage: 'none',
-  minWidth: 160,
+  minWidth: 140,
 }
 
 const dropdownWrapperStyle: React.CSSProperties = {
@@ -53,6 +54,7 @@ export default function StaffFilters({
   onStatusChange,
   onAddStaff,
 }: StaffFiltersProps) {
+  const navigate = useNavigate()
   return (
     <div
       style={{
@@ -60,14 +62,13 @@ export default function StaffFilters({
         alignItems: 'center',
         gap: 12,
         marginBottom: 20,
-        flexWrap: 'wrap',
       }}
     >
       <div
         style={{
           position: 'relative',
-          flex: '1 1 280px',
-          maxWidth: 380,
+          flex: '1 1 200px',
+          maxWidth: 260,
         }}
       >
         <Search
@@ -147,6 +148,26 @@ export default function StaffFilters({
         </select>
         <ChevronDown size={16} style={dropdownIconStyle} />
       </div>
+
+      <button
+        onClick={() => navigate('/host/staff/performance')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '10px 20px',
+          border: '1px solid #E5E7EB',
+          borderRadius: 8,
+          background: '#fff',
+          fontSize: 14,
+          fontWeight: 500,
+          color: '#374151',
+          cursor: 'pointer',
+        }}
+      >
+        <BarChart3 size={16} />
+        Staff Performance
+      </button>
 
       <button
         onClick={onAddStaff}
