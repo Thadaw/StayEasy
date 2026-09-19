@@ -9,13 +9,15 @@ interface RevenueChartProps {
   currentRevenue: number
   lastWeekRevenue: number
   growth: number
+  formatAmount: (amount: number) => string
 }
 
 export function RevenueChart({ 
   data, 
   currentRevenue, 
   lastWeekRevenue, 
-  growth 
+  growth,
+  formatAmount
 }: RevenueChartProps) {
   const maxRevenue = Math.max(...data.map(d => d.revenue))
   const chartHeight = 100
@@ -48,12 +50,12 @@ export function RevenueChart({
 
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-2xl font-bold text-gray-900">${currentRevenue.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatAmount(currentRevenue)}</p>
           <p className="text-xs text-gray-500 mt-0.5">Total gross revenue this week</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-500">Today's Revenue</p>
-          <p className="text-lg font-bold text-gray-900">${currentRevenue.toLocaleString()}</p>
+          <p className="text-lg font-bold text-gray-900">{formatAmount(currentRevenue)}</p>
         </div>
       </div>
 
@@ -69,8 +71,8 @@ export function RevenueChart({
         >
           <defs>
             <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--chart-1, #3b82f6)" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="var(--chart-1, #3b82f6)" stopOpacity="0" />
             </linearGradient>
           </defs>
           
@@ -82,7 +84,7 @@ export function RevenueChart({
           <path
             d={pathData}
             fill="none"
-            stroke="#3b82f6"
+            stroke="var(--chart-1, #3b82f6)"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -94,7 +96,7 @@ export function RevenueChart({
               cx={(index / (data.length - 1)) * 100}
               cy={getYPosition(point.revenue)}
               r="3"
-              fill="#3b82f6"
+              fill="var(--chart-1, #3b82f6)"
               className="opacity-0 hover:opacity-100 transition-opacity"
             />
           ))}

@@ -11,10 +11,12 @@ import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { ResetButton } from "../components/ResetButton"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { getPaymentGateways, getPaymentMethods, getPaymentStatuses } from "../../services/pmsApi"
+import { FrontDeskPagination } from "../components/FrontDeskPagination"
 
 interface Booking {
   id: string
@@ -438,12 +440,7 @@ export default function FrontDeskPaymentsPage() {
               />
             </div>
 
-            <button
-              onClick={handleReset}
-              className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Reset
-            </button>
+            <ResetButton onClick={handleReset} />
           </div>
 
           {/* Transaction Count */}
@@ -625,38 +622,14 @@ export default function FrontDeskPaymentsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-                  <p className="text-sm text-gray-500">
-                    Showing 1–{transactions.length} of {totalTransactions} transactions
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className={`px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg transition-colors ${
-                        currentPage === 1
-                          ? "opacity-40 cursor-not-allowed text-gray-400"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      Previous
-                    </button>
-                    <span className="w-9 h-9 flex items-center justify-center bg-blue-600 text-white text-sm font-semibold rounded-lg">
-                      {currentPage}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      className={`px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg transition-colors ${
-                        currentPage >= totalPages
-                          ? "opacity-40 cursor-not-allowed text-gray-400"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
+                <FrontDeskPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalTransactions}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setCurrentPage}
+                  itemLabel="transactions"
+                />
               </>
             )}
           </div>

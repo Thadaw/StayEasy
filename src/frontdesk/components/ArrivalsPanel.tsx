@@ -44,42 +44,6 @@ function getNights(booking: ArrivalGuest): number {
   return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
 }
 
-const MOCK_ARRIVAL: ArrivalGuest = {
-  booking_id: "mock-001",
-  ref_number: "MOCK01",
-  status: "CONFIRMED",
-  booking_type: "WALK_IN",
-  guest: {
-    guest_id: "g-001",
-    full_name: "John Smith",
-    email: "john.smith@email.com",
-    phone: "+977 9841234567",
-    nationality: "Nepal",
-  },
-  rooms: [
-    {
-      room_id: "r-001",
-      room_name: "Room 201",
-      room_type: "King Harbor View",
-      bed_type: "King",
-      base_rate: 5000,
-    },
-  ],
-  checkin_date: new Date().toISOString().split("T")[0],
-  checkout_date: new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0],
-  number_of_adults: 2,
-  number_of_children: 1,
-  special_requests: "",
-  payment_method: "PAY_ON_ARRIVAL",
-  payment_status: "PAID",
-  payment_gateway: "",
-  amount_paid: 15000,
-  amount_due: 0,
-  advance_amount: 15000,
-  total_amount: 15000,
-  created_at: new Date().toISOString(),
-}
-
 export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const { checkIn, isCheckedIn } = useBookingCheckInStore()
@@ -98,12 +62,12 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
   const { data: arrivals = [], isLoading } = useQuery({
     queryKey: ["today-arrivals", currentPropertyId],
     queryFn: async () => {
-      if (!currentPropertyId) return [MOCK_ARRIVAL]
+      if (!currentPropertyId) return []
       try {
         const result = await getTodayArrivals(currentPropertyId)
-        return result.length > 0 ? result : [MOCK_ARRIVAL]
+        return result
       } catch {
-        return [MOCK_ARRIVAL]
+        return []
       }
     },
     enabled: !!currentPropertyId,

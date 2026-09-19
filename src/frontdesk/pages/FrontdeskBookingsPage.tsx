@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import * as XLSX from "xlsx"
 import {
   Search,
@@ -24,11 +24,12 @@ import {
 import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { ResetButton } from "../components/ResetButton"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { getBookingStatuses, getPaymentStatuses, getPaymentGateways, getPaymentMethods, getBookingTypes } from "../../services/pmsApi"
-import { Pagination } from "../../guestfeatures/search/components/Pagination"
+import { FrontDeskPagination } from "../components/FrontDeskPagination"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 
 interface Booking {
@@ -224,6 +225,7 @@ export default function FrontdeskBookingsPage() {
   const { user } = useAuth()
   const { currentPropertyId } = usePropertyStore()
   const { formatAmount } = usePropertyCurrency()
+  const [searchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchInput, setSearchInput] = useState("")
@@ -233,6 +235,7 @@ export default function FrontdeskBookingsPage() {
   const [cancelBookingName, setCancelBookingName] = useState<string>("")
   const [cancelReason, setCancelReason] = useState("")
   const [toastMessage, setToastMessage] = useState("")
+  const [toastType, setToastType] = useState<"success" | "error">("success")
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -242,15 +245,14 @@ export default function FrontdeskBookingsPage() {
   }, [toastMessage])
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
-    guest_name: "",
-    guest_email: "",
-    guest_phone: "",
     checkin_date: "",
     checkout_date: "",
     special_requests: "",
     notes: "",
     number_of_adults: 0,
     number_of_children: 0,
+    room_unit_ids: [] as string[],
+    reason: "",
   })
   const [filters, setFilters] = useState<Filters>({
     status: "",
@@ -259,6 +261,7 @@ export default function FrontdeskBookingsPage() {
     payment_gateway: "",
     booking_type: "",
   })
+  const [activeTab, setActiveTab] = useState<"overview" | "payment" | "notes">("overview")
   const { isCheckedIn } = useBookingCheckInStore()
 
   // Close dropdown when clicking outside
@@ -268,6 +271,19 @@ export default function FrontdeskBookingsPage() {
     document.addEventListener("click", handler)
     return () => document.removeEventListener("click", handler)
   }, [activeMenu])
+
+  // Reset tab when selecting a new booking
+  useEffect(() => {
+    if (selectedBookingRef) setActiveTab("overview")
+  }, [selectedBookingRef])
+
+  // Auto-open booking from URL param
+  useEffect(() => {
+    const bookingRef = searchParams.get("booking")
+    if (bookingRef) {
+      setSelectedBookingRef(bookingRef)
+    }
+  }, [searchParams])
 
   const { data: statusOptions = [] } = useQuery({
     queryKey: ["booking-statuses"],
@@ -341,14 +357,22 @@ export default function FrontdeskBookingsPage() {
   const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { bookingId: string; payload: any }) => {
-      const response = await api.patch(`/staff/bookings/${data.bookingId}`, data.payload)
+    mutationFn: async (data: { refNumber: string; payload: any }) => {
+      const response = await api.patch(`/staff/${data.refNumber}/booking-modify`, data.payload)
       return response.data
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["booking-detail", selectedBookingRef] })
       queryClient.invalidateQueries({ queryKey: ["frontdesk-bookings"] })
       setIsEditing(false)
+      const msg = result?.data?.message || result?.message || "Booking updated successfully"
+      setToastType("success")
+      setToastMessage(msg)
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.detail?.[0]?.msg || err?.response?.data?.message || "Failed to update booking"
+      setToastType("error")
+      setToastMessage(msg)
     },
   })
 
@@ -367,35 +391,36 @@ export default function FrontdeskBookingsPage() {
 
   const startEditing = () => {
     if (!bookingDetail) return
+    const rooms = (bookingDetail as any).rooms
+    const roomUnitIds = Array.isArray(rooms)
+      ? rooms.map((r: any) => r.room_unit_id || r.id).filter(Boolean)
+      : []
     setEditForm({
-      guest_name: extractGuestName(bookingDetail),
-      guest_email: extractGuestEmail(bookingDetail),
-      guest_phone: extractGuestPhone(bookingDetail),
       checkin_date: bookingDetail.checkin_date || "",
       checkout_date: bookingDetail.checkout_date || "",
       special_requests: (bookingDetail as any).special_requests || "",
       notes: (bookingDetail as any).notes || "",
       number_of_adults: (bookingDetail as any).number_of_adults || 0,
       number_of_children: (bookingDetail as any).number_of_children || 0,
+      room_unit_ids: roomUnitIds,
+      reason: "",
     })
     setIsEditing(true)
   }
 
   const handleSaveEdit = () => {
     if (!bookingDetail) return
-    const bookingId = (bookingDetail as any).booking_id || bookingDetail.id
+    const refNumber = bookingDetail.ref_number || bookingDetail.booking_number || bookingDetail.id
     updateMutation.mutate({
-      bookingId,
+      refNumber,
       payload: {
-        guest_name: editForm.guest_name,
-        guest_email: editForm.guest_email,
-        guest_phone: editForm.guest_phone,
         checkin_date: editForm.checkin_date,
         checkout_date: editForm.checkout_date,
-        special_requests: editForm.special_requests || null,
-        notes: editForm.notes || null,
+        room_unit_ids: editForm.room_unit_ids,
         number_of_adults: editForm.number_of_adults,
         number_of_children: editForm.number_of_children,
+        special_requests: editForm.special_requests || null,
+        reason: editForm.reason || "Booking updated by front desk",
       },
     })
   }
@@ -633,6 +658,9 @@ export default function FrontdeskBookingsPage() {
               </div>
 
               <div className="ml-auto flex items-center gap-2 w-full sm:w-auto">
+                <ResetButton
+                  onClick={() => setFilters({ status: "", payment_status: "", payment_method: "", payment_gateway: "", booking_type: "" })}
+                />
                 <button
                   onClick={handleExport}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -677,9 +705,6 @@ export default function FrontdeskBookingsPage() {
                     className="pl-9 pr-4 py-2 w-full sm:w-64 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
-                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  View all
-                </button>
               </div>
             </div>
 
@@ -873,6 +898,7 @@ export default function FrontdeskBookingsPage() {
                                 onClick={() => {
                                   const status = booking.status?.toUpperCase()
                                   if (status === "CHECKED_IN" || status === "CHECKED-OUT" || status === "IN_HOUSE") {
+                                    setToastType("error")
                                     setToastMessage("Booking in status CHECKED_IN cannot be cancelled. Only PENDING, CONFIRMED, or EXPIRED bookings can be cancelled.")
                                     setActiveMenu(null)
                                     return
@@ -895,45 +921,14 @@ export default function FrontdeskBookingsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <p className="text-sm text-gray-500">
-                    Showing {(bookingsData?.skip ?? 0) + 1} to{" "}
-                    {(bookingsData?.skip ?? 0) + bookings.length} of{" "}
-                    {totalBookings} reservations
-                  </p>
-                  {(hasMore || currentPage < totalPages) && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                          currentPage === 1
-                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => setCurrentPage(currentPage)}
-                        className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-semibold"
-                      >
-                        {currentPage}
-                      </button>
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage >= totalPages}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                          currentPage >= totalPages
-                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <FrontDeskPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalBookings}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setCurrentPage}
+                  itemLabel="reservations"
+                />
               </>
             )}
           </div>
@@ -942,313 +937,381 @@ export default function FrontdeskBookingsPage() {
 
       {/* Booking Detail Slide-Over */}
       {selectedBookingRef && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/30" onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }} />
-          <div className="relative w-full max-w-4xl max-h-[calc(100vh-3rem)] bg-white shadow-xl rounded-xl overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }} />
+          <div className="relative w-full max-w-2xl max-h-[85vh] bg-white shadow-2xl rounded-2xl flex flex-col overflow-hidden">
             {isLoadingDetail ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="flex flex-col h-full">
+                <div className="shrink-0 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-5 w-20 bg-gray-200 rounded-full animate-pulse" />
+                    </div>
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="h-9 w-24 bg-gray-200 rounded-t-lg animate-pulse" />
+                    <div className="h-9 w-24 bg-gray-200 rounded-t-lg animate-pulse" />
+                    <div className="h-9 w-20 bg-gray-200 rounded-t-lg animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex-1 p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                      <div className="h-3.5 w-28 bg-gray-200 rounded animate-pulse" />
+                      {[1,2,3].map(i => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-3.5 w-32 bg-gray-200 rounded animate-pulse" />
+                            <div className="h-2.5 w-20 bg-gray-200 rounded animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                      <div className="h-3.5 w-28 bg-gray-200 rounded animate-pulse" />
+                      {[1,2,3].map(i => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-3.5 w-32 bg-gray-200 rounded animate-pulse" />
+                            <div className="h-2.5 w-20 bg-gray-200 rounded animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : bookingDetail ? (
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Booking Details</h2>
-                    <p className="text-sm text-gray-500">#{bookingDetail.ref_number || bookingDetail.booking_number || "—"}</p>
+              <div className="flex flex-col h-full">
+                {/* Sticky Header */}
+                <div className="shrink-0 border-b border-gray-100">
+                  <div className="px-5 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2.5">
+                          <h2 className="text-base font-bold text-gray-900 truncate">
+                            {extractGuestName(bookingDetail)}
+                          </h2>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${getStatusColor(bookingDetail.status)}`}>
+                            {statusLabelMap[bookingDetail.status] || bookingDetail.status?.replace("_", " ") || "—"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5 font-mono">
+                          #{bookingDetail.ref_number || bookingDetail.booking_number || "—"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isEditing ? (
+                          <>
+                            <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                              Cancel
+                            </button>
+                            <button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50">
+                              {updateMutation.isPending ? "Saving..." : "Save"}
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={startEditing} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                            <Pencil size={14} />
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          onClick={() => navigate(`/frontdesk/folios?booking=${(bookingDetail as any).booking_id || bookingDetail.id}`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <FileText size={14} />
+                          Folio
+                        </button>
+                        <button onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <X size={18} className="text-gray-500" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isEditing ? (
-                      <>
-                        <button
-                          onClick={() => setIsEditing(false)}
-                          className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSaveEdit}
-                          disabled={updateMutation.isPending}
-                          className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {updateMutation.isPending ? "Saving..." : "Save"}
-                        </button>
-                      </>
-                    ) : (
+                  {/* Tab Bar */}
+                  <div className="flex gap-1 px-5">
+                    {([
+                      { key: "overview" as const, label: "Overview", icon: User },
+                      { key: "payment" as const, label: "Payment", icon: CreditCard },
+                      { key: "notes" as const, label: "Notes", icon: FileText },
+                    ]).map(({ key, label, icon: Icon }) => (
                       <button
-                        onClick={startEditing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        key={key}
+                        onClick={() => setActiveTab(key)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                          activeTab === key
+                            ? "border-blue-600 text-blue-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        }`}
                       >
-                        <Pencil size={14} />
-                        Edit
+                        <Icon size={15} />
+                        {label}
                       </button>
-                    )}
-                    <button
-                      onClick={() => { setSelectedBookingRef(null); setIsEditing(false) }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <X size={18} className="text-gray-500" />
-                    </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="mb-6">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(bookingDetail.status)}`}>
-                    {statusLabelMap[bookingDetail.status] || bookingDetail.status?.replace("_", " ") || "—"}
-                  </span>
-                </div>
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 sm:p-5">
+                    {activeTab === "overview" && (
 
-                {/* Guest Info */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Guest Information</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <User size={16} className="text-gray-400" />
-                      <div className="flex-1">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editForm.guest_name}
-                            onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <>
-                            <p className="text-sm font-medium text-gray-900">{extractGuestName(bookingDetail)}</p>
-                            <p className="text-xs text-gray-500">Guest</p>
-                          </>
-                        )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Guest Info Card */}
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Guest Information</h3>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                              <User size={13} className="text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{extractGuestName(bookingDetail)}</p>
+                              <p className="text-xs text-gray-500">Guest Name</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                              <Mail size={13} className="text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900 truncate">{extractGuestEmail(bookingDetail)}</p>
+                              <p className="text-xs text-gray-500">Email</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                              <Phone size={13} className="text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">{extractGuestPhone(bookingDetail) || "—"}</p>
+                              <p className="text-xs text-gray-500">Phone</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Mail size={16} className="text-gray-400" />
-                      <div className="flex-1">
-                        {isEditing ? (
-                          <input
-                            type="email"
-                            value={editForm.guest_email}
-                            onChange={(e) => setEditForm({ ...editForm, guest_email: e.target.value })}
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-900">{extractGuestEmail(bookingDetail)}</p>
-                            <p className="text-xs text-gray-500">Email</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Phone size={16} className="text-gray-400" />
-                      <div className="flex-1">
-                        {isEditing ? (
-                          <input
-                            type="tel"
-                            value={editForm.guest_phone}
-                            onChange={(e) => setEditForm({ ...editForm, guest_phone: e.target.value })}
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-900">{extractGuestPhone(bookingDetail) || "—"}</p>
-                            <p className="text-xs text-gray-500">Phone</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Stay Info */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Stay Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={16} className="text-gray-400" />
-                      <div className="flex-1">
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="date"
-                              value={editForm.checkin_date}
-                              onChange={(e) => setEditForm({ ...editForm, checkin_date: e.target.value })}
-                              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className="text-gray-400">→</span>
-                            <input
-                              type="date"
-                              value={editForm.checkout_date}
-                              onChange={(e) => setEditForm({ ...editForm, checkout_date: e.target.value })}
-                              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      {/* Stay Details Card */}
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Stay Details</h3>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                              <Calendar size={13} className="text-purple-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {isEditing ? (
+                                <div className="flex items-center gap-1.5">
+                                  <input type="date" value={editForm.checkin_date} onChange={(e) => setEditForm({ ...editForm, checkin_date: e.target.value })} className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                  <span className="text-gray-400 text-xs shrink-0">to</span>
+                                  <input type="date" value={editForm.checkout_date} onChange={(e) => setEditForm({ ...editForm, checkout_date: e.target.value })} className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-900">
+                                    {new Date(bookingDetail.checkin_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                    <span className="text-gray-400 mx-1.5">&rarr;</span>
+                                    {new Date(bookingDetail.checkout_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Check-in / Check-out</p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                              <Bed size={13} className="text-green-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {(() => {
+                                const rooms = (bookingDetail as any).rooms
+                                if (rooms && Array.isArray(rooms) && rooms.length > 0) {
+                                  return (
+                                    <ul className="space-y-0.5">
+                                      {rooms.map((room: any, idx: number) => (
+                                        <li key={idx} className="flex items-center justify-between gap-2">
+                                          <div className="min-w-0">
+                                            <span className="text-sm font-medium text-gray-900">{room.room_name}</span>
+                                            <span className="text-xs text-gray-500 ml-1.5">({room.room_type}{room.bed_type ? `, ${room.bed_type}` : ""})</span>
+                                          </div>
+                                          {room.base_rate != null && (
+                                            <span className="text-xs text-gray-600 font-medium shrink-0">{formatAmount(Number(room.base_rate))}</span>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )
+                                }
+                                return <p className="text-sm text-gray-900">&mdash;</p>
+                              })()}
+                              <p className="text-xs text-gray-500 mt-0.5">Room(s)</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
+                              <User size={13} className="text-orange-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {isEditing ? (
+                                <div className="flex items-center gap-1.5">
+                                  <input type="number" min="0" value={editForm.number_of_adults} onChange={(e) => setEditForm({ ...editForm, number_of_adults: parseInt(e.target.value) || 0 })} className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                  <span className="text-xs text-gray-600">adults</span>
+                                  <input type="number" min="0" value={editForm.number_of_children} onChange={(e) => setEditForm({ ...editForm, number_of_children: parseInt(e.target.value) || 0 })} className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                  <span className="text-xs text-gray-600">children</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-900">
+                                    {(bookingDetail as any).number_of_adults || bookingDetail.adults || 0} adults
+                                    {((bookingDetail as any).number_of_children || bookingDetail.children)
+                                      ? `, ${(bookingDetail as any).number_of_children || bookingDetail.children} children`
+                                      : ""}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Guests</p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
+                              <FileText size={13} className="text-gray-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">{bookingDetail.booking_type?.replace("_", " ") || "—"}</p>
+                              <p className="text-xs text-gray-500">Booking Type</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "payment" && (
+                    <div className="space-y-4">
+                      {/* Payment Progress */}
+                      {Number(bookingDetail.total_amount) > 0 && (
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment Progress</h3>
+                            <span className="text-xs font-medium text-gray-500">
+                              {Math.min(100, Math.round((Number(bookingDetail.amount_paid) || 0) / Number(bookingDetail.total_amount) * 100))}% paid
+                            </span>
+                          </div>
+                          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                Number(bookingDetail.amount_due) > 0 ? "bg-orange-500" : "bg-green-500"
+                              }`}
+                              style={{ width: `${Math.min(100, (Number(bookingDetail.amount_paid) || 0) / Number(bookingDetail.total_amount) * 100)}%` }}
                             />
                           </div>
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-900">
-                              {new Date(bookingDetail.checkin_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                              {" → "}
-                              {new Date(bookingDetail.checkout_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                            </p>
-                            <p className="text-xs text-gray-500">Check-in / Check-out</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Bed size={16} className="text-gray-400 mt-0.5" />
-                      <div>
-                        {(() => {
-                          const rooms = (bookingDetail as any).rooms
-                          if (rooms && Array.isArray(rooms) && rooms.length > 0) {
-                            return (
-                              <ul className="text-sm text-gray-900 space-y-1">
-                                {rooms.map((room: any, idx: number) => (
-                                  <li key={idx} className="flex items-center justify-between">
-                                    <span>
-                                      <span className="font-medium">{room.room_name}</span>
-                                      <span className="text-gray-500 text-xs ml-1">({room.room_type}{room.bed_type ? `, ${room.bed_type}` : ""})</span>
-                                    </span>
-                                    {room.base_rate != null && (
-                                      <span className="text-xs text-gray-600 font-medium">{formatAmount(Number(room.base_rate))}</span>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
-                            )
-                          }
-                          return <p className="text-sm text-gray-900">—</p>
-                        })()}
-                        <p className="text-xs text-gray-500">Room(s)</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <User size={16} className="text-gray-400" />
-                      <div className="flex-1">
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              value={editForm.number_of_adults}
-                              onChange={(e) => setEditForm({ ...editForm, number_of_adults: parseInt(e.target.value) || 0 })}
-                              className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-600">adults</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editForm.number_of_children}
-                              onChange={(e) => setEditForm({ ...editForm, number_of_children: parseInt(e.target.value) || 0 })}
-                              className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-600">children</span>
+                          <div className="flex justify-between mt-2">
+                            <span className="text-xs text-green-600 font-medium">{formatAmount(Number(bookingDetail.amount_paid) || 0)} paid</span>
+                            {Number(bookingDetail.amount_due) > 0 && (
+                              <span className="text-xs text-orange-600 font-medium">{formatAmount(Number(bookingDetail.amount_due))} due</span>
+                            )}
                           </div>
+                        </div>
+                      )}
+
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Payment Details</h3>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                              <CreditCard size={13} className="text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-900">{(bookingDetail.payment_method || bookingDetail.payment_gateway || "\u2014").replace(/_/g, " ")}</p>
+                              <p className="text-xs text-gray-500">Payment Method</p>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Subtotal</span>
+                              <span className="text-sm font-medium text-gray-900">{formatAmount(Number(bookingDetail.subtotal) || 0)}</span>
+                            </div>
+                            {(bookingDetail as any).coupon_discount > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">
+                                  Coupon{((bookingDetail as any).coupon_code ? ` (${(bookingDetail as any).coupon_code})` : "")}
+                                </span>
+                                <span className="text-sm font-medium text-green-600">-{formatAmount(Number((bookingDetail as any).coupon_discount))}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                              <span className="text-sm font-semibold text-gray-900">Total Amount</span>
+                              <span className="text-sm font-bold text-gray-900">{formatAmount(Number(bookingDetail.total_amount) || 0)}</span>
+                            </div>
+                            {Number(bookingDetail.amount_paid) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Total Paid</span>
+                                <span className="text-sm font-medium text-green-600">{formatAmount(Number(bookingDetail.amount_paid))}</span>
+                              </div>
+                            )}
+                            {Number(bookingDetail.amount_due) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Amount Due</span>
+                                <span className="text-sm font-bold text-orange-600">{formatAmount(Number(bookingDetail.amount_due))}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "notes" && (
+                    <div className="space-y-3">
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Special Requests</h3>
+                        {isEditing ? (
+                          <textarea
+                            value={editForm.special_requests}
+                            onChange={(e) => setEditForm({ ...editForm, special_requests: e.target.value })}
+                            placeholder="No special requests"
+                            rows={3}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
                         ) : (
-                          <>
-                            <p className="text-sm text-gray-900">
-                              {(bookingDetail as any).number_of_adults || bookingDetail.adults || 0} adults
-                              {((bookingDetail as any).number_of_children || bookingDetail.children) 
-                                ? `, ${(bookingDetail as any).number_of_children || bookingDetail.children} children` 
-                                : ""}
-                            </p>
-                            <p className="text-xs text-gray-500">Guests</p>
-                          </>
+                          <p className="text-sm text-gray-600">{bookingDetail.special_requests || "\u2014"}</p>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <FileText size={16} className="text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-900">{bookingDetail.booking_type?.replace("_", " ") || "—"}</p>
-                        <p className="text-xs text-gray-500">Booking Type</p>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Internal Notes</h3>
+                        {isEditing ? (
+                          <textarea
+                            value={editForm.notes}
+                            onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                            placeholder="No notes"
+                            rows={2}
+                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-600">{bookingDetail.notes || "\u2014"}</p>
+                        )}
                       </div>
+                      {isEditing && (
+                        <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                          <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-2">Modification Reason</h3>
+                          <textarea
+                            value={editForm.reason}
+                            onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                            placeholder="e.g. Guest requested date adjustment"
+                            rows={2}
+                            className="w-full px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                          />
+                        </div>
+                      )}
                     </div>
+                  )}
                   </div>
                 </div>
-
-                {/* Payment Info */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <CreditCard size={16} className="text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-900">{(bookingDetail.payment_method || bookingDetail.payment_gateway || "—").replace(/_/g, " ")}</p>
-                        <p className="text-xs text-gray-500">Payment Method</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                      <span className="text-sm text-gray-600">Subtotal</span>
-                      <span className="text-sm font-medium text-gray-900">{formatAmount(Number(bookingDetail.subtotal) || 0)}</span>
-                    </div>
-                    {(bookingDetail as any).coupon_discount > 0 && (
-                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                        <span className="text-sm text-gray-600">
-                          Coupon{((bookingDetail as any).coupon_code ? ` (${(bookingDetail as any).coupon_code})` : "")}
-                        </span>
-                        <span className="text-sm font-medium text-green-600">-{formatAmount(Number((bookingDetail as any).coupon_discount))}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                      <span className="text-sm text-gray-600">Total Amount</span>
-                      <span className="text-sm font-bold text-gray-900">{formatAmount(Number(bookingDetail.total_amount) || 0)}</span>
-                    </div>
-                    {Number(bookingDetail.amount_paid) > 0 && (
-                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                        <span className="text-sm text-gray-600">Total Paid</span>
-                        <span className="text-sm font-medium text-green-600">{formatAmount(Number(bookingDetail.amount_paid))}</span>
-                      </div>
-                    )}
-                    {Number(bookingDetail.amount_due) > 0 && (
-                      <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                        <span className="text-sm text-gray-600">Amount Due</span>
-                        <span className="text-sm font-medium text-orange-600">{formatAmount(Number(bookingDetail.amount_due))}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Special Requests */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Special Requests</h3>
-                  {isEditing ? (
-                    <textarea
-                      value={editForm.special_requests}
-                      onChange={(e) => setEditForm({ ...editForm, special_requests: e.target.value })}
-                      placeholder="No special requests"
-                      rows={2}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-600">{bookingDetail.special_requests || "—"}</p>
-                  )}
-                </div>
-
-                {/* Notes */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Notes</h3>
-                  {isEditing ? (
-                    <textarea
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                      placeholder="No notes"
-                      rows={2}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-600">{bookingDetail.notes || "—"}</p>
-                  )}
-                </div>
-
-                {/* View Folio Button */}
-                <button
-                  onClick={() => navigate(`/frontdesk/folios?booking=${bookingDetail.booking_number || bookingDetail.ref_number || bookingDetail.id}`)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors border border-blue-200"
-                >
-                  <FileText size={16} />
-                  View Folio
-                </button>
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -1308,12 +1371,12 @@ export default function FrontdeskBookingsPage() {
       {/* Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="bg-red-600 text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 max-w-sm">
-            <X size={20} className="flex-shrink-0" />
+          <div className={`${toastType === "success" ? "bg-green-600" : "bg-red-600"} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 max-w-sm`}>
+            <CheckCircle size={20} className="flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium">{toastMessage}</p>
             </div>
-            <button onClick={() => setToastMessage("")} className="text-red-200 hover:text-white flex-shrink-0">
+            <button onClick={() => setToastMessage("")} className={`${toastType === "success" ? "text-green-200" : "text-red-200"} hover:text-white flex-shrink-0`}>
               <X size={16} />
             </button>
           </div>

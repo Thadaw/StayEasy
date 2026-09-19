@@ -15,7 +15,7 @@ export function ReserveStepper({ currentStep = 3 }: ReserveStepperProps) {
   const navigate = useNavigate()
   return (
     <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
-      <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
+      <div className="max-w-275 mx-auto px-4 sm:px-6 py-4 sm:py-5 relative">
         <button
           onClick={() => navigate(-1)}
           aria-label="Go back"
@@ -29,22 +29,22 @@ export function ReserveStepper({ currentStep = 3 }: ReserveStepperProps) {
             const isCurrent = step.number === currentStep
             return (
               <div key={step.number} className="flex items-center">
-                <div className="flex items-center gap-2">
-                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ${
                     isCompleted || isCurrent
                       ? 'bg-[#1A3C5E] text-white'
                       : 'bg-gray-300 text-gray-600'
                   }`}>
                     {step.number}
                   </span>
-                  <span className={`text-sm font-semibold ${
+                  <span className={`text-xs sm:text-sm font-semibold hidden sm:inline ${
                     isCompleted || isCurrent ? 'text-[#1A3C5E]' : 'text-gray-500'
                   }`}>
                     {step.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-4 min-w-15 max-w-30 ${
+                  <div className={`flex-1 h-0.5 mx-2 sm:mx-4 min-w-8 sm:min-w-15 max-w-16 sm:max-w-30 ${
                     step.number < currentStep ? 'bg-[#1A3C5E]' : 'bg-gray-200'
                   }`} />
                 )}

@@ -870,9 +870,9 @@ export default function ReservePage() {
       <Footer />
 
       {selectedPayment === "stripe" && !stripeState.paymentIntentId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:px-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 sm:px-6">
           <div className="absolute inset-0 bg-black/50" onClick={() => { setSelectedPayment(null); setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null }) }} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[70vh] max-h-[90vh] overflow-y-auto p-6">
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[1100px] min-h-[50vh] sm:min-h-[70vh] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <button
               onClick={() => { setSelectedPayment(null); setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null }) }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"

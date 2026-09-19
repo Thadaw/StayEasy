@@ -64,7 +64,7 @@ export function QuickActions({ onAction }: QuickActionsProps) {
         <h3 className="text-sm font-semibold text-gray-900">Quick Actions</h3>
       </div>
 
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
         {actions.map((action) => (
           <button
             key={action.id}

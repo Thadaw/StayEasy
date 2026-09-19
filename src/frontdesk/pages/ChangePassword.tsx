@@ -75,7 +75,7 @@ export default function ChangePassword() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           {/* Header */}
-          <div className="bg-[#1e3a5f] px-8 py-6 text-center">
+          <div className="bg-[var(--brand-primary,#1e3a5f)] px-8 py-6 text-center">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield size={32} className="text-white" />
             </div>
@@ -199,7 +199,7 @@ export default function ChangePassword() {
                 <button
                   onClick={handleSubmit}
                   disabled={loading || !currentPassword || !newPassword || !confirmPassword}
-                  className="w-full py-2.5 bg-[#1e3a5f] text-white rounded-lg font-medium hover:bg-[#162d4a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="w-full py-2.5 bg-[var(--brand-primary,#1e3a5f)] text-white rounded-lg font-medium hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? 'Updating...' : 'Update Password'}
                 </button>

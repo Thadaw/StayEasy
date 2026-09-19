@@ -40,8 +40,10 @@ function clearStoredSession() {
 }
 
 function redirectToLogin() {
-  const isHost = storageGet(ROLE_KEY) === 'host'
-  const loginPath = isHost ? '/host/login' : '/login'
+  const role = storageGet(ROLE_KEY)
+  let loginPath = '/login'
+  if (role === 'host') loginPath = '/host/login'
+  else if (role === 'staff') loginPath = '/staff/login'
   clearStoredSession()
   if (window.location.pathname !== loginPath) {
     const redirect = encodeURIComponent(window.location.pathname + window.location.search)
@@ -120,6 +122,8 @@ export function decodeTokenExp(token: string): number | null {
     return null
   }
 }
+
+export { refreshAccessToken }
 
 export function startTokenRefreshTimer(
   token: string | null,

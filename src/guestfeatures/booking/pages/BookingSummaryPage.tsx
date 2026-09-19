@@ -230,7 +230,7 @@ export default function BookingDetailsView() {
       <Navbar />
 
       <div className="bg-white border-b border-gray-200 sticky top-[56px] sm:top-[60px] md:top-[68px] z-40">
-        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-4 grid grid-cols-3 items-center">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-3 sm:py-4 grid grid-cols-3 items-center">
           <button
             onClick={() => navigate("/profile/bookings")}
             className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer justify-self-start"

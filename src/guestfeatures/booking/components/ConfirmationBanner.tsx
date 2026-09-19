@@ -45,7 +45,7 @@ export function ConfirmationBanner({
       </div>
 
       {propertyImage && (
-        <img src={propertyImage} alt={propertyName} className="w-full h-56 object-cover" />
+        <img src={propertyImage} alt={propertyName} className="w-full h-44 sm:h-56 object-cover" />
       )}
       <div className="p-5">
         {rating ? (

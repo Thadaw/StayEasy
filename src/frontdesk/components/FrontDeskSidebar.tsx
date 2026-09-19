@@ -137,6 +137,21 @@ function SidebarContent() {
   const hotelName = property?.name || "StayEasy"
   const brandColor = property?.brand_color || "#1e3a5f"
 
+  useEffect(() => {
+    if (!property) return
+    const root = document.documentElement
+    root.style.setProperty('--brand-primary', brandColor)
+    root.style.setProperty('--brand-dark', brandColor)
+    root.style.setProperty('--chart-1', brandColor)
+    root.style.setProperty('--sidebar', brandColor)
+    return () => {
+      root.style.removeProperty('--brand-primary')
+      root.style.removeProperty('--brand-dark')
+      root.style.removeProperty('--chart-1')
+      root.style.removeProperty('--sidebar')
+    }
+  }, [brandColor, property])
+
   const initials = user
     ? (user.firstName?.[0] || user.first_name?.[0] || 'S')
       + (user.lastName?.[0] || user.last_name?.[0] || '')

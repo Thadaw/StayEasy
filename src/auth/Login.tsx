@@ -92,7 +92,7 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: "'Segoe UI', sans-serif",
         position: 'relative',
       }}
@@ -109,20 +109,31 @@ export default function Login() {
       />
       <div
         style={{
-          width: 820,
-          height: 470,
+          width: '100%',
+          maxWidth: 820,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
+          flexDirection: 'row',
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
           visibility: videoReady ? 'visible' : 'hidden',
+          flexWrap: 'wrap',
         }}
       >
-        {/* Animated video panel — on the LEFT for login */}
-        <div style={{ width: '50%', background: '#000', order: 1, flexShrink: 0, overflow: 'hidden' }}>
+        {/* Animated video panel — on the LEFT for login, hidden on mobile */}
+        <div
+          style={{
+            width: '50%',
+            background: '#000',
+            order: 1,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block"
+        >
           <video
             src={loginAni}
             autoPlay
@@ -132,7 +143,7 @@ export default function Login() {
             preload="auto"
             onLoadedData={() => setVideoReady(true)}
             onError={() => setVideoReady(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
           />
         </div>
 
@@ -144,9 +155,10 @@ export default function Login() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: '36px 32px 42px',
+            padding: '28px 24px 32px',
             order: 2,
             flexShrink: 0,
+            boxSizing: 'border-box',
           }}
         >
           {/* Tabs */}
@@ -219,6 +231,7 @@ export default function Login() {
                 color: '#111',
                 outline: 'none',
                 background: 'transparent',
+                boxSizing: 'border-box',
               }}
             />
           </div>
@@ -253,6 +266,7 @@ export default function Login() {
                 color: '#111',
                 outline: 'none',
                 background: 'transparent',
+                boxSizing: 'border-box',
               }}
             />
             <button

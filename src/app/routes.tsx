@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '../shared/components/ProtectedRoute'
+import { StaffRedirect } from '../shared/components/StaffRedirect'
 
 const LandingPage = lazy(() => import('../guestfeatures/landing/pages/LandingPage'))
 const LoginPage = lazy(() => import('../auth/Login'))
@@ -73,7 +74,7 @@ const FooterPage = lazy(() => import('../guestfeatures/misc/pages/FooterPage'))
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<StaffRedirect><LandingPage /></StaffRedirect>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/host/login" element={<LoginPage />} />
@@ -84,51 +85,45 @@ export function AppRoutes() {
       <Route path="/host/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/reset-password/*" element={<ResetPasswordPage />} />
-      <Route path="/host/profile" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
-      <Route path="/host/admin-profile" element={<ProtectedRoute><AdminProfilePage /></ProtectedRoute>} />
-      <Route path="/host/portal" element={<ProtectedRoute><HostPortalPageNew /></ProtectedRoute>} />
-      <Route path="/host/tenant-setup" element={<ProtectedRoute><TenantSetupPage /></ProtectedRoute>} />
-      <Route path="/host/overall-dashboard" element={<ProtectedRoute><OverallDashboardPage /></ProtectedRoute>} />
-      <Route path="/host/my-properties" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/host/profile" element={<ProtectedRoute allowedRoles={['host']}><HostProfilePage /></ProtectedRoute>} />
+      <Route path="/host/portal" element={<ProtectedRoute allowedRoles={['host']}><HostPortalPageNew /></ProtectedRoute>} />
+      <Route path="/host/tenant-setup" element={<ProtectedRoute allowedRoles={['host']}><TenantSetupPage /></ProtectedRoute>} />
+      <Route path="/host/overall-dashboard" element={<ProtectedRoute allowedRoles={['host']}><OverallDashboardPage /></ProtectedRoute>} />
+      <Route path="/host/my-properties" element={<ProtectedRoute allowedRoles={['host']}><DashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
-      <Route path="/host/my-properties/dashboard/:propertyId" element={<ProtectedRoute><PropertyDashboardPage /></ProtectedRoute>} />
-      <Route path="/host/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
-      <Route path="/host/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
-      <Route path="/host/guests" element={<ProtectedRoute><GuestsPage /></ProtectedRoute>} />
-      <Route path="/host/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
-      <Route path="/host/staff/add" element={<ProtectedRoute><AddStaffPage /></ProtectedRoute>} />
-      <Route path="/host/staff/edit/:id" element={<ProtectedRoute><EditStaffPage /></ProtectedRoute>} />
-      <Route path="/host/staff/performance" element={<ProtectedRoute><StaffPerformancePage /></ProtectedRoute>} />
-      <Route path="/host/staff/shifts" element={<ProtectedRoute><StaffShiftsPage /></ProtectedRoute>} />
-      <Route path="/host/staff/shift-coverage" element={<ProtectedRoute><ShiftCoveragePage /></ProtectedRoute>} />
-      <Route path="/host/housekeeping" element={<ProtectedRoute><HousekeepingPage /></ProtectedRoute>} />
-      <Route path="/host/pricing/*" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
-      <Route path="/host/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-      <Route path="/host/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/host/payments" element={<ProtectedRoute><PaymentMethodsPage /></ProtectedRoute>} />
-      <Route path="/host/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
-      <Route path="/host/notifications" element={<ProtectedRoute><HostNotificationsPage /></ProtectedRoute>} />
-      <Route path="/host/activity" element={<ProtectedRoute><ActivityLogsPage /></ProtectedRoute>} />
-      <Route path="/host/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
-      <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/bookings" element={<ProtectedRoute><FrontdeskBookingsPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/payments" element={<ProtectedRoute><FrontDeskPaymentsPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/folios" element={<ProtectedRoute><FrontDeskFoliosPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/folio/:id/invoice" element={<ProtectedRoute><FolioInvoicePage /></ProtectedRoute>} />
-      <Route path="/frontdesk/room-status" element={<ProtectedRoute><FrontDeskRoomStatusPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/guests" element={<ProtectedRoute><FrontDeskGuestsPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/tasks" element={<ProtectedRoute><FrontDeskTasksPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/notifications" element={<ProtectedRoute><FrontDeskNotificationsPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/check-in" element={<ProtectedRoute><CheckInListPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/check-out" element={<ProtectedRoute><CheckOutListPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/in-house" element={<ProtectedRoute><InHousePage /></ProtectedRoute>} />
-      <Route path="/frontdesk/booking/:id" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/booking/:id/edit" element={<ProtectedRoute><EditBookingPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/checkout/:id" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/checkout/:id/receipt" element={<ProtectedRoute><CheckoutReceiptPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/checkout/:id/collect-payment" element={<ProtectedRoute><CollectPaymentPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/account" element={<ProtectedRoute><StaffAccountPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
+      <Route path="/host/my-properties/dashboard/:propertyId" element={<ProtectedRoute allowedRoles={['host']}><PropertyDashboardPage /></ProtectedRoute>} />
+      <Route path="/host/bookings" element={<ProtectedRoute allowedRoles={['host']}><BookingsPage /></ProtectedRoute>} />
+      <Route path="/host/rooms" element={<ProtectedRoute allowedRoles={['host']}><RoomsPage /></ProtectedRoute>} />
+      <Route path="/host/guests" element={<ProtectedRoute allowedRoles={['host']}><GuestsPage /></ProtectedRoute>} />
+      <Route path="/host/staff" element={<ProtectedRoute allowedRoles={['host']}><StaffPage /></ProtectedRoute>} />
+      <Route path="/host/housekeeping" element={<ProtectedRoute allowedRoles={['host']}><HousekeepingPage /></ProtectedRoute>} />
+      <Route path="/host/pricing/*" element={<ProtectedRoute allowedRoles={['host']}><PricingPage /></ProtectedRoute>} />
+      <Route path="/host/reports" element={<ProtectedRoute allowedRoles={['host']}><ReportsPage /></ProtectedRoute>} />
+      <Route path="/host/settings" element={<ProtectedRoute allowedRoles={['host']}><SettingsPage /></ProtectedRoute>} />
+      <Route path="/host/payments" element={<ProtectedRoute allowedRoles={['host']}><PaymentMethodsPage /></ProtectedRoute>} />
+      <Route path="/host/integrations" element={<ProtectedRoute allowedRoles={['host']}><IntegrationsPage /></ProtectedRoute>} />
+      <Route path="/host/notifications" element={<ProtectedRoute allowedRoles={['host']}><HostNotificationsPage /></ProtectedRoute>} />
+      <Route path="/host/activity" element={<ProtectedRoute allowedRoles={['host']}><ActivityLogsPage /></ProtectedRoute>} />
+      <Route path="/host/support" element={<ProtectedRoute allowedRoles={['host']}><SupportPage /></ProtectedRoute>} />
+      <Route path="/frontdesk" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/bookings" element={<ProtectedRoute allowedRoles={['staff']}><FrontdeskBookingsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/payments" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskPaymentsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/folios" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskFoliosPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/folio/:id/invoice" element={<ProtectedRoute allowedRoles={['staff']}><FolioInvoicePage /></ProtectedRoute>} />
+      <Route path="/frontdesk/room-status" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskRoomStatusPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/guests" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskGuestsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/tasks" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskTasksPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/notifications" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskNotificationsPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/check-in" element={<ProtectedRoute allowedRoles={['staff']}><CheckInListPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/check-out" element={<ProtectedRoute allowedRoles={['staff']}><CheckOutListPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/in-house" element={<ProtectedRoute allowedRoles={['staff']}><InHousePage /></ProtectedRoute>} />
+      <Route path="/frontdesk/booking/:id" element={<ProtectedRoute allowedRoles={['staff']}><CheckoutPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/booking/:id/edit" element={<ProtectedRoute allowedRoles={['staff']}><EditBookingPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id" element={<ProtectedRoute allowedRoles={['staff']}><CheckoutPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id/receipt" element={<ProtectedRoute allowedRoles={['staff']}><CheckoutReceiptPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/checkout/:id/collect-payment" element={<ProtectedRoute allowedRoles={['staff']}><CollectPaymentPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/account" element={<ProtectedRoute allowedRoles={['staff']}><StaffAccountPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/change-password" element={<ProtectedRoute allowedRoles={['staff']}><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/country/:code" element={<CountryPage />} />
       <Route path="/hotel/:id" element={<PropertyDetailPage />} />
       <Route path="/search" element={<SearchResultsPage />} />

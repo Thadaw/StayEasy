@@ -1,33 +1,57 @@
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Banknote, CreditCard, Wallet, Globe } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowLeft, Banknote, CreditCard, Wallet, Globe, Loader2 } from "lucide-react"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
-
-const MOCK_PAYMENT = {
-  id: "2",
-  guestName: "Sofia Rodriguez",
-  initials: "SR",
-  avatarColor: "bg-orange-100 text-orange-700",
-  roomNumber: "305",
-  roomType: "Deluxe Queen",
-  bookingNumber: "#HH9Q8P",
-  totalBill: 605,
-  paidAdvance: 300,
-  balanceDue: 305,
-  advanceMethod: "cash",
-}
+import { usePropertyStore } from "../../stores/propertyStore"
+import api from "../../services/axios"
 
 type PaymentMethod = "cash" | "credit_card" | "debit_card" | "online"
 
 export default function CollectPaymentPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { formatAmount, currency } = usePropertyCurrency()
+  const { formatAmount } = usePropertyCurrency()
+  const { currentPropertyId } = usePropertyStore()
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash")
-  const [paymentAmount, setPaymentAmount] = useState(MOCK_PAYMENT.balanceDue.toString())
+  const [paymentAmount, setPaymentAmount] = useState("")
   const [transactionId, setTransactionId] = useState("")
 
-  const guest = MOCK_PAYMENT
+  const { data: guest, isLoading } = useQuery({
+    queryKey: ["collect-payment", id, currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId || !id) return null
+      try {
+        const { data: result } = await api.get(
+          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
+        )
+        const wrapped = result as { data?: any }
+        const folio = wrapped?.data || result
+        const booking = folio?.booking || folio
+        const guestData = booking?.guest || {}
+        const rooms = booking?.rooms || []
+        const room = rooms[0] || {}
+        const totalBill = Number(booking?.total_amount) || Number(folio?.total) || 0
+        const amountPaid = Number(booking?.amount_paid) || 0
+        const balanceDue = totalBill - amountPaid
+        return {
+          guestName: guestData.full_name || "Guest",
+          initials: (guestData.full_name || "G").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
+          avatarColor: "bg-orange-100 text-orange-700",
+          roomNumber: room.room_number || room.room_name || "—",
+          roomType: room.room_type || "—",
+          bookingNumber: booking?.ref_number || booking?.booking_number || id,
+          totalBill,
+          paidAdvance: amountPaid,
+          balanceDue: Math.max(0, balanceDue),
+          advanceMethod: booking?.payment_method || "cash",
+        }
+      } catch {
+        return null
+      }
+    },
+    enabled: !!currentPropertyId && !!id,
+  })
 
   const paymentMethods = [
     { id: "cash" as PaymentMethod, label: "Cash", icon: Banknote, color: "text-green-600" },
@@ -35,6 +59,22 @@ export default function CollectPaymentPage() {
     { id: "debit_card" as PaymentMethod, label: "Debit Card", icon: Wallet, color: "text-purple-600" },
     { id: "online" as PaymentMethod, label: "Online Payment", icon: Globe, color: "text-orange-600" },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  if (!guest) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500">Payment information not found.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,7 +157,7 @@ export default function CollectPaymentPage() {
                 Payment Amount
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">{formatAmount(0).split(" ")[0]}</span>
                 <input
                   type="number"
                   min="0"

@@ -47,7 +47,7 @@ export function FilterSidebar({
   onClearAll,
 }: FilterSidebarProps) {
   return (
-    <aside className="w-[260px] shrink-0 border-r border-gray-200 pr-6">
+    <aside className="w-full lg:w-[260px] shrink-0 lg:border-r border-gray-200 lg:pr-6">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--brand-heading)" }}>

@@ -12,7 +12,6 @@ import {
   Search,
   User,
   LogOut,
-  Settings,
   AlertCircle,
   CheckCircle,
   Info
@@ -124,7 +123,7 @@ export function FrontDeskPage() {
     navigate('/staff/login')
   }
 
-  const notifications: Notification[] = [
+  const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
       type: "alert",
@@ -165,9 +164,13 @@ export function FrontDeskPage() {
       time: "2 hr ago",
       read: true
     },
-  ]
+  ])
 
   const unreadCount = notifications.filter(n => !n.read).length
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
 
   const currentDate = new Date()
   const formattedDate = currentDate.toLocaleDateString('en-US', { 
@@ -342,9 +345,7 @@ export function FrontDeskPage() {
         <MobileMenuButton />
         <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>
-            
-            <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>              <div className="flex items-center gap-2 sm:gap-4">
               <div className="relative w-full sm:w-80">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -352,12 +353,12 @@ export function FrontDeskPage() {
                   placeholder="Search booking, guest, phone..."
                   className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">
+                <span className="hidden sm:inline absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">
                   Ctrl + K
                 </span>
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
                 <CalendarCheck size={16} />
                 <span>{formattedDate}</span>
               </div>
@@ -385,7 +386,10 @@ export function FrontDeskPage() {
                       <div className="flex items-center justify-between p-4 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
                         <button 
-                          onClick={() => setShowNotifications(false)}
+                          onClick={() => {
+                            markAllRead()
+                            setShowNotifications(false)
+                          }}
                           className="text-sm text-blue-600 hover:text-blue-700"
                         >
                           Mark all read
@@ -468,16 +472,6 @@ export function FrontDeskPage() {
                           <User size={16} />
                           Account Settings
                         </button>
-                        <button
-                          onClick={() => {
-                            navigate("/frontdesk/notifications")
-                            setShowUserMenu(false)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Settings size={16} />
-                          Preferences
-                        </button>
                       </div>
                       <div className="border-t border-gray-100 py-2">
                         <button
@@ -516,6 +510,7 @@ export function FrontDeskPage() {
               currentRevenue={currentRevenue}
               lastWeekRevenue={lastWeekRevenue}
               growth={growth}
+              formatAmount={formatAmount}
             />
           </div>
 

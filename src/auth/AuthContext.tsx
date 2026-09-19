@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api, { type AuthRequestConfig, startTokenRefreshTimer } from '../services/axios'
+import api, { type AuthRequestConfig, startTokenRefreshTimer, refreshAccessToken } from '../services/axios'
 import type { User } from './types'
 
 type AuthRole = 'host' | 'guest' | 'staff'
@@ -132,6 +132,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) {
+      // Access token is missing/expired — try silent refresh using the stored refresh token.
+      const refreshToken = localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY)
+      if (refreshToken) {
+        setLoading(true)
+        refreshAccessToken()
+          .then((newToken) => {
+            setToken(newToken)
+          })
+          .catch(() => {
+            setUser(null)
+            setLoading(false)
+          })
+        return
+      }
       setUser(null)
       setLoading(false)
       return

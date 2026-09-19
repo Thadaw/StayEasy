@@ -17,7 +17,7 @@ import { allCountries } from "../../../data/countries"
 import { calculateNights } from "../../../shared/utils/time"
 import api from "../../../services/axios"
 
-const HOTEL_IMAGE_HEIGHT = "h-56"
+const HOTEL_IMAGE_HEIGHT = "h-44 sm:h-56"
 const MAX_AMENITIES_DISPLAY = 5
 const DEFAULT_PHONE_CODE = "+977"
 
@@ -250,7 +250,7 @@ export default function BookingDetailsPage() {
 
       {/* Full-width stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
-        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-5 relative">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-4 sm:py-5 relative">
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
@@ -259,29 +259,27 @@ export default function BookingDetailsPage() {
             <ArrowLeft size={16} />
           </button>
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">1</span>
-              <span className="text-sm font-semibold text-[#1A3C5E]">Your selection</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-xs sm:text-sm font-bold">1</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#1A3C5E] hidden sm:inline">Your selection</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-[#1A3C5E] mx-4 min-w-15 max-w-30" />
+            <div className="flex-1 h-0.5 bg-[#1A3C5E] mx-2 sm:mx-4 min-w-8 sm:min-w-15 max-w-16 sm:max-w-30" />
 
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">2</span>
-              <span className="text-sm font-semibold text-[#1A3C5E]">Enter your details</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-xs sm:text-sm font-bold">2</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#1A3C5E] hidden sm:inline">Enter your details</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-gray-200 mx-4 min-w-15 max-w-30" />
+            <div className="flex-1 h-0.5 bg-gray-200 mx-2 sm:mx-4 min-w-8 sm:min-w-15 max-w-16 sm:max-w-30" />
 
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-bold">3</span>
-              <span className="text-sm text-gray-500">Confirm your reservation</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs sm:text-sm font-bold">3</span>
+              <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">Confirm your reservation</span>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-[1250px] px-3.5 py-4 pb-10 sm:px-6 sm:py-5">
+      </div>        <div className="mx-auto w-full max-w-[1250px] px-3 sm:px-3.5 py-4 pb-10 sm:px-6 sm:py-5">
 
         <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
           <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>

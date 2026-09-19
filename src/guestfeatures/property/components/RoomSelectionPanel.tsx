@@ -84,11 +84,11 @@ export function RoomSelectionPanel({
   };
 
   return (
-    <div id="room-selection" className="p-6 bg-white mb-10">
-      <h2 className="font-semibold text-foreground mb-6" style={{ fontSize: "1.125rem" }}>Choose your room</h2>
+    <div id="room-selection" className="p-4 sm:p-6 bg-white mb-10">
+      <h2 className="font-semibold text-foreground mb-4 sm:mb-6" style={{ fontSize: "1.125rem" }}>Choose your room</h2>
 
-      <div className="bg-white rounded-2xl shadow-card border border-brand-primary-extra-light mb-8 w-full">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 md:items-stretch w-full">
+      <div className="bg-white rounded-2xl shadow-card border border-brand-primary-extra-light mb-6 sm:mb-8 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 md:items-stretch w-full">
           <div ref={datesRef} className="relative min-w-0">
             <button
               onClick={() => { setShowDates(v => !v); setShowGuests(false); }}
@@ -104,7 +104,7 @@ export function RoomSelectionPanel({
               <ChevronDown size={13} className={`ml-auto shrink-0 text-gray-400 transition-transform ${showDates ? "rotate-180" : ""}`} />
             </button>
           {showDates && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-modal border border-brand-primary-extra-light z-50 p-4 animate-in">
+            <div className="absolute top-full left-0 mt-2 w-[calc(100vw-2rem)] sm:w-72 max-w-72 bg-white rounded-xl shadow-modal border border-brand-primary-extra-light z-50 p-4 animate-in">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Select dates</p>
               <div className="flex flex-col gap-3">
                 <div>
@@ -154,7 +154,7 @@ export function RoomSelectionPanel({
             <ChevronDown size={13} className={`ml-auto shrink-0 text-gray-400 transition-transform ${showGuests ? "rotate-180" : ""}`} />
           </button>
           {showGuests && (
-            <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-modal border border-brand-primary-extra-light z-50 p-4 animate-in">
+            <div className="absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-72 max-w-72 bg-white rounded-xl shadow-modal border border-brand-primary-extra-light z-50 p-4 animate-in">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Guests & Rooms</p>
               {([
                 { key: "adults" as const, label: "Adults", sub: "Ages 13+", min: 1 },
@@ -183,25 +183,23 @@ export function RoomSelectionPanel({
 
         <button
           onClick={onSearch}
-          className="w-full h-full min-h-[42px] md:min-h-[48px] col-span-2 md:col-span-1 rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
+          className="w-full h-full min-h-[42px] md:min-h-[48px] col-span-1 sm:col-span-2 md:col-span-1 rounded-xl bg-brand-accent flex items-center justify-center gap-2 text-white hover:bg-brand-accent-hover transition-all duration-200 hover:shadow-lg hover:shadow-brand-accent/30 active:scale-95 mt-2 md:mt-0 md:shrink-0"
         >
           <Search size={15} />
           <span className="hidden md:inline text-sm font-semibold">Search</span>
         </button>
         </div>
-      </div>
-
-      <div className="md:flex md:gap-8">
+      </div>              <div className="flex flex-col md:flex-row gap-6 md:gap-8">
         <div className="md:w-2/3">
           <div className="space-y-3">
             {hotel.roomTypes.map((rt) => {
               const qty = roomQuantities[rt.id] || 0;
               const lineTotal = qty * rt.price * nights;
               return (
-                <div key={rt.id} id={`room-${rt.id}`} className={`flex flex-col md:flex-row items-stretch gap-4 p-4 rounded-xl border border-brand-primary-extra-light transition-all scroll-mt-32 ${selectedRoomId === rt.id ? 'bg-brand-primary-extra-light ring-2 ring-brand-primary-extra-light' : 'hover:bg-gray-50'}`}>
-                  <div className="flex gap-3 flex-1 min-w-0">
+                <div key={rt.id} id={`room-${rt.id}`} className={`flex flex-col md:flex-row items-stretch gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-brand-primary-extra-light transition-all scroll-mt-32 ${selectedRoomId === rt.id ? 'bg-brand-primary-extra-light ring-2 ring-brand-primary-extra-light' : 'hover:bg-gray-50'}`}>
+                  <div className="flex flex-col md:flex-row gap-3 flex-1 min-w-0">
                     <img src={rt.image} alt={rt.name} className="w-full md:w-36 h-48 md:h-36 rounded-lg object-cover shrink-0" />
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">{rt.name}</p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${rt.availableRooms > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -238,7 +236,7 @@ export function RoomSelectionPanel({
                       </button>
                     </div>
                   </div>
-                  <div className="shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between gap-3 md:gap-4">
+                  <div className="shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between gap-3 md:gap-4 border-t md:border-t-0 border-gray-100 pt-3 md:pt-0">
                     <div className="text-right">
                       <p className="text-sm font-bold text-foreground">{currency}{rt.price}<span className="text-[10px] font-normal text-muted-foreground">/night</span></p>
                     </div>
@@ -279,7 +277,7 @@ export function RoomSelectionPanel({
           </div>
         </div>
 
-        <aside className="md:w-1/3 self-start md:sticky md:top-32 md:mt-30">
+        <aside className="w-full md:w-1/3 self-start md:sticky md:top-32 md:mt-30">
           <div className="md:pt-0">
             <div className="mb-4 text-sm text-muted-foreground">
               <div className="flex justify-between">

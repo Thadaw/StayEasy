@@ -16,10 +16,10 @@ export default function Coupons() {
   return (
     <div className="max-w-4xl">
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-brand-card-border">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border">
           <h2 className="text-base font-semibold text-brand-heading">My Coupons</h2>
         </div>
-        <div className="p-6 space-y-8">
+        <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-2 rounded-full bg-brand-success" />

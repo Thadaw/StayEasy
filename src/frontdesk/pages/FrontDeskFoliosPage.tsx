@@ -17,6 +17,7 @@ import {
   WalletCards,
   ReceiptText,
   ExternalLink,
+  Calendar,
 } from "lucide-react"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { usePropertyStore } from "../../stores/propertyStore"
@@ -48,6 +49,7 @@ interface Folio {
   guest_id?: string
   guestId?: string
   guest: string
+  guest_email?: string
   room?: string
   initials?: string
   status: string
@@ -57,6 +59,7 @@ interface Folio {
   total: number
   settled_at?: string
   settledAt?: string
+  charges_count?: number
   charges: Charge[]
   created_at?: string
   updated_at?: string
@@ -108,6 +111,7 @@ function mapApiFolioToFolio(apiFolio: ApiFolio, guestName?: string, roomName?: s
     guest_id: apiFolio.guest_id || undefined,
     guestId: apiFolio.guest_id || undefined,
     guest: name,
+    guest_email: apiFolio.guest_email,
     room: roomName || "",
     initials: name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase(),
     status: apiFolio.status?.toUpperCase() as FolioStatus,
@@ -117,6 +121,7 @@ function mapApiFolioToFolio(apiFolio: ApiFolio, guestName?: string, roomName?: s
     total: Number(apiFolio.total) || 0,
     settled_at: apiFolio.settled_at,
     settledAt: apiFolio.settled_at,
+    charges_count: apiFolio.charges_count,
     charges: [],
     created_at: apiFolio.created_at,
     updated_at: apiFolio.updated_at,
@@ -124,83 +129,15 @@ function mapApiFolioToFolio(apiFolio: ApiFolio, guestName?: string, roomName?: s
   }
 }
 
-const DEMO_FOLIOS: Folio[] = [
-  {
-    id: "F-4281",
-    booking_id: "BK-19842",
-    bookingId: "BK-19842",
-    guest_id: "GS-3310",
-    guest: "Amelia Thompson",
-    room: "Suite 804",
-    initials: "AT",
-    status: "OPEN",
-    subtotal: 1250,
-    tax: 125,
-    discount: 75,
-    total: 1300,
-    updated_at: "2026-09-16T09:42:00Z",
-    updatedAt: "2026-09-16T09:42:00Z",
-    charges: [
-      { id: "CH-1", description: "Room · Suite 804", amount: 980, category: "ROOM CHARGE", postedBy: "Elena R.", postedAt: "SEP 16, 09:42", icon: "room" },
-      { id: "CH-2", description: "Harvest Table · Dinner", amount: 165, category: "DINING", postedBy: "Marcus L.", postedAt: "Sep 15, 20:18", icon: "dining" },
-      { id: "CH-3", description: "In-room massage · 60 min", amount: 105, category: "SPA", postedBy: "Nina P.", postedAt: "Sep 15, 16:05", icon: "spa" },
-    ],
-  },
-  {
-    id: "F-4278",
-    booking_id: "BK-19835",
-    bookingId: "BK-19835",
-    guest_id: "GS-3298",
-    guest: "Noah Williams",
-    room: "Room 412",
-    initials: "NW",
-    status: "OPEN",
-    subtotal: 840,
-    tax: 84,
-    discount: 0,
-    total: 924,
-    updated_at: "2026-09-16T08:12:00Z",
-    updatedAt: "2026-09-16T08:12:00Z",
-    charges: [
-      { id: "CH-4", description: "Room · Room 412", amount: 840, category: "ROOM CHARGE", postedBy: "Elena R.", postedAt: "Sep 16, 08:12", icon: "room" },
-    ],
-  },
-  {
-    id: "F-4275",
-    booking_id: "BK-19821",
-    bookingId: "BK-19821",
-    guest_id: "GS-3267",
-    guest: "Sofia Martinez",
-    room: "Garden Villa 2",
-    initials: "SM",
-    status: "SETTLED",
-    subtotal: 2160,
-    tax: 216,
-    discount: 120,
-    total: 2256,
-    settledAt: "Sep 15, 18:24",
-    updated_at: "2026-09-15T18:24:00Z",
-    updatedAt: "2026-09-15T18:24:00Z",
-    charges: [
-      { id: "CH-5", description: "Garden Villa · 3 nights", amount: 2160, category: "ROOM CHARGE", postedBy: "Ari K.", postedAt: "Sep 15, 16:32", icon: "room" },
-    ],
-  },
-]
 
-function StatusPill({ status }: { status: string }) {
-  const s = status?.toUpperCase() || "OPEN"
+function StatusPill({ settledAt }: { settledAt?: string }) {
+  const isSettled = !!settledAt
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-      s === "OPEN" ? "bg-emerald-50 text-emerald-600" :
-      s === "SETTLED" ? "bg-gray-100 text-gray-500" :
-      "bg-red-100 text-red-600"
+      isSettled ? "bg-gray-100 text-gray-500" : "bg-emerald-50 text-emerald-600"
     }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${
-        s === "OPEN" ? "bg-emerald-500" :
-        s === "SETTLED" ? "bg-gray-400" :
-        "bg-red-500"
-      }`} />
-      {s === "OPEN" ? "Open" : s === "SETTLED" ? "Settled" : "Void"}
+      <span className={`w-1.5 h-1.5 rounded-full ${isSettled ? "bg-gray-400" : "bg-emerald-500"}`} />
+      {isSettled ? "Settled" : "Open"}
     </span>
   )
 }
@@ -247,10 +184,37 @@ export default function FrontDeskFoliosPage() {
   const [chargeDescription, setChargeDescription] = useState("")
   const [chargeAmount, setChargeAmount] = useState("")
   const [chargeCategory, setChargeCategory] = useState("DINING")
+  const [categorySearch, setCategorySearch] = useState("Dining")
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [editingCharge, setEditingCharge] = useState<Charge | null>(null)
+  const [editChargeDescription, setEditChargeDescription] = useState("")
+  const [editChargeAmount, setEditChargeAmount] = useState("")
+  const [editChargeCategory, setEditChargeCategory] = useState("DINING")
+  const [editCategorySearch, setEditCategorySearch] = useState("Dining")
+  const [editCategoryOpen, setEditCategoryOpen] = useState(false)
+
+  const categoryOptions = [
+    { value: "DINING", label: "Dining" },
+    { value: "ROOM_CHARGE", label: "Room Charge" },
+    { value: "SPA", label: "Spa" },
+    { value: "LAUNDRY", label: "Laundry" },
+    { value: "MINIBAR", label: "Minibar" },
+    { value: "TRANSPORT", label: "Transport" },
+    { value: "OTHER", label: "Other" },
+  ]
+
+  const filteredCategories = categoryOptions.filter((cat) =>
+    cat.label.toLowerCase().includes(categorySearch.toLowerCase())
+  )
+
+  const filteredEditCategories = categoryOptions.filter((cat) =>
+    cat.label.toLowerCase().includes(editCategorySearch.toLowerCase())
+  )
+
   const [selectedBookingRef, setSelectedBookingRef] = useState("")
   const [newTax, setNewTax] = useState("0.00")
   const [newDiscount, setNewDiscount] = useState("0.00")
-  const { formatAmount: formatCurrency } = usePropertyCurrency()
+  const { formatAmount: formatCurrency, currency } = usePropertyCurrency()
 
   const bookingFilter = searchParams.get("booking") || ""
 
@@ -309,18 +273,69 @@ export default function FrontDeskFoliosPage() {
     return map
   }, [bookingGuests])
 
+  const { data: bookingsList = [] } = useQuery({
+    queryKey: ["bookings-for-folio-link", currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId) return []
+      try {
+        let all: Array<{ id: string; booking_number: string }> = []
+        let skip = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, {
+            params: { limit: 50, skip },
+          })
+          const wrapped = result as { data?: Array<{ id: string; booking_number: string }>; meta?: { has_more?: boolean } }
+          const batch = wrapped?.data || []
+          all = [...all, ...batch]
+          hasMore = wrapped?.meta?.has_more ?? batch.length === 50
+          skip += 50
+        }
+        return all
+      } catch {
+        return []
+      }
+    },
+    enabled: !!currentPropertyId,
+  })
+
+  const bookingIdToNumber = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const b of bookingsList) {
+      if (b.id && b.booking_number) {
+        map[b.id] = b.booking_number
+      }
+    }
+    return map
+  }, [bookingsList])
+
   const eligibleBookings = useMemo(() => {
     return bookingGuests.filter((b) => !!b.ref_number)
   }, [bookingGuests])
 
+  const bookingLookup = useMemo(() => {
+    const map: Record<string, { checkin_date: string; checkout_date: string; ref_number: string }> = {}
+    for (const g of bookingGuests) {
+      if (g.ref_number) {
+        map[g.ref_number] = { checkin_date: g.checkin_date, checkout_date: g.checkout_date, ref_number: g.ref_number }
+      }
+    }
+    return map
+  }, [bookingGuests])
+
   const displayFolios = useMemo(() => {
     const list = Array.isArray(apiFolios) ? apiFolios : []
-    return list.map((f) => ({
-      ...f,
-      guest: f.guest || "Guest",
-      initials: (f.guest || "Guest").split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
-    }))
-  }, [apiFolios])
+    return list.map((f) => {
+      const booking = bookingLookup[f.booking_id]
+      return {
+        ...f,
+        guest: f.guest || "Guest",
+        initials: (f.guest || "Guest").split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
+        checkin_date: booking?.checkin_date,
+        checkout_date: booking?.checkout_date,
+      }
+    })
+  }, [apiFolios, bookingLookup])
 
   const selected = useMemo(() => {
     if (selectedId) {
@@ -365,28 +380,32 @@ export default function FrontDeskFoliosPage() {
         }
         if (apiResult.success && apiResult.data) {
           const d = apiResult.data
+          const mappedCharges = (d.charges || []).map((c) => ({
+            id: c.id,
+            folio_id: c.folio_id,
+            description: c.description,
+            amount: Number(c.amount) || 0,
+            category: c.category,
+            posted_by: c.posted_by,
+            posted_by_name: c.posted_by_name,
+            postedBy: c.posted_by_name || "Staff",
+            posted_at: c.posted_at,
+            postedAt: c.posted_at,
+            icon: mapChargeIcon(c.category),
+          }))
+          const computedSubtotal = mappedCharges.reduce((sum, c) => sum + c.amount, 0)
+          const tax = Number(d.tax) || 0
+          const discount = Number(d.discount) || 0
           return {
             ...selected,
-            subtotal: Number(d.subtotal) || 0,
-            tax: Number(d.tax) || 0,
-            discount: Number(d.discount) || 0,
-            total: Number(d.total) || 0,
+            subtotal: computedSubtotal,
+            tax,
+            discount,
+            total: computedSubtotal + tax - discount,
             status: d.status?.toUpperCase() as FolioStatus,
             settled_at: d.settled_at,
             settledAt: d.settled_at,
-            charges: (d.charges || []).map((c) => ({
-              id: c.id,
-              folio_id: c.folio_id,
-              description: c.description,
-              amount: Number(c.amount) || 0,
-              category: c.category,
-              posted_by: c.posted_by,
-              posted_by_name: c.posted_by_name,
-              postedBy: c.posted_by_name || "Staff",
-              posted_at: c.posted_at,
-              postedAt: c.posted_at,
-              icon: mapChargeIcon(c.category),
-            })),
+            charges: mappedCharges,
           }
         }
         return null
@@ -398,13 +417,22 @@ export default function FrontDeskFoliosPage() {
     refetchOnMount: true,
   })
 
-  const displaySelected = folioDetail || selected
+  const displaySelected = folioDetail ? {
+    ...folioDetail,
+    booking_number: bookingIdToNumber[folioDetail.bookingId || folioDetail.booking_id] || folioDetail.bookingId || folioDetail.booking_id,
+  } : selected ? {
+    ...selected,
+    booking_number: bookingIdToNumber[selected.bookingId || selected.booking_id] || selected.bookingId || selected.booking_id,
+  } : null
 
   const filteredFolios = useMemo(() => {
     const normalized = search.toLowerCase()
     return displayFolios.filter((folio) => {
-      const matchesTab = activeTab === "All" || folio.status === activeTab
-      const matchesSearch = !normalized || [folio.id, folio.guest, folio.room, folio.bookingId, folio.booking_id].some((field) =>
+      const isSettled = !!folio.settled_at
+      const matchesTab = activeTab === "All" ||
+        (activeTab === "OPEN" && !isSettled) ||
+        (activeTab === "SETTLED" && isSettled)
+      const matchesSearch = !normalized || [folio.id, folio.guest, folio.guest_email, folio.room, folio.bookingId, folio.booking_id].some((field) =>
         field?.toLowerCase().includes(normalized)
       )
       return matchesTab && matchesSearch
@@ -413,13 +441,13 @@ export default function FrontDeskFoliosPage() {
 
   const counts = {
     all: displayFolios.length,
-    open: displayFolios.filter((f) => f.status?.toUpperCase() === "OPEN").length,
-    settled: displayFolios.filter((f) => f.status?.toUpperCase() === "SETTLED").length,
+    open: displayFolios.filter((f) => !f.settled_at).length,
+    settled: displayFolios.filter((f) => !!f.settled_at).length,
   }
 
   const outstandingBalance = useMemo(() => {
     return displayFolios
-      .filter((f) => f.status?.toUpperCase() === "OPEN")
+      .filter((f) => !f.settled_at)
       .reduce((sum, f) => sum + f.total, 0)
   }, [displayFolios])
 
@@ -503,6 +531,83 @@ export default function FrontDeskFoliosPage() {
       notify("Failed to add charge")
     },
   })
+
+  const updateChargeMutation = useMutation({
+    mutationFn: async (payload: { folioId: string; chargeId: string; description: string; amount: number; category: string }) => {
+      const { data: result } = await api.patch(
+        `/staff/folios/${payload.folioId}/charges/${payload.chargeId}`,
+        {
+          description: payload.description,
+          amount: payload.amount.toFixed(2),
+          category: payload.category,
+        }
+      )
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
+      queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
+      setEditingCharge(null)
+      setEditChargeDescription("")
+      setEditChargeAmount("")
+      setEditChargeCategory("DINING")
+      setEditCategorySearch("Dining")
+      notify("Charge updated successfully")
+    },
+    onError: (error: Error) => {
+      console.error("Failed to update charge:", error)
+      notify("Failed to update charge")
+    },
+  })
+
+  const deleteChargeMutation = useMutation({
+    mutationFn: async (payload: { folioId: string; chargeId: string }) => {
+      const { data: result } = await api.delete(
+        `/staff/folios/${payload.folioId}/charges/${payload.chargeId}`
+      )
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
+      queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
+      notify("Charge deleted successfully")
+    },
+    onError: (error: Error) => {
+      console.error("Failed to delete charge:", error)
+      notify("Failed to delete charge")
+    },
+  })
+
+  const handleUpdateCharge = () => {
+    if (!displaySelected || !editingCharge) return
+    if (!editChargeDescription.trim()) { notify("Description is required"); return }
+    const amount = parseFloat(editChargeAmount)
+    if (isNaN(amount) || amount <= 0) { notify("Enter a valid amount"); return }
+    updateChargeMutation.mutate({
+      folioId: displaySelected.id,
+      chargeId: editingCharge.id,
+      description: editChargeDescription.trim(),
+      amount,
+      category: editChargeCategory,
+    })
+  }
+
+  const handleDeleteCharge = (chargeId: string) => {
+    if (!displaySelected) return
+    if (!confirm("Are you sure you want to delete this charge?")) return
+    deleteChargeMutation.mutate({
+      folioId: displaySelected.id,
+      chargeId,
+    })
+  }
+
+  const openEditCharge = (charge: Charge) => {
+    setEditingCharge(charge)
+    setEditChargeDescription(charge.description)
+    setEditChargeAmount(String(charge.amount))
+    setEditChargeCategory(charge.category?.toUpperCase().replace(/ /g, "_") || "DINING")
+    setEditCategorySearch(charge.category || "Dining")
+  }
 
   const handleCreateFolio = () => {
     if (!selectedBookingRef.trim()) {
@@ -733,17 +838,29 @@ export default function FrontDeskFoliosPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-gray-900">{folio.guest}</span>
+                              <StatusPill settledAt={folio.settled_at} />
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                              <span>{folio.id.slice(0, 8)}...</span>
-                              {folio.room && <><span>·</span><span>{folio.room}</span></>}
+                            {folio.guest_email && (
+                              <div className="text-xs text-gray-500 mt-0.5">{folio.guest_email}</div>
+                            )}
+                            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                              {folio.checkin_date && folio.checkout_date && (
+                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-medium">
+                                  {folio.checkin_date} → {folio.checkout_date}
+                                </span>
+                              )}
+                              {folio.charges_count != null && (
+                                <span>{folio.charges_count} charge{folio.charges_count !== 1 ? 's' : ''}</span>
+                              )}
                             </div>
+                            {folio.room && (
+                              <div className="text-xs text-gray-500 mt-0.5">{folio.room}</div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <StatusPill status={folio.status} />
-                            <div className="text-right min-w-[90px]">
+                          <div className="flex items-center gap-3 shrink-0 text-right">
+                            <div>
                               <div className="text-sm font-bold text-gray-900">{formatCurrency(folio.total)}</div>
-                              <div className="text-xs text-gray-400">{folio.updatedAt ? new Date(folio.updatedAt).toLocaleDateString() : ""}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">#{folio.id.slice(0, 8)}</div>
                             </div>
                             <ChevronRight size={16} className="text-gray-300" />
                           </div>
@@ -794,38 +911,57 @@ export default function FrontDeskFoliosPage() {
                       <div>
                         <h2 className="text-xl font-bold text-gray-900">{displaySelected.guest}</h2>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-sm font-bold text-rose-500">{displaySelected.id.slice(0, 8)}...</span>
+                          <span className="text-sm font-bold text-rose-500">Folio #{displaySelected.id.slice(0, 8)}</span>
                           <span className="text-gray-400">·</span>
-                          <StatusPill status={displaySelected.status} />
+                          <StatusPill settledAt={displaySelected.settled_at} />
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  {displaySelected.guest_email && (
+                    <div className="text-sm text-gray-500 mb-2">{displaySelected.guest_email}</div>
+                  )}
+
+                  {displaySelected.checkin_date && displaySelected.checkout_date && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                      <Calendar size={14} className="text-gray-400" />
+                      <span>{displaySelected.checkin_date} → {displaySelected.checkout_date}</span>
+                    </div>
+                  )}
+
                   {displaySelected.room && (
                     <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
                       <BedDouble size={14} />
                       <span>{displaySelected.room}</span>
                     </div>
                   )}
-                  {displaySelected.bookingId && (
+
+                  {displaySelected.booking_number && (
                     <button
-                      onClick={() => navigate("/frontdesk/bookings")}
+                      onClick={() => navigate(`/frontdesk/bookings?booking=${displaySelected.booking_number}`)}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-2"
                     >
-                      Booking {displaySelected.bookingId}
+                      Booking {displaySelected.booking_number.slice(0, 8)}
                       <ExternalLink size={12} />
                     </button>
                   )}
                 </div>
 
                 {/* Balance Card */}
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
-                  <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Current Balance</div>
-                  <div className="text-4xl font-bold text-gray-900">{formatCurrency(displaySelected.total)}</div>
-                  <div className="flex items-center gap-3 mt-3 text-sm text-gray-600">
-                    <span>Updated {displaySelected.updatedAt ? new Date(displaySelected.updatedAt).toLocaleDateString() : ""}</span>
-                  </div>
-                </div>
+                {(() => {
+                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const computedTotal = computedSubtotal + (displaySelected.tax || 0) - (displaySelected.discount || 0)
+                  return (
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
+                      <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Current Balance</div>
+                      <div className="text-4xl font-bold text-gray-900">{formatCurrency(computedTotal)}</div>
+                      <div className="flex items-center gap-3 mt-3 text-sm text-gray-600">
+                        <span>Updated {displaySelected.updatedAt ? new Date(displaySelected.updatedAt).toLocaleDateString() : ""}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-3">
@@ -866,7 +1002,7 @@ export default function FrontDeskFoliosPage() {
                   </div>
                   <div className="space-y-3">
                     {displaySelected.charges.map((charge: Charge) => (
-                      <div key={charge.id} className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-xl">
+                      <div key={charge.id} className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-xl group">
                         <ChargeIcon type={charge.icon} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold text-gray-900">{charge.description}</div>
@@ -877,6 +1013,22 @@ export default function FrontDeskFoliosPage() {
                           <div className="text-sm font-bold text-gray-900">{formatCurrency(charge.amount)}</div>
                           <div className="text-xs text-gray-500">{charge.postedBy}</div>
                         </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => openEditCharge(charge)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit charge"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCharge(charge.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete charge"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
                     {displaySelected.charges.length === 0 && (
@@ -886,29 +1038,37 @@ export default function FrontDeskFoliosPage() {
                 </div>
 
                 {/* Totals */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Summary</h3>
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Subtotal</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(displaySelected.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Tax</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(displaySelected.tax)}</span>
-                    </div>
-                    {displaySelected.discount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Discount</span>
-                        <span className="font-medium text-emerald-600">-{formatCurrency(displaySelected.discount)}</span>
+                {(() => {
+                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const tax = displaySelected.tax || 0
+                  const discount = displaySelected.discount || 0
+                  const computedTotal = computedSubtotal + tax - discount
+                  return (
+                    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-4">Summary</h3>
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Subtotal</span>
+                          <span className="font-medium text-gray-900">{formatCurrency(computedSubtotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Tax</span>
+                          <span className="font-medium text-gray-900">{formatCurrency(tax)}</span>
+                        </div>
+                        {discount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Discount</span>
+                            <span className="font-medium text-emerald-600">-{formatCurrency(discount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-3">
+                          <span className="text-gray-900">Total</span>
+                          <span className="text-gray-900">{formatCurrency(computedTotal)}</span>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-3">
-                      <span className="text-gray-900">Total</span>
-                      <span className="text-gray-900">{formatCurrency(displaySelected.total)}</span>
                     </div>
-                  </div>
-                </div>
+                  )
+                })()}
               </div>
             </div>
             )}
@@ -945,7 +1105,7 @@ export default function FrontDeskFoliosPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
                       min="0"
@@ -953,21 +1113,43 @@ export default function FrontDeskFoliosPage() {
                       value={chargeAmount}
                       onChange={(e) => setChargeAmount(e.target.value)}
                       placeholder="0.00"
-                      className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-                  <select
-                    value={chargeCategory}
-                    onChange={(e) => setChargeCategory(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="DINING">Dining</option>
-                    <option value="ROOM_CHARGE">Room Charge</option>
-                    <option value="SPA">Spa</option>
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={categorySearch}
+                      onChange={(e) => {
+                        setCategorySearch(e.target.value)
+                        setCategoryOpen(true)
+                      }}
+                      onFocus={() => setCategoryOpen(true)}
+                      onBlur={() => setTimeout(() => setCategoryOpen(false), 150)}
+                      placeholder="Type to search..."
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {categoryOpen && filteredCategories.length > 0 && (
+                      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-auto text-sm">
+                        {filteredCategories.map((cat) => (
+                          <li
+                            key={cat.value}
+                            onMouseDown={() => {
+                              setChargeCategory(cat.value)
+                              setCategorySearch(cat.label)
+                              setCategoryOpen(false)
+                            }}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${chargeCategory === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                          >
+                            {cat.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -981,6 +1163,98 @@ export default function FrontDeskFoliosPage() {
                 className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-medium hover:bg-rose-600 disabled:opacity-50"
               >
                 {addChargeMutation.isPending ? "Posting..." : "Post charge"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingCharge && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingCharge(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-xs font-semibold text-blue-500 uppercase tracking-wider mb-1">Edit Charge</p>
+                <h3 className="text-lg font-bold text-gray-900">Update charge</h3>
+                <p className="text-sm text-gray-500">Modify the charge details below.</p>
+              </div>
+              <button onClick={() => setEditingCharge(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <input
+                  type="text"
+                  value={editChargeDescription}
+                  onChange={(e) => setEditChargeDescription(e.target.value)}
+                  placeholder="e.g. Late checkout"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editChargeAmount}
+                      onChange={(e) => setEditChargeAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={editCategorySearch}
+                      onChange={(e) => {
+                        setEditCategorySearch(e.target.value)
+                        setEditCategoryOpen(true)
+                      }}
+                      onFocus={() => setEditCategoryOpen(true)}
+                      onBlur={() => setTimeout(() => setEditCategoryOpen(false), 150)}
+                      placeholder="Type to search..."
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {editCategoryOpen && filteredEditCategories.length > 0 && (
+                      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-auto text-sm">
+                        {filteredEditCategories.map((cat) => (
+                          <li
+                            key={cat.value}
+                            onMouseDown={() => {
+                              setEditChargeCategory(cat.value)
+                              setEditCategorySearch(cat.label)
+                              setEditCategoryOpen(false)
+                            }}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${editChargeCategory === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                          >
+                            {cat.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingCharge(null)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateCharge}
+                disabled={updateChargeMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateChargeMutation.isPending ? "Updating..." : "Update charge"}
               </button>
             </div>
           </div>
@@ -1028,28 +1302,28 @@ export default function FrontDeskFoliosPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Tax</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={newTax}
                       onChange={(e) => setNewTax(e.target.value)}
-                      className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={newDiscount}
                       onChange={(e) => setNewDiscount(e.target.value)}
-                      className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
                 </div>

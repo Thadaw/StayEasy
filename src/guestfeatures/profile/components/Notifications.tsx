@@ -19,7 +19,7 @@ export default function Notifications() {
   return (
     <div className="max-w-3xl">
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-card-border">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border">
           <h2 className="text-base font-semibold text-brand-heading flex items-center gap-2">
             Notifications
             {unreadCount > 0 && (
@@ -43,7 +43,7 @@ export default function Notifications() {
             return (
               <div
                 key={notification.id}
-                className={`flex items-start gap-4 px-6 py-4 transition-colors ${
+                className={`flex items-start gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 transition-colors ${
                   !notification.read ? 'bg-brand-secondary-surface' : ''
                 }`}
               >
