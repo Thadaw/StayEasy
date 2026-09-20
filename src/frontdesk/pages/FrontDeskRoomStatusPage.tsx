@@ -1,12 +1,18 @@
 import { useState, useMemo, useRef, Fragment } from "react"
 import { useNavigate } from "react-router-dom"
-import { ChevronLeft, ChevronRight, ChevronDown, X, Camera, Upload, Check, BedDouble } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, X, Camera, Upload, BedDouble } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { getRooms } from "../../services/pmsApi"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
+import { FormField } from "../components/FormField"
+import { walkInBookingSchema } from "../schemas/bookingSchema"
+import type { WalkInBookingFormData } from "../schemas/bookingSchema"
 
 interface CalendarDay {
   date: string
@@ -112,25 +118,35 @@ export default function FrontDeskRoomStatusPage() {
   const [showRoomDetail, setShowRoomDetail] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<CalendarRoom | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [toast, setToast] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  const [formData, setFormData] = useState({
-    guestName: "",
-    email: "",
-    phone: "",
-    nationality: "",
-    adults: 1,
-    children: 0,
-    paymentMethod: "CASH",
-    paymentGateway: "",
-    amountPaid: "",
-    advanceAmount: "",
-    couponCode: "",
-    specialRequests: "",
-    checkoutDate: "",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<WalkInBookingFormData>({
+    resolver: zodResolver(walkInBookingSchema) as any,
+    defaultValues: {
+      guestName: "",
+      phone: "",
+      nationality: "",
+      adults: 1,
+      children: 0,
+      checkoutDate: "",
+      paymentMethod: "CASH",
+      paymentGateway: "",
+      amountPaid: "",
+      advanceAmount: "",
+      couponCode: "",
+      specialRequests: "",
+    },
   })
+
+  const formData = watch()
+
   const [idDocument, setIdDocument] = useState<File | null>(null)
   const [idPreview, setIdPreview] = useState<string | null>(null)
   const [idDocumentBack, setIdDocumentBack] = useState<File | null>(null)
@@ -143,26 +159,23 @@ export default function FrontDeskRoomStatusPage() {
   }
 
   const endDate = useMemo(() => addDays(startDate, daysCount - 1), [startDate, daysCount])
+  const apiEndDate = useMemo(() => addDays(endDate, 1), [endDate])
 
-  const { data: calendarRooms = [], isLoading: calendarLoading } = useQuery({
-    queryKey: ["room-calendar", currentPropertyId, formatDateForAPI(startDate), formatDateForAPI(endDate), roomStatusFilter],
+  const { data: calendarRooms = [], isLoading: calendarLoading, isError: calendarError } = useQuery({
+    queryKey: ["room-calendar", currentPropertyId, formatDateForAPI(startDate), formatDateForAPI(apiEndDate), roomStatusFilter],
     queryFn: async (): Promise<CalendarRoom[]> => {
       if (!currentPropertyId) return []
-      try {
-        const params: Record<string, string> = {
-          start_date: formatDateForAPI(startDate),
-          end_date: formatDateForAPI(endDate),
-        }
-        if (roomStatusFilter) params.room_status = roomStatusFilter
-        const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/room-calendar`,
-          { params }
-        )
-        const response = result as CalendarResponse
-        return response?.data?.rooms || []
-      } catch {
-        return []
+      const params: Record<string, string> = {
+        start_date: formatDateForAPI(startDate),
+        end_date: formatDateForAPI(apiEndDate),
       }
+      if (roomStatusFilter) params.room_status = roomStatusFilter
+      const { data: result } = await api.get(
+        `/staff/properties/${currentPropertyId}/room-calendar`,
+        { params }
+      )
+      const response = result as CalendarResponse
+      return response?.data?.rooms || []
     },
     enabled: !!currentPropertyId,
   })
@@ -171,12 +184,8 @@ export default function FrontDeskRoomStatusPage() {
     queryKey: ["rooms-rates", currentPropertyId],
     queryFn: async (): Promise<{ room_id: string; base_rate: number }[]> => {
       if (!currentPropertyId) return []
-      try {
-        const rooms = await getRooms(currentPropertyId)
-        return rooms.map((r) => ({ room_id: r.id, base_rate: Number(r.base_rate) || 0 }))
-      } catch {
-        return []
-      }
+      const rooms = await getRooms(currentPropertyId)
+      return rooms.map((r) => ({ room_id: r.id, base_rate: Number(r.base_rate) || 0 }))
     },
     enabled: !!currentPropertyId,
   })
@@ -220,8 +229,8 @@ export default function FrontDeskRoomStatusPage() {
     (f) => floorFilter === "All Floors" || f.label === floorFilter
   )
 
-  const navigateWeek = (direction: number) => {
-    setStartDate((prev) => addDays(prev, direction * 7))
+  const navigateForward = (direction: number) => {
+    setStartDate((prev) => addDays(prev, direction * daysCount))
   }
 
   const goToToday = () => {
@@ -230,26 +239,35 @@ export default function FrontDeskRoomStatusPage() {
     setStartDate(d)
   }
 
-  const notify = (message: string) => {
-    setToast(message)
-    window.setTimeout(() => setToast(""), 2600)
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    setStartDate(d)
+  }
+
+  const notify = (message: string, isError = false) => {
+    if (isError) {
+      toast.error(message)
+    } else {
+      toast.success(message)
+    }
   }
 
   const resetBookingForm = () => {
-    setFormData({
+    reset({
       guestName: "",
-      email: "",
       phone: "",
       nationality: "",
       adults: 1,
       children: 0,
+      checkoutDate: "",
       paymentMethod: "CASH",
       paymentGateway: "",
       amountPaid: "",
       advanceAmount: "",
       couponCode: "",
       specialRequests: "",
-      checkoutDate: "",
     })
     removeIdDocument()
     removeIdDocumentBack()
@@ -273,11 +291,11 @@ export default function FrontDeskRoomStatusPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      notify("File must be under 5MB")
+      notify("File must be under 5MB", true)
       return
     }
     if (!file.type.startsWith("image/")) {
-      notify("Please upload an image file")
+      notify("Please upload an image file", true)
       return
     }
     setIdDocument(file)
@@ -296,11 +314,11 @@ export default function FrontDeskRoomStatusPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      notify("File must be under 5MB")
+      notify("File must be under 5MB", true)
       return
     }
     if (!file.type.startsWith("image/")) {
-      notify("Please upload an image file")
+      notify("Please upload an image file", true)
       return
     }
     setIdDocumentBack(file)
@@ -355,20 +373,18 @@ export default function FrontDeskRoomStatusPage() {
       notify("Booking created successfully")
     },
     onError: () => {
-      notify("Failed to create booking")
+      notify("Failed to create booking", true)
     },
   })
 
-  const handleCreateBooking = () => {
-    if (!formData.guestName.trim()) { notify("Enter guest name"); return }
-    if (!formData.email.trim()) { notify("Enter guest email"); return }
+  const handleCreateBooking = handleSubmit((data) => {
     if (!selectedRoom || !currentPropertyId) return
 
     const checkIn = formatDateForAPI(selectedDate)
-    const checkOut = formData.checkoutDate || formatDateForAPI(addDays(selectedDate, 1))
+    const checkOut = data.checkoutDate || formatDateForAPI(addDays(selectedDate, 1))
 
     if (checkOut <= checkIn) {
-      notify("Check-out date must be after check-in date")
+      notify("Check-out date must be after check-in date", true)
       return
     }
 
@@ -379,23 +395,22 @@ export default function FrontDeskRoomStatusPage() {
         room_ids: [selectedRoom.room_id],
         check_in: checkIn,
         check_out: checkOut,
-        adults: formData.adults,
-        children: formData.children,
-        guest_full_name: formData.guestName,
-        guest_email: formData.email,
-        guest_phone: formData.phone,
-        guest_nationality: formData.nationality,
-        coupon_code: formData.couponCode || undefined,
-        payment_method: formData.paymentMethod,
-        payment_gateway: formData.paymentGateway || undefined,
-        amount_paid: Number(formData.amountPaid) || 0,
-        advance_amount: Number(formData.advanceAmount || formData.amountPaid) || 0,
-        special_requests: formData.specialRequests || undefined,
+        adults: data.adults,
+        children: data.children,
+        guest_full_name: data.guestName,
+        guest_phone: data.phone,
+        guest_nationality: data.nationality,
+        coupon_code: data.couponCode || undefined,
+        payment_method: data.paymentMethod,
+        payment_gateway: data.paymentGateway || undefined,
+        amount_paid: Number(data.amountPaid) || 0,
+        advance_amount: Number(data.advanceAmount || data.amountPaid) || 0,
+        special_requests: data.specialRequests || undefined,
       },
       idDocumentFront: idDocument || undefined,
       idDocumentBack: idDocumentBack || undefined,
     })
-  }
+  })
 
   const getRoomDayStatus = (room: CalendarRoom, dateKey: string): RoomDayStatus => {
     const day = room.days.find((d) => d.date === dateKey)
@@ -408,7 +423,9 @@ export default function FrontDeskRoomStatusPage() {
     }
   }
 
-  const dateRangeLabel = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+  const dateRangeLabel = daysCount === 1
+    ? startDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+    : `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
 
   return (
     <FrontDeskSidebarProvider>
@@ -427,7 +444,7 @@ export default function FrontDeskRoomStatusPage() {
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              {daysCount}-night view, starting today · tap a cell to open room details or assign guests
+              {daysCount === 1 ? "Single day view" : `${daysCount}-day view`} · tap a cell to open room details or assign guests
             </p>
           </div>
 
@@ -437,7 +454,7 @@ export default function FrontDeskRoomStatusPage() {
               {/* Date Navigation */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => navigateWeek(-1)}
+                  onClick={() => navigateForward(-1)}
                   className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <ChevronLeft size={18} className="text-gray-600" />
@@ -449,7 +466,7 @@ export default function FrontDeskRoomStatusPage() {
                   <span className="hidden sm:inline">Today · </span>{dateRangeLabel}
                 </button>
                 <button
-                  onClick={() => navigateWeek(1)}
+                  onClick={() => navigateForward(1)}
                   className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <ChevronRight size={18} className="text-gray-600" />
@@ -499,7 +516,7 @@ export default function FrontDeskRoomStatusPage() {
                 {(["day", "7days", "14days", "month"] as ViewMode[]).map((mode) => (
                   <button
                     key={mode}
-                    onClick={() => setViewMode(mode)}
+                    onClick={() => handleViewModeChange(mode)}
                     className={`px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold rounded-md transition-colors ${
                       viewMode === mode
                         ? "bg-white text-gray-900 shadow-sm"
@@ -539,6 +556,12 @@ export default function FrontDeskRoomStatusPage() {
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
                 <p className="text-sm text-gray-500">Loading room calendar...</p>
+              </div>
+            ) : calendarError ? (
+              <div className="text-center py-16 px-4">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
+                  Failed to load room calendar. Please try again.
+                </p>
               </div>
             ) : filteredFloors.length === 0 ? (
               <div className="text-center py-16 px-4">
@@ -602,6 +625,12 @@ export default function FrontDeskRoomStatusPage() {
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
                 <p className="text-sm text-gray-500">Loading room calendar...</p>
+              </div>
+            ) : calendarError ? (
+              <div className="text-center py-16">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
+                  Failed to load room calendar. Please try again.
+                </p>
               </div>
             ) : filteredFloors.length === 0 ? (
               <div className="text-center py-16">
@@ -758,68 +787,56 @@ export default function FrontDeskRoomStatusPage() {
               <div className="mb-5">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Guest Details</p>
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                  <FormField label="Full Name" required error={errors.guestName?.message}>
                     <input
+                      {...register("guestName")}
                       type="text"
-                      value={formData.guestName}
-                      onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
                       placeholder="e.g. John Smith"
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
+                  </FormField>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <FormField label="Phone" error={errors.phone?.message}>
                       <input
+                        {...register("phone")}
                         type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="+1 234 567 890"
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                    </FormField>
+                    <FormField label="Nationality" error={errors.nationality?.message}>
                       <input
+                        {...register("nationality")}
                         type="text"
-                        value={formData.nationality}
-                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
                         placeholder="e.g. Nepali"
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
+                    </FormField>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Adults</label>
+                    <FormField label="Adults" error={errors.adults?.message}>
                       <input
+                        {...register("adults", { valueAsNumber: true })}
                         type="number"
                         min={1}
-                        value={formData.adults}
-                        onChange={(e) => setFormData({ ...formData, adults: Number(e.target.value) })}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Children</label>
+                    </FormField>
+                    <FormField label="Children" error={errors.children?.message}>
                       <input
+                        {...register("children", { valueAsNumber: true })}
                         type="number"
                         min={0}
-                        value={formData.children}
-                        onChange={(e) => setFormData({ ...formData, children: Number(e.target.value) })}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                    </FormField>
+                    <FormField label="Check-out" error={errors.checkoutDate?.message}>
                       <input
+                        {...register("checkoutDate")}
                         type="date"
-                        value={formData.checkoutDate}
-                        onChange={(e) => setFormData({ ...formData, checkoutDate: e.target.value })}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
+                    </FormField>
                   </div>
                 </div>
               </div>
@@ -880,11 +897,9 @@ export default function FrontDeskRoomStatusPage() {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Payment</p>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                    <FormField label="Payment Method" error={errors.paymentMethod?.message}>
                       <select
-                        value={formData.paymentMethod}
-                        onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                        {...register("paymentMethod")}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="CASH">Cash</option>
@@ -894,12 +909,10 @@ export default function FrontDeskRoomStatusPage() {
                         <option value="ESWA">eSewa</option>
                         <option value="BANK_TRANSFER">Bank Transfer</option>
                       </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Gateway</label>
+                    </FormField>
+                    <FormField label="Payment Gateway" error={errors.paymentGateway?.message}>
                       <select
-                        value={formData.paymentGateway}
-                        onChange={(e) => setFormData({ ...formData, paymentGateway: e.target.value })}
+                        {...register("paymentGateway")}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">None</option>
@@ -907,60 +920,52 @@ export default function FrontDeskRoomStatusPage() {
                         <option value="STRIPE">Stripe</option>
                         <option value="ESWA">eSewa</option>
                       </select>
-                    </div>
+                    </FormField>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid</label>
+                    <FormField label="Amount Paid" error={errors.amountPaid?.message}>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                         <input
+                          {...register("amountPaid")}
                           type="number"
                           min="0"
                           step="0.01"
-                          value={formData.amountPaid}
-                          onChange={(e) => setFormData({ ...formData, amountPaid: e.target.value })}
                           placeholder="0.00"
                           className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Advance Amount</label>
+                    </FormField>
+                    <FormField label="Advance Amount" error={errors.advanceAmount?.message}>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                         <input
+                          {...register("advanceAmount")}
                           type="number"
                           min="0"
                           step="0.01"
-                          value={formData.advanceAmount}
-                          onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })}
                           placeholder="0.00"
                           className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                    </div>
+                    </FormField>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Coupon Code</label>
+                  <FormField label="Coupon Code" error={errors.couponCode?.message}>
                     <input
+                      {...register("couponCode")}
                       type="text"
-                      value={formData.couponCode}
-                      onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
                       placeholder="Enter coupon code (optional)"
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                  </FormField>
+                  <FormField label="Special Requests" error={errors.specialRequests?.message}>
                     <textarea
-                      value={formData.specialRequests}
-                      onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+                      {...register("specialRequests")}
                       placeholder="Any special requests or notes..."
                       rows={2}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    ></textarea>
-                  </div>
+                    />
+                  </FormField>
                 </div>
               </div>
 
@@ -988,13 +993,6 @@ export default function FrontDeskRoomStatusPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {toast && (
-        <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-xl flex items-center gap-2.5 text-sm font-medium z-50">
-          <Check size={16} className="text-emerald-400" />
-          {toast}
         </div>
       )}
 

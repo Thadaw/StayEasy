@@ -21,28 +21,35 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+const avatarColors = [
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-green-100 text-green-700",
+  "bg-pink-100 text-pink-700",
+  "bg-purple-100 text-purple-700",
+  "bg-indigo-100 text-indigo-700",
+]
+
 function getAvatarColor(index: number): string {
-  const colors = [
-    "bg-blue-100 text-blue-700",
-    "bg-yellow-100 text-yellow-700",
-    "bg-green-100 text-green-700",
-    "bg-pink-100 text-pink-700",
-    "bg-purple-100 text-purple-700",
-    "bg-indigo-100 text-indigo-700",
-  ]
-  return colors[index % colors.length]
+  return avatarColors[index % avatarColors.length]
 }
 
 function getPaymentStatus(booking: ArrivalGuest): "paid_in_full" | "balance_due" {
-  if (booking.payment_status?.toLowerCase() === "paid" || booking.payment_status?.toLowerCase() === "completed") return "paid_in_full"
-  if (booking.amount_due > 0) return "balance_due"
+  const status = booking.payment_status?.toLowerCase()
+  if (status === "paid" || status === "completed") {
+    return "paid_in_full"
+  }
+  if (booking.amount_due > 0) {
+    return "balance_due"
+  }
   return "paid_in_full"
 }
 
 function getNights(booking: ArrivalGuest): number {
   const checkin = new Date(booking.checkin_date)
   const checkout = new Date(booking.checkout_date)
-  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / msPerDay))
 }
 
 export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
@@ -52,26 +59,29 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: departures = [], isLoading } = useQuery({
+  const { data: departures = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["today-departures", currentPropertyId],
     queryFn: async () => {
       if (!currentPropertyId) return []
-      try {
-        const result = await getTodayDepartures(currentPropertyId)
-        return result
-      } catch {
-        return []
-      }
+      return getTodayDepartures(currentPropertyId)
     },
     enabled: !!currentPropertyId,
   })
 
-  const filtered = departures.filter(
-    (g) =>
-      g.guest?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.ref_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.rooms?.some((r) => r.room_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const handleCheckout = (refNumber: string) => {
+    navigate(`/frontdesk/checkout/${refNumber}`)
+  }
+
+  const search = searchQuery.trim().toLowerCase()
+  const filtered = departures.filter((departure) => {
+    const guestName = departure.guest?.full_name?.toLowerCase() || ""
+    const refNumber = departure.ref_number?.toLowerCase() || ""
+    return (
+      guestName.includes(search) ||
+      refNumber.includes(search) ||
+      departure.rooms?.some((room) => room.room_name?.toLowerCase().includes(search))
+    )
+  })
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -106,6 +116,16 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+        </div>
+      ) : isError ? (
+        <div className="p-8 text-center">
+          <p className="text-red-600 text-sm mb-3">Failed to load departures</p>
+          <button
+            onClick={() => refetch()}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Retry
+          </button>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -210,7 +230,7 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
                         </span>
                       ) : (
                         <button
-                          onClick={() => navigate(`/frontdesk/checkout/${booking.ref_number}`)}
+                          onClick={() => handleCheckout(booking.ref_number)}
                           className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                         >
                           Check Out
@@ -227,7 +247,7 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
 
       {!isLoading && filtered.length === 0 && (
         <div className="p-8 text-center text-gray-500 text-sm">
-          No departures found matching "{searchQuery}"
+          No Departures Found  "{searchQuery}"
         </div>
       )}
     </div>

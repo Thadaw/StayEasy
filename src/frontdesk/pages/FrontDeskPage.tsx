@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   CalendarCheck, 
   CalendarX, 
@@ -9,19 +9,33 @@ import {
   TrendingUp,
   Clock,
   Bell,
-  Search,
   User,
   LogOut,
   AlertCircle,
   CheckCircle,
-  Info
+  Info,
+  ChevronDown,
+  LogOut as LogOutIcon,
+  MessageSquare,
+  Wrench,
+  CreditCard,
+  Star,
+  Plus,
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { ErrorBoundary } from "../../shared/components/ErrorBoundary"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
-import { getFrontDeskSummary } from "../../services/pmsApi"
+import {
+  getFrontDeskSummary,
+  getTodayDepartures,
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "../../services/pmsApi"
+import type { StaffNotification } from "../../types/pms"
 import api from "../../services/axios"
 import { StatCard } from "../components/StatCard"
 import { OccupancyChart } from "../components/OccupancyChart"
@@ -31,14 +45,34 @@ import { NewBookingForm } from "../components/NewBookingForm"
 import { ArrivalsPanel } from "../components/ArrivalsPanel"
 import { DeparturesPanel } from "../components/DeparturesPanel"
 import { RoomStatusPanel } from "../components/RoomStatusPanel"
+import { useWebSocket } from "../hooks/useWebSocket"
 
-interface Notification {
-  id: number
-  type: "info" | "success" | "warning" | "alert"
-  title: string
-  message: string
-  time: string
-  read: boolean
+const NOTIF_ICON_MAP: Record<string, { Icon: typeof Bell; bg: string; color: string }> = {
+  guest_request: { Icon: MessageSquare, bg: "bg-teal-50", color: "text-teal-500" },
+  housekeeping: { Icon: Wrench, bg: "bg-blue-50", color: "text-blue-500" },
+  payment: { Icon: CreditCard, bg: "bg-amber-50", color: "text-amber-500" },
+  staff_handoff: { Icon: Users, bg: "bg-purple-50", color: "text-purple-500" },
+  booking: { Icon: Star, bg: "bg-green-50", color: "text-green-500" },
+  maintenance: { Icon: Wrench, bg: "bg-orange-50", color: "text-orange-500" },
+  alert: { Icon: AlertCircle, bg: "bg-red-50", color: "text-red-500" },
+  info: { Icon: Info, bg: "bg-blue-50", color: "text-blue-500" },
+}
+
+function getNotifDisplay(type: string) {
+  return NOTIF_ICON_MAP[type] ?? { Icon: Info, bg: "bg-gray-50", color: "text-gray-500" }
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins} min ago`
+  if (diffHours < 24) return `${diffHours} hr ago`
+  return `${diffDays}d ago`
 }
 
 export function FrontDeskPage() {
@@ -47,6 +81,7 @@ export function FrontDeskPage() {
   const { user, logout } = useAuth()
   const { formatAmount, currency } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
+  const queryClient = useQueryClient()
   const [showNewBooking, setShowNewBooking] = useState(false)
   const [showArrivals, setShowArrivals] = useState(false)
   const [showDepartures, setShowDepartures] = useState(false)
@@ -66,6 +101,13 @@ export function FrontDeskPage() {
     queryFn: () => getFrontDeskSummary(currentPropertyId!),
     enabled: !!currentPropertyId,
     refetchInterval: 30000,
+  })
+
+  const { data: todayDepartures = [] } = useQuery({
+    queryKey: ["today-departures", currentPropertyId],
+    queryFn: () => getTodayDepartures(currentPropertyId!),
+    enabled: !!currentPropertyId,
+    refetchInterval: 60000,
   })
 
   useEffect(() => {
@@ -123,54 +165,91 @@ export function FrontDeskPage() {
     navigate('/staff/login')
   }
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      type: "alert",
-      title: "VIP Guest Arrival",
-      message: "John Smith (VIP) checking in at 3:00 PM - Room 501",
-      time: "5 min ago",
-      read: false
+  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
+    queryKey: ["staff-notifications-dropdown", currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId) return []
+      const res = await getNotifications({ property_id: currentPropertyId, limit: 10 })
+      return res?.notifications ?? []
     },
-    {
-      id: 2,
-      type: "success",
-      title: "Check-in Completed",
-      message: "Emily Johnson checked into Room 205",
-      time: "15 min ago",
-      read: false
-    },
-    {
-      id: 3,
-      type: "warning",
-      title: "Late Checkout Request",
-      message: "Room 302 requested late checkout until 2:00 PM",
-      time: "32 min ago",
-      read: false
-    },
-    {
-      id: 4,
-      type: "info",
-      title: "Maintenance Scheduled",
-      message: "Room 108 AC maintenance at 4:00 PM",
-      time: "1 hr ago",
-      read: true
-    },
-    {
-      id: 5,
-      type: "alert",
-      title: "Payment Overdue",
-      message: "Room 405 outstanding balance of NPR 250",
-      time: "2 hr ago",
-      read: true
-    },
-  ])
+    enabled: !!currentPropertyId,
+    refetchInterval: 30000,
+  })
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
+    queryKey: ["unread-notifications-count", currentPropertyId],
+    queryFn: async () => {
+      if (!currentPropertyId) return 0
+      const count = await getUnreadNotificationCount(currentPropertyId)
+      return count
+    },
+    enabled: !!currentPropertyId,
+    refetchInterval: 30000,
+  })
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-  }
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentPropertyId) return
+      return markAllNotificationsRead(currentPropertyId)
+    },
+    onSuccess: () => {
+      refetchNotifications()
+      refetchUnreadCount()
+    },
+  })
+
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: () => {
+      refetchNotifications()
+      refetchUnreadCount()
+    },
+  })
+
+  const handleWebSocketMessage = useCallback(
+    (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data)
+        const eventType = data.type || data.event
+
+        if (!eventType || eventType === "connected" || eventType === "ping" || eventType === "pong") return
+
+        if (eventType === "booking_update" || eventType === "new_booking" || eventType === "booking") {
+          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: ["revenue-bookings", currentPropertyId] })
+          refetchNotifications()
+          refetchUnreadCount()
+        } else if (eventType === "check_in" || eventType === "check_out") {
+          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
+          refetchNotifications()
+          refetchUnreadCount()
+        } else if (eventType === "room_status" || eventType === "housekeeping") {
+          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
+          refetchNotifications()
+          refetchUnreadCount()
+        } else if (eventType === "notification") {
+          refetchNotifications()
+          refetchUnreadCount()
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
+          refetchNotifications()
+          refetchUnreadCount()
+        }
+      } catch {
+        // Ignore invalid JSON
+      }
+    },
+    [currentPropertyId, queryClient, refetchNotifications, refetchUnreadCount]
+  )
+
+  useWebSocket({
+    propertyId: currentPropertyId,
+    onMessage: handleWebSocketMessage,
+    enabled: !!currentPropertyId,
+  })
 
   const currentDate = new Date()
   const formattedDate = currentDate.toLocaleDateString('en-US', { 
@@ -179,32 +258,6 @@ export function FrontDeskPage() {
     year: 'numeric',
     weekday: 'short'
   })
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "alert":
-        return <AlertCircle size={16} className="text-red-500" />
-      case "success":
-        return <CheckCircle size={16} className="text-green-500" />
-      case "warning":
-        return <AlertCircle size={16} className="text-yellow-500" />
-      default:
-        return <Info size={16} className="text-blue-500" />
-    }
-  }
-
-  const getNotificationBg = (type: string) => {
-    switch (type) {
-      case "alert":
-        return "bg-red-50"
-      case "success":
-        return "bg-green-50"
-      case "warning":
-        return "bg-yellow-50"
-      default:
-        return "bg-blue-50"
-    }
-  }
 
   const stats = [
     {
@@ -264,8 +317,8 @@ export function FrontDeskPage() {
       if (!currentPropertyId) return []
       try {
         const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params: { limit: "50", skip: "0" } })
-        const wrapped = result as { data?: any[] }
-        return (wrapped?.data ?? result) as any[]
+        const wrapped = result as { data?: Array<{ created_at: string; total_amount: string }> }
+        return (wrapped?.data ?? result) as Array<{ created_at: string; total_amount: string }>
       } catch {
         return []
       }
@@ -291,7 +344,7 @@ export function FrontDeskPage() {
     const thisWeekRev = Array(7).fill(0)
     const lastWeekRev = Array(7).fill(0)
 
-    bookingsRevenue.forEach((b: any) => {
+    bookingsRevenue.forEach((b) => {
       const created = new Date(b.created_at)
       const amount = parseFloat(b.total_amount) || 0
 
@@ -328,11 +381,9 @@ export function FrontDeskPage() {
     } else if (actionId === "activities") {
       navigate("/frontdesk/tasks")
     }
-    console.log("Quick action:", actionId)
   }
 
-  const handleNewBookingComplete = (booking: any) => {
-    console.log("Booking completed:", booking)
+  const handleNewBookingComplete = (_booking: unknown) => {
     setShowNewBooking(false)
   }
 
@@ -345,19 +396,8 @@ export function FrontDeskPage() {
         <MobileMenuButton />
         <div className="p-4 lg:p-6 pt-14 lg:pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>              <div className="flex items-center gap-2 sm:gap-4">
-              <div className="relative w-full sm:w-80">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search booking, guest, phone..."
-                  className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-                <span className="hidden sm:inline absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">
-                  Ctrl + K
-                </span>
-              </div>
-              
+            <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>
+            <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
                 <CalendarCheck size={16} />
                 <span>{formattedDate}</span>
@@ -387,7 +427,7 @@ export function FrontDeskPage() {
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
                         <button 
                           onClick={() => {
-                            markAllRead()
+                            markAllReadMutation.mutate()
                             setShowNotifications(false)
                           }}
                           className="text-sm text-blue-600 hover:text-blue-700"
@@ -397,30 +437,43 @@ export function FrontDeskPage() {
                       </div>
                       
                       <div className="max-h-96 overflow-y-auto">
-                        {notifications.map((notification) => (
-                          <div
-                            key={notification.id}
-                            className={`flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 ${
-                              !notification.read ? "bg-blue-50/50" : ""
-                            }`}
-                          >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getNotificationBg(notification.type)}`}>
-                              {getNotificationIcon(notification.type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={`text-sm font-medium ${!notification.read ? "text-gray-900" : "text-gray-700"}`}>
-                                  {notification.title}
-                                </p>
-                                {!notification.read && (
-                                  <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
-                                )}
+                        {notifications.length === 0 ? (
+                          <div className="text-center py-8 text-gray-400 text-sm">No notifications</div>
+                        ) : (
+                          notifications.map((notification) => {
+                            const display = getNotifDisplay(notification.type)
+                            const IconComp = display.Icon
+                            return (
+                              <div
+                                key={notification.id}
+                                onClick={() => {
+                                  if (!notification.is_read) {
+                                    markReadMutation.mutate(notification.id)
+                                  }
+                                }}
+                                className={`flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 ${
+                                  !notification.is_read ? "bg-blue-50/50" : ""
+                                }`}
+                              >
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${display.bg}`}>
+                                  <IconComp size={16} className={display.color} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={`text-sm font-medium ${!notification.is_read ? "text-gray-900" : "text-gray-700"}`}>
+                                      {notification.title}
+                                    </p>
+                                    {!notification.is_read && (
+                                      <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-0.5">{notification.message}</p>
+                                  <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(notification.created_at)}</p>
+                                </div>
                               </div>
-                              <p className="text-sm text-gray-500 mt-0.5">{notification.message}</p>
-                              <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
-                            </div>
-                          </div>
-                        ))}
+                            )
+                          })
+                        )}
                       </div>
 
                       <div className="p-3 border-t border-gray-100">
@@ -447,7 +500,6 @@ export function FrontDeskPage() {
                   <span className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm text-white font-semibold uppercase">
                     {initials}
                   </span>
-                  <ChevronDown size={16} className="text-gray-400" />
                 </button>
 
                 {showUserMenu && (
@@ -492,18 +544,79 @@ export function FrontDeskPage() {
             </div>
           </div>
 
+          <div className="flex justify-end mb-6">
+            <button
+              onClick={() => setShowNewBooking(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={16} />
+              <span>New Booking</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
             {stats.map((stat, index) => (
               <StatCard key={index} {...stat} />
             ))}
           </div>
 
+          {/* Today's Action Cards */}
+          {todayDepartures.length > 0 && (
+            <div className="mb-6">
+              {/* Departures needing checkout */}
+              {todayDepartures.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <LogOutIcon size={16} className="text-orange-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">Departures Today</h3>
+                        <p className="text-xs text-gray-500">{todayDepartures.length} guest{todayDepartures.length !== 1 ? 's' : ''} to checkout</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate("/frontdesk/check-out")}
+                      className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {todayDepartures.slice(0, 4).map((guest) => (
+                      <div key={guest.booking_id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-xs font-bold text-orange-700 shrink-0">
+                            {guest.guest?.full_name?.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'G'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{guest.guest?.full_name || 'Guest'}</p>
+                            <p className="text-xs text-gray-500">Room {guest.rooms?.map((r: { room_name?: string }) => r.room_name).join(', ') || '—'}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0 ml-2">#{guest.ref_number?.slice(0, 6) || guest.booking_id?.slice(0, 6)}</span>
+                      </div>
+                    ))}
+                    {todayDepartures.length > 4 && (
+                      <div className="px-5 py-2 text-center">
+                        <button onClick={() => navigate("/frontdesk/check-out")} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+                          +{todayDepartures.length - 4} more
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <OccupancyChart 
               data={occupancyData}
               totalRooms={summary?.total_rooms ?? 0}
               occupancyRate={summary?.total_rooms ? Math.round(((summary?.occupied_rooms ?? 0) / summary.total_rooms) * 100) : 0}
-              vsLastWeek={0}
+              vsLastWeek={summary?.occupancy_vs_last_week ?? 0}
             />
             <RevenueChart 
               data={revenueData}
@@ -560,24 +673,6 @@ export function FrontDeskPage() {
       </main>
     </div>
     </FrontDeskSidebarProvider>
-  )
-}
-
-function ChevronDown({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
   )
 }
 
