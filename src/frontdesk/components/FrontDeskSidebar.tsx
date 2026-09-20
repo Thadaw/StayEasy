@@ -8,17 +8,18 @@ import {
   Users,
   CreditCard,
   CheckSquare,
-  Bell,
   FileText,
   LogIn,
   Menu,
   X,
   Home,
+  Bell,
 } from "lucide-react"
 import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
+import { getUnreadNotificationCount } from "../../services/pmsApi"
 
 interface SidebarContextType {
   isMobileOpen: boolean
@@ -81,18 +82,39 @@ export function MobileMenuButton() {
   )
 }
 
-const navItems = [
-  { to: "/frontdesk", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/frontdesk/bookings", icon: CalendarDays, label: "Bookings" },
-  { to: "/frontdesk/check-in", icon: LogIn, label: "Check-In" },
-  { to: "/frontdesk/check-out", icon: LogOut, label: "Check-Out" },
-  { to: "/frontdesk/in-house", icon: Home, label: "In House" },
-  { to: "/frontdesk/room-status", icon: BedDouble, label: "Room Status" },
-  { to: "/frontdesk/guests", icon: Users, label: "Guests" },
-  { to: "/frontdesk/payments", icon: CreditCard, label: "Payments" },
-  { to: "/frontdesk/folios", icon: FileText, label: "Folios" },
-  { to: "/frontdesk/tasks", icon: CheckSquare, label: "Tasks" },
-  { to: "/frontdesk/notifications", icon: Bell, label: "Notifications" },
+interface NavItem {
+  to: string
+  icon: React.ComponentType<{ size?: number }>
+  label: string
+}
+
+interface NavSection {
+  title?: string
+  items: NavItem[]
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "WORKSPACE",
+    items: [
+      { to: "/frontdesk", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/frontdesk/bookings", icon: CalendarDays, label: "Bookings" },
+      { to: "/frontdesk/check-in", icon: LogIn, label: "Check-In" },
+      { to: "/frontdesk/check-out", icon: LogOut, label: "Check-Out" },
+      { to: "/frontdesk/in-house", icon: Home, label: "In House" },
+      { to: "/frontdesk/room-status", icon: BedDouble, label: "Room Status" },
+      { to: "/frontdesk/guests", icon: Users, label: "Guests" },
+    ],
+  },
+  {
+    title: "FINANCE & ADMIN",
+    items: [
+      { to: "/frontdesk/payments", icon: CreditCard, label: "Payments" },
+      { to: "/frontdesk/folios", icon: FileText, label: "Folios" },
+      { to: "/frontdesk/tasks", icon: CheckSquare, label: "Booking Activities" },
+      { to: "/frontdesk/notifications", icon: Bell, label: "Notifications" },
+    ],
+  },
 ]
 
 function SidebarContent() {
@@ -115,23 +137,11 @@ function SidebarContent() {
     enabled: !!currentPropertyId,
   })
 
-  const { data: inHouseCount = 0 } = useQuery({
-    queryKey: ["in-house-count", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return 0
-      try {
-        const { data: result } = await api.get(`/staff/properties/${currentPropertyId}/booking-guests`, {
-          params: { skip: 0, limit: 1 },
-        })
-        const wrapped = result as { data?: unknown[]; total?: number }
-        return wrapped?.total ?? wrapped?.data?.length ?? 0
-      } catch {
-        return 0
-      }
-    },
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["unread-notifications-count", currentPropertyId],
+    queryFn: () => getUnreadNotificationCount(currentPropertyId!),
     enabled: !!currentPropertyId,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   })
 
   const hotelName = property?.name || "StayEasy"
@@ -208,33 +218,49 @@ function SidebarContent() {
       </div>
 
       <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.to === "/frontdesk"}
-                onClick={handleNavClick}
-                style={({ isActive }) =>
-                  isActive
-                    ? { backgroundColor: "white", color: brandColor }
-                    : undefined
-                }
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? "font-semibold"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                  }`
-                }
-              >
-                <item.icon size={18} />
-                <span className="text-sm">{item.label}</span>
-
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {navSections.map((section, sectionIdx) => (
+          <div key={sectionIdx} className={sectionIdx > 0 ? "mt-6" : ""}>
+            {section.title && (
+              <h3 className="px-4 mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                {section.title}
+              </h3>
+            )}
+            <ul className="space-y-1">
+              {section.items.map((item) => {
+                const isNotifications = item.to === "/frontdesk/notifications"
+                return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.to === "/frontdesk"}
+                    onClick={handleNavClick}
+                    style={({ isActive }) =>
+                      isActive
+                        ? { backgroundColor: "white", color: brandColor }
+                        : undefined
+                    }
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                        isActive
+                          ? "font-semibold"
+                          : "text-white/70 hover:bg-white/10 hover:text-white"
+                      }`
+                    }
+                  >
+                    <item.icon size={18} />
+                    <span className="text-sm flex-1">{item.label}</span>
+                    {isNotifications && unreadCount > 0 && (
+                      <span className="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 border-t border-white/10">

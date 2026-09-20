@@ -23,6 +23,8 @@ import type {
   BookingCreatePayload,
   WalkinBookingPayload,
   ArrivalGuest,
+  StaffNotification,
+  NotificationsResponse,
 } from '../types/pms'
 
 // The backend wraps every JSON response in a StandardResponse envelope:
@@ -118,9 +120,18 @@ export const createRooms = async (propertyId: string, data: RoomBulkCreateReques
 }
 
 export const getRooms = async (propertyId: string): Promise<RoomResponse[]> => {
-  const { data: result } = await api.get(`/properties/${propertyId}/rooms`)
-  const data = unwrapBody<RoomResponse[]>(result)
-  return Array.isArray(data) ? data : []
+  const all: RoomResponse[] = []
+  let skip = 0
+  const pageSize = 50
+  for (;;) {
+    const { data: result } = await api.get(`/properties/${propertyId}/rooms`, { params: { skip, limit: pageSize } })
+    const data = unwrapBody<RoomResponse[]>(result)
+    const batch: RoomResponse[] = Array.isArray(data) ? data : []
+    all.push(...batch)
+    if (batch.length < pageSize) break
+    skip += pageSize
+  }
+  return all
 }
 
 export const getRoom = async (propertyId: string, roomId: string): Promise<RoomResponse> => {
@@ -409,4 +420,33 @@ export const uploadCitizenshipPhotos = async (
     }
   )
   return unwrapBody<{ front: string; back: string }>(result)
+}
+
+// ─── Notifications ──────────────────────────────────────────
+
+export interface GetNotificationsParams {
+  property_id: string
+  skip?: number
+  limit?: number
+  unread_only?: boolean
+  notif_type?: string | null
+}
+
+export const getNotifications = async (params: GetNotificationsParams): Promise<NotificationsResponse> => {
+  const { data: result } = await api.get('/notifications', { params })
+  return unwrapBody<NotificationsResponse>(result)
+}
+
+export const getUnreadNotificationCount = async (propertyId: string): Promise<number> => {
+  const { data: result } = await api.get('/notifications/unread-count', { params: { property_id: propertyId } })
+  const data = unwrapBody<{ unread_count?: number }>(result)
+  return data?.unread_count ?? 0
+}
+
+export const markNotificationRead = async (notificationId: string): Promise<void> => {
+  await api.patch(`/notifications/${notificationId}/read`)
+}
+
+export const markAllNotificationsRead = async (propertyId: string): Promise<void> => {
+  await api.patch('/notifications/read-all', null, { params: { property_id: propertyId } })
 }

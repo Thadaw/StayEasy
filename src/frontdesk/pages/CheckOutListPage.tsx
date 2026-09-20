@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Search, LogOut, CheckCircle, Loader2 } from "lucide-react"
+import { Search, LogOut, CheckCircle } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useBookingCheckOutStore } from "../stores/bookingCheckOutStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
@@ -13,28 +13,35 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
+const avatarColors = [
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-green-100 text-green-700",
+  "bg-pink-100 text-pink-700",
+  "bg-purple-100 text-purple-700",
+  "bg-indigo-100 text-indigo-700",
+]
+
 function getAvatarColor(index: number): string {
-  const colors = [
-    "bg-blue-100 text-blue-700",
-    "bg-yellow-100 text-yellow-700",
-    "bg-green-100 text-green-700",
-    "bg-pink-100 text-pink-700",
-    "bg-purple-100 text-purple-700",
-    "bg-indigo-100 text-indigo-700",
-  ]
-  return colors[index % colors.length]
+  return avatarColors[index % avatarColors.length]
 }
 
 function getPaymentStatus(booking: ArrivalGuest): "paid_in_full" | "balance_due" {
-  if (booking.payment_status?.toLowerCase() === "paid" || booking.payment_status?.toLowerCase() === "completed") return "paid_in_full"
-  if (booking.amount_due > 0) return "balance_due"
+  const status = booking.payment_status?.toLowerCase()
+  if (status === "paid" || status === "completed") {
+    return "paid_in_full"
+  }
+  if (booking.amount_due > 0) {
+    return "balance_due"
+  }
   return "paid_in_full"
 }
 
 function getNights(booking: ArrivalGuest): number {
   const checkin = new Date(booking.checkin_date)
   const checkout = new Date(booking.checkout_date)
-  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / msPerDay))
 }
 
 export default function CheckOutListPage() {
@@ -44,25 +51,29 @@ export default function CheckOutListPage() {
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: departures = [], isLoading } = useQuery({
+  const { data: departures = [], isLoading, isError } = useQuery({
     queryKey: ["today-departures", currentPropertyId],
     queryFn: async () => {
       if (!currentPropertyId) return []
-      try {
-        return await getTodayDepartures(currentPropertyId)
-      } catch {
-        return []
-      }
+      return await getTodayDepartures(currentPropertyId)
     },
     enabled: !!currentPropertyId,
   })
 
-  const filtered = departures.filter(
-    (g) =>
-      g.guest?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.ref_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.rooms?.some((r) => r.room_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const handleCheckout = (refNumber: string) => {
+    navigate(`/frontdesk/checkout/${refNumber}`)
+  }
+
+  const search = searchQuery.trim().toLowerCase()
+  const filtered = departures.filter((departure) => {
+    const guestName = departure.guest?.full_name?.toLowerCase() || ""
+    const refNumber = departure.ref_number?.toLowerCase() || ""
+    return (
+      guestName.includes(search) ||
+      refNumber.includes(search) ||
+      departure.rooms?.some((room) => room.room_name?.toLowerCase().includes(search))
+    )
+  })
 
   return (
     <FrontDeskSidebarProvider>
@@ -75,7 +86,7 @@ export default function CheckOutListPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
             <LogOut size={22} className="text-orange-500" />
             <h1 className="text-xl font-bold text-gray-900">Check-Out</h1>
-            <span className="bg-orange-500 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
               {departures.length}
             </span>
             <div className="sm:flex-1" />
@@ -95,6 +106,10 @@ export default function CheckOutListPage() {
             {isLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+              </div>
+            ) : isError ? (
+              <div className="p-8 text-center text-red-500 text-sm">
+                Failed to load departures. Please try again later.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -199,7 +214,7 @@ export default function CheckOutListPage() {
                               </span>
                             ) : (
                               <button
-                                onClick={() => navigate(`/frontdesk/checkout/${booking.ref_number}`)}
+                                onClick={() => handleCheckout(booking.ref_number)}
                                 className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                               >
                                 Check Out
@@ -214,9 +229,25 @@ export default function CheckOutListPage() {
               </div>
             )}
 
-            {!isLoading && filtered.length === 0 && (
-              <div className="p-8 text-center text-gray-500 text-sm">
-                No departures found matching "{searchQuery}"
+            {!isLoading && departures.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                  <LogOut size={20} className="text-gray-400" />
+                </div>
+                <p className="text-gray-700 font-semibold">No departures today</p>
+                <p className="text-sm text-gray-500">Guests checking out today will appear here.</p>
+              </div>
+            )}
+
+            {!isLoading && departures.length > 0 && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <p className="text-gray-500 text-sm">No departures match your search.</p>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Clear search
+                </button>
               </div>
             )}
           </div>

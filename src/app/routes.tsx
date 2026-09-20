@@ -57,7 +57,7 @@ const CollectPaymentPage = lazy(() => import('../frontdesk/pages/CollectPaymentP
 const FrontDeskPaymentsPage = lazy(() => import('../frontdesk/pages/FrontDeskPaymentsPage'))
 const FrontDeskRoomStatusPage = lazy(() => import('../frontdesk/pages/FrontDeskRoomStatusPage'))
 const FrontDeskGuestsPage = lazy(() => import('../frontdesk/pages/FrontDeskGuestsPage'))
-const FrontDeskTasksPage = lazy(() => import('../frontdesk/pages/FrontDeskTasksPage'))
+const FrontDeskActivitiesPage = lazy(() => import('../frontdesk/pages/FrontDeskActivitiesPage'))
 const FrontDeskFoliosPage = lazy(() => import('../frontdesk/pages/FrontDeskFoliosPage'))
 const FolioInvoicePage = lazy(() => import('../frontdesk/pages/FolioInvoicePage'))
 const FrontDeskNotificationsPage = lazy(() => import('../frontdesk/pages/FrontDeskNotificationsPage'))
@@ -106,7 +106,7 @@ export function AppRoutes() {
       <Route path="/frontdesk/folio/:id/invoice" element={<ProtectedRoute allowedRoles={['staff']}><FolioInvoicePage /></ProtectedRoute>} />
       <Route path="/frontdesk/room-status" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskRoomStatusPage /></ProtectedRoute>} />
       <Route path="/frontdesk/guests" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskGuestsPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/tasks" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskTasksPage /></ProtectedRoute>} />
+      <Route path="/frontdesk/tasks" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskActivitiesPage /></ProtectedRoute>} />
       <Route path="/frontdesk/notifications" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskNotificationsPage /></ProtectedRoute>} />
       <Route path="/frontdesk/check-in" element={<ProtectedRoute allowedRoles={['staff']}><CheckInListPage /></ProtectedRoute>} />
       <Route path="/frontdesk/check-out" element={<ProtectedRoute allowedRoles={['staff']}><CheckOutListPage /></ProtectedRoute>} />

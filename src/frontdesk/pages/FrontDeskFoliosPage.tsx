@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import {
   Search,
-  Download,
   Plus,
   ChevronRight,
   Check,
@@ -19,12 +18,19 @@ import {
   ExternalLink,
   Calendar,
 } from "lucide-react"
+import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { ExportButton } from "../components/ExportButton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../services/axios"
 import * as XLSX from "xlsx"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { addChargeSchema, recordPaymentSchema, updateFolioSchema } from "../schemas/folioSchema"
+import type { AddChargeFormData, RecordPaymentFormData, UpdateFolioFormData } from "../schemas/folioSchema"
+import { FormField } from "../components/FormField"
 
 type FolioStatus = "OPEN" | "SETTLED" | "VOID"
 
@@ -57,6 +63,8 @@ interface Folio {
   tax: number
   discount: number
   total: number
+  amount_paid?: number
+  remaining_balance?: number
   settled_at?: string
   settledAt?: string
   charges_count?: number
@@ -92,6 +100,17 @@ interface ApiFolio {
   charges_count?: number
   created_at: string
   updated_at: string
+}
+
+interface PaymentResponse {
+  folio_id: string
+  folio_status: string
+  folio_total: number
+  amount_paid: number
+  remaining_balance: number
+  payment_status: string
+  payment_gateway: string
+  message: string
 }
 
 function mapChargeIcon(category: string): Charge["icon"] {
@@ -158,15 +177,16 @@ function ChargeIcon({ type }: { type: Charge["icon"] }) {
   )
 }
 
+const avatarColorMap: Record<string, string> = {
+  A: "bg-emerald-100 text-emerald-700",
+  N: "bg-blue-100 text-blue-700",
+  S: "bg-amber-100 text-amber-700",
+  T: "bg-purple-100 text-purple-700",
+  O: "bg-rose-100 text-rose-700",
+}
+
 function getAvatarColor(initial: string) {
-  const colors: Record<string, string> = {
-    A: "bg-emerald-100 text-emerald-700",
-    N: "bg-blue-100 text-blue-700",
-    S: "bg-amber-100 text-amber-700",
-    T: "bg-purple-100 text-purple-700",
-    O: "bg-rose-100 text-rose-700",
-  }
-  return colors[initial] || "bg-gray-100 text-gray-700"
+  return avatarColorMap[initial] || "bg-gray-100 text-gray-700"
 }
 
 export default function FrontDeskFoliosPage() {
@@ -180,18 +200,52 @@ export default function FrontDeskFoliosPage() {
   const [search, setSearch] = useState("")
   const [showAddCharge, setShowAddCharge] = useState(false)
   const [showCreateFolio, setShowCreateFolio] = useState(false)
-  const [toast, setToast] = useState("")
-  const [chargeDescription, setChargeDescription] = useState("")
-  const [chargeAmount, setChargeAmount] = useState("")
-  const [chargeCategory, setChargeCategory] = useState("DINING")
   const [categorySearch, setCategorySearch] = useState("Dining")
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [editingCharge, setEditingCharge] = useState<Charge | null>(null)
-  const [editChargeDescription, setEditChargeDescription] = useState("")
-  const [editChargeAmount, setEditChargeAmount] = useState("")
-  const [editChargeCategory, setEditChargeCategory] = useState("DINING")
   const [editCategorySearch, setEditCategorySearch] = useState("Dining")
   const [editCategoryOpen, setEditCategoryOpen] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showUpdateFolio, setShowUpdateFolio] = useState(false)
+
+  const addChargeForm = useForm<AddChargeFormData>({
+    resolver: zodResolver(addChargeSchema),
+    defaultValues: {
+      description: "",
+      amount: "",
+      category: "DINING",
+    },
+  })
+
+  const editChargeForm = useForm<AddChargeFormData>({
+    resolver: zodResolver(addChargeSchema),
+    defaultValues: {
+      description: "",
+      amount: "",
+      category: "DINING",
+    },
+  })
+
+  const paymentForm = useForm<RecordPaymentFormData>({
+    resolver: zodResolver(recordPaymentSchema),
+    defaultValues: {
+      amount: "",
+      paymentGateway: "CASH",
+    },
+  })
+
+  const updateFolioForm = useForm<UpdateFolioFormData>({
+    resolver: zodResolver(updateFolioSchema),
+    defaultValues: {
+      tax: "",
+      discount: "",
+    },
+  })
+
+  const addChargeCategory = addChargeForm.watch("category")
+  const editChargeCategoryValue = editChargeForm.watch("category")
+  const updateTaxValue = updateFolioForm.watch("tax")
+  const updateDiscountValue = updateFolioForm.watch("discount")
 
   const categoryOptions = [
     { value: "DINING", label: "Dining" },
@@ -203,12 +257,14 @@ export default function FrontDeskFoliosPage() {
     { value: "OTHER", label: "Other" },
   ]
 
+  const categorySearchLower = categorySearch.toLowerCase()
   const filteredCategories = categoryOptions.filter((cat) =>
-    cat.label.toLowerCase().includes(categorySearch.toLowerCase())
+    cat.label.toLowerCase().includes(categorySearchLower)
   )
 
+  const editCategorySearchLower = editCategorySearch.toLowerCase()
   const filteredEditCategories = categoryOptions.filter((cat) =>
-    cat.label.toLowerCase().includes(editCategorySearch.toLowerCase())
+    cat.label.toLowerCase().includes(editCategorySearchLower)
   )
 
   const [selectedBookingRef, setSelectedBookingRef] = useState("")
@@ -352,7 +408,7 @@ export default function FrontDeskFoliosPage() {
         const { data: result } = await api.get(
           `/staff/folios/${selected.id}`
         )
-        const apiResult = result as {
+          const apiResult = result as {
           success?: boolean
           data?: {
             id: string
@@ -363,6 +419,8 @@ export default function FrontDeskFoliosPage() {
             tax: string
             discount: string
             total: string
+            amount_paid?: number
+            remaining_balance?: number
             settled_at: string | null
             charges: Array<{
               id: string
@@ -402,6 +460,8 @@ export default function FrontDeskFoliosPage() {
             tax,
             discount,
             total: computedSubtotal + tax - discount,
+            amount_paid: d.amount_paid ?? 0,
+            remaining_balance: d.remaining_balance ?? (computedSubtotal + tax - discount),
             status: d.status?.toUpperCase() as FolioStatus,
             settled_at: d.settled_at,
             settledAt: d.settled_at,
@@ -451,9 +511,12 @@ export default function FrontDeskFoliosPage() {
       .reduce((sum, f) => sum + f.total, 0)
   }, [displayFolios])
 
-  const notify = (message: string) => {
-    setToast(message)
-    window.setTimeout(() => setToast(""), 2600)
+  const notify = (message: string, isError = false) => {
+    if (isError) {
+      toast.error(message)
+    } else {
+      toast.success(message)
+    }
   }
 
   const createFolioMutation = useMutation({
@@ -479,26 +542,53 @@ export default function FrontDeskFoliosPage() {
     onError: (error: Error & { response?: { data?: unknown } }) => {
       console.error("Failed to create folio:", error.response?.data || error)
       const msg = (error.response?.data as { message?: string })?.message || "Failed to create folio. Check the booking reference number."
-      notify(msg)
+      notify(msg, true)
     },
   })
 
-  const settleFolioMutation = useMutation({
-    mutationFn: async (folioId: string) => {
+  const recordPaymentMutation = useMutation({
+    mutationFn: async (payload: { folioId: string; amount: number; paymentGateway: string }) => {
       const { data: result } = await api.post(
-        `/staff/folios/${folioId}/settle`,
-        { idempotency_key: crypto.randomUUID() }
+        `/staff/folios/${payload.folioId}/payments`,
+        {
+          amount: payload.amount,
+          payment_gateway: payload.paymentGateway,
+        }
+      )
+      const wrapped = result as { data?: PaymentResponse }
+      return wrapped?.data ?? (result as PaymentResponse)
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
+      queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
+      setShowPaymentModal(false)
+      paymentForm.reset()
+      const msg = data?.message || "Payment recorded successfully"
+      toast.success(msg, { duration: 4000 })
+    },
+    onError: (error: Error) => {
+      console.error("Failed to record payment:", error)
+      notify("Failed to record payment", true)
+    },
+  })
+
+  const updateFolioMutation = useMutation({
+    mutationFn: async (payload: { folioId: string; tax: number; discount: number }) => {
+      const { data: result } = await api.patch(
+        `/staff/folios/${payload.folioId}`,
+        { tax: payload.tax, discount: payload.discount }
       )
       return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
       queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
-      notify("Folio settled successfully")
+      setShowUpdateFolio(false)
+      notify("Folio updated successfully")
     },
     onError: (error: Error) => {
-      console.error("Failed to settle folio:", error)
-      notify("Failed to settle folio")
+      console.error("Failed to update folio:", error)
+      notify("Failed to update folio", true)
     },
   })
 
@@ -522,13 +612,12 @@ export default function FrontDeskFoliosPage() {
       queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
       queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
       setShowAddCharge(false)
-      setChargeDescription("")
-      setChargeAmount("")
+      addChargeForm.reset()
       notify("Charge added to folio")
     },
     onError: (error: Error) => {
       console.error("Failed to add charge:", error)
-      notify("Failed to add charge")
+      notify("Failed to add charge", true)
     },
   })
 
@@ -548,15 +637,13 @@ export default function FrontDeskFoliosPage() {
       queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
       queryClient.invalidateQueries({ queryKey: ["folio-detail", currentPropertyId] })
       setEditingCharge(null)
-      setEditChargeDescription("")
-      setEditChargeAmount("")
-      setEditChargeCategory("DINING")
+      editChargeForm.reset({ description: "", amount: "", category: "DINING" })
       setEditCategorySearch("Dining")
       notify("Charge updated successfully")
     },
     onError: (error: Error) => {
       console.error("Failed to update charge:", error)
-      notify("Failed to update charge")
+      notify("Failed to update charge", true)
     },
   })
 
@@ -574,23 +661,20 @@ export default function FrontDeskFoliosPage() {
     },
     onError: (error: Error) => {
       console.error("Failed to delete charge:", error)
-      notify("Failed to delete charge")
+      notify("Failed to delete charge", true)
     },
   })
 
-  const handleUpdateCharge = () => {
+  const handleUpdateCharge = editChargeForm.handleSubmit((data) => {
     if (!displaySelected || !editingCharge) return
-    if (!editChargeDescription.trim()) { notify("Description is required"); return }
-    const amount = parseFloat(editChargeAmount)
-    if (isNaN(amount) || amount <= 0) { notify("Enter a valid amount"); return }
     updateChargeMutation.mutate({
       folioId: displaySelected.id,
       chargeId: editingCharge.id,
-      description: editChargeDescription.trim(),
-      amount,
-      category: editChargeCategory,
+      description: data.description.trim(),
+      amount: Number(data.amount),
+      category: data.category,
     })
-  }
+  })
 
   const handleDeleteCharge = (chargeId: string) => {
     if (!displaySelected) return
@@ -603,20 +687,22 @@ export default function FrontDeskFoliosPage() {
 
   const openEditCharge = (charge: Charge) => {
     setEditingCharge(charge)
-    setEditChargeDescription(charge.description)
-    setEditChargeAmount(String(charge.amount))
-    setEditChargeCategory(charge.category?.toUpperCase().replace(/ /g, "_") || "DINING")
+    editChargeForm.reset({
+      description: charge.description,
+      amount: String(charge.amount),
+      category: charge.category?.toUpperCase().replace(/ /g, "_") || "DINING",
+    })
     setEditCategorySearch(charge.category || "Dining")
   }
 
   const handleCreateFolio = () => {
     if (!selectedBookingRef.trim()) {
-      notify("Select a booking")
+      notify("Select a booking", true)
       return
     }
     const selectedBooking = bookingGuests.find((b) => b.ref_number === selectedBookingRef.trim())
     if (selectedBooking && !selectedBooking.full_name) {
-      notify("This booking has no linked guest. Please update the booking first.")
+      notify("This booking has no linked guest. Please update the booking first.", true)
       return
     }
     createFolioMutation.mutate({
@@ -626,29 +712,56 @@ export default function FrontDeskFoliosPage() {
     })
   }
 
-  const handleSettleFolio = () => {
+  const handleRecordPayment = () => {
     if (!selected) return
     if (selected.status?.toUpperCase() === "SETTLED") {
-      notify("This folio is already settled")
+      notify("This folio is already settled", true)
       return
     }
-    settleFolioMutation.mutate(selected.id)
+    paymentForm.reset({ amount: "", paymentGateway: "CASH" })
+    setShowPaymentModal(true)
   }
 
-  const handleAddCharge = () => {
+  const confirmRecordPayment = paymentForm.handleSubmit((data) => {
     if (!selected) return
-    const amount = Number(chargeAmount)
-    if (!chargeDescription.trim() || !amount || amount <= 0) {
-      notify("Add a description and a valid amount")
-      return
-    }
+    recordPaymentMutation.mutate({
+      folioId: selected.id,
+      amount: Number(data.amount),
+      paymentGateway: data.paymentGateway,
+    })
+  })
+
+  const handleOpenUpdateFolio = () => {
+    if (!displaySelected) return
+    const subtotal = displaySelected.subtotal ?? 0
+    const currentTax = Number(displaySelected.tax ?? 0)
+    const currentDiscount = Number(displaySelected.discount ?? 0)
+    updateFolioForm.reset({
+      tax: subtotal > 0 ? String(Math.round((currentTax / subtotal) * 100 * 100) / 100) : "0",
+      discount: subtotal > 0 ? String(Math.round((currentDiscount / subtotal) * 100 * 100) / 100) : "0",
+    })
+    setShowUpdateFolio(true)
+  }
+
+  const handleUpdateFolio = updateFolioForm.handleSubmit((data) => {
+    if (!selected) return
+    const taxPct = Number(data.tax || "0")
+    const discountPct = Number(data.discount || "0")
+    const subtotal = displaySelected?.subtotal ?? 0
+    const tax = Math.round(subtotal * taxPct / 100 * 100) / 100
+    const discount = Math.round(subtotal * discountPct / 100 * 100) / 100
+    updateFolioMutation.mutate({ folioId: selected.id, tax, discount })
+  })
+
+  const handleAddCharge = addChargeForm.handleSubmit((data) => {
+    if (!selected) return
     addChargeMutation.mutate({
       folioId: selected.id,
-      description: chargeDescription.trim(),
-      amount,
-      category: chargeCategory,
+      description: data.description.trim(),
+      amount: Number(data.amount),
+      category: data.category,
     })
-  }
+  })
 
   const goToBooking = (bookingId: string) => {
     if (bookingId) {
@@ -673,7 +786,7 @@ export default function FrontDeskFoliosPage() {
       }))
 
       if (exportData.length === 0) {
-        notify("No folios to export")
+        notify("No folios to export", true)
         return
       }
 
@@ -723,13 +836,7 @@ export default function FrontDeskFoliosPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleExport}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    <Download size={14} />
-                    Export
-                  </button>
+                  <ExportButton onClick={handleExport} />
                   <button
                     onClick={() => setShowCreateFolio(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -800,10 +907,10 @@ export default function FrontDeskFoliosPage() {
                     </div>
                     <div className="flex items-center bg-gray-100 rounded-xl p-1">
                       {([
-                        { key: "All", label: `All ${counts.all}` },
-                        { key: "OPEN", label: `Open ${counts.open}` },
-                        { key: "SETTLED", label: `Settled ${counts.settled}` },
-                      ] as const).map((tab) => (
+                        { key: "All" as const, label: "All", count: counts.all, color: "bg-blue-100 text-blue-700" },
+                        { key: "OPEN" as const, label: "Open", count: counts.open, color: "bg-amber-100 text-amber-700" },
+                        { key: "SETTLED" as const, label: "Settled", count: counts.settled, color: "bg-green-100 text-green-700" },
+                      ]).map((tab) => (
                         <button
                           key={tab.key}
                           onClick={() => setActiveTab(tab.key)}
@@ -813,7 +920,7 @@ export default function FrontDeskFoliosPage() {
                               : "text-gray-500 hover:text-gray-700"
                           }`}
                         >
-                          {tab.label}
+                          {tab.label} <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${tab.color}`}>{tab.count}</span>
                         </button>
                       ))}
                     </div>
@@ -867,10 +974,12 @@ export default function FrontDeskFoliosPage() {
                         </button>
                       ))}
                       {filteredFolios.length === 0 && (
-                        <div className="px-6 py-16 text-center">
-                          <Search size={24} className="mx-auto text-gray-300 mb-3" />
-                          <p className="text-sm font-medium text-gray-500">No folios found</p>
-                          <p className="text-xs text-gray-400 mt-1">Try a different search or create a new folio.</p>
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                            <FileText size={20} className="text-gray-400" />
+                          </div>
+                          <p className="text-gray-700 font-semibold">No folios found</p>
+                          <p className="text-sm text-gray-500">Try a different search or create a new folio.</p>
                         </div>
                       )}
                     </>
@@ -950,12 +1059,37 @@ export default function FrontDeskFoliosPage() {
 
                 {/* Balance Card */}
                 {(() => {
-                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const computedSubtotal = displaySelected.charges?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) ?? 0
                   const computedTotal = computedSubtotal + (displaySelected.tax || 0) - (displaySelected.discount || 0)
+                  const amountPaid = displaySelected.amount_paid ?? 0
+                  const remaining = displaySelected.remaining_balance ?? computedTotal
+                  const status = displaySelected.status?.toUpperCase()
                   return (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
-                      <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Current Balance</div>
+                    <div className={`border rounded-2xl p-6 ${
+                      status === "SETTLED" ? "bg-emerald-50 border-emerald-100" :
+                      status === "PARTIALLY_PAID" ? "bg-amber-50 border-amber-100" :
+                      "bg-emerald-50 border-emerald-100"
+                    }`}>
+                      <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${
+                        status === "SETTLED" ? "text-emerald-600" :
+                        status === "PARTIALLY_PAID" ? "text-amber-600" :
+                        "text-emerald-600"
+                      }`}>Current Balance</div>
                       <div className="text-4xl font-bold text-gray-900">{formatCurrency(computedTotal)}</div>
+                      {amountPaid > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Paid</span>
+                            <span className="font-semibold text-emerald-600">{formatCurrency(amountPaid)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Remaining</span>
+                            <span className={`font-semibold ${remaining > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                              {formatCurrency(remaining)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3 mt-3 text-sm text-gray-600">
                         <span>Updated {displaySelected.updatedAt ? new Date(displaySelected.updatedAt).toLocaleDateString() : ""}</span>
                       </div>
@@ -966,12 +1100,12 @@ export default function FrontDeskFoliosPage() {
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={handleSettleFolio}
-                    disabled={displaySelected.status?.toUpperCase() === "SETTLED" || settleFolioMutation.isPending}
-                    className="flex items-center justify-center gap-2 px-4 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-semibold hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleRecordPayment}
+                    disabled={displaySelected.status?.toUpperCase() === "SETTLED"}
+                    className="flex items-center justify-center gap-2 px-4 py-3.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <CreditCard size={18} />
-                    {displaySelected.status?.toUpperCase() === "SETTLED" ? "Settled" : settleFolioMutation.isPending ? "Settling..." : "Settle folio"}
+                    <WalletCards size={18} />
+                    {displaySelected.status?.toUpperCase() === "SETTLED" ? "Settled" : "Payment"}
                   </button>
                   <button
                     onClick={() => window.open(`/frontdesk/folio/${displaySelected.id}/invoice`, "_blank")}
@@ -993,15 +1127,26 @@ export default function FrontDeskFoliosPage() {
                       <p className="text-sm text-gray-500">{displaySelected.charges.length} line items</p>
                     </div>
                     <button
-                      onClick={() => setShowAddCharge(true)}
+                      onClick={() => {
+                        addChargeForm.reset({ description: "", amount: "", category: "DINING" })
+                        setCategorySearch("Dining")
+                        setShowAddCharge(true)
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                     >
                       <Plus size={16} />
                       Add Charge
                     </button>
+                    <button
+                      onClick={handleOpenUpdateFolio}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <ReceiptText size={16} />
+                      Update Folio
+                    </button>
                   </div>
                   <div className="space-y-3">
-                    {displaySelected.charges.map((charge: Charge) => (
+                    {displaySelected.charges.map((charge) => (
                       <div key={charge.id} className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-xl group">
                         <ChargeIcon type={charge.icon} />
                         <div className="flex-1 min-w-0">
@@ -1039,10 +1184,13 @@ export default function FrontDeskFoliosPage() {
 
                 {/* Totals */}
                 {(() => {
-                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const computedSubtotal = displaySelected.charges?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) ?? 0
                   const tax = displaySelected.tax || 0
                   const discount = displaySelected.discount || 0
                   const computedTotal = computedSubtotal + tax - discount
+                  const amountPaid = displaySelected.amount_paid ?? 0
+                  const remaining = displaySelected.remaining_balance ?? computedTotal
+                  const status = displaySelected.status?.toUpperCase()
                   return (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
                       <h3 className="text-sm font-semibold text-gray-700 mb-4">Summary</h3>
@@ -1064,6 +1212,31 @@ export default function FrontDeskFoliosPage() {
                         <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-3">
                           <span className="text-gray-900">Total</span>
                           <span className="text-gray-900">{formatCurrency(computedTotal)}</span>
+                        </div>
+                        {amountPaid > 0 && (
+                          <>
+                            <div className="flex justify-between text-sm border-t border-gray-100 pt-2.5">
+                              <span className="text-gray-500">Amount Paid</span>
+                              <span className="font-medium text-emerald-600">{formatCurrency(amountPaid)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-500">Remaining Balance</span>
+                              <span className={`font-medium ${remaining > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                                {formatCurrency(remaining)}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        <div className="flex justify-between text-sm border-t border-gray-100 pt-2.5">
+                          <span className="text-gray-500">Status</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            status === "SETTLED" ? "bg-emerald-50 text-emerald-700" :
+                            status === "PARTIALLY_PAID" ? "bg-amber-50 text-amber-700" :
+                            status === "VOID" ? "bg-red-50 text-red-700" :
+                            "bg-blue-50 text-blue-700"
+                          }`}>
+                            {status}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1090,37 +1263,35 @@ export default function FrontDeskFoliosPage() {
                 <X size={18} className="text-gray-500" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <form onSubmit={handleAddCharge} className="space-y-4">
+              <FormField label="Description" required error={addChargeForm.formState.errors.description?.message} htmlFor="add-charge-desc">
                 <input
+                  id="add-charge-desc"
                   type="text"
-                  value={chargeDescription}
-                  onChange={(e) => setChargeDescription(e.target.value)}
+                  {...addChargeForm.register("description")}
                   placeholder="e.g. Late checkout"
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
-              </div>
+              </FormField>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+                <FormField label="Amount" required error={addChargeForm.formState.errors.amount?.message} htmlFor="add-charge-amount">
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
+                      id="add-charge-amount"
                       type="number"
                       min="0"
                       step="0.01"
-                      value={chargeAmount}
-                      onChange={(e) => setChargeAmount(e.target.value)}
+                      {...addChargeForm.register("amount")}
                       placeholder="0.00"
                       className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                </FormField>
+                <FormField label="Category" required error={addChargeForm.formState.errors.category?.message} htmlFor="add-charge-category">
                   <div className="relative">
                     <input
+                      id="add-charge-category"
                       type="text"
                       value={categorySearch}
                       onChange={(e) => {
@@ -1138,11 +1309,11 @@ export default function FrontDeskFoliosPage() {
                           <li
                             key={cat.value}
                             onMouseDown={() => {
-                              setChargeCategory(cat.value)
+                              addChargeForm.setValue("category", cat.value, { shouldValidate: true })
                               setCategorySearch(cat.label)
                               setCategoryOpen(false)
                             }}
-                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${chargeCategory === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${addChargeCategory === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                           >
                             {cat.label}
                           </li>
@@ -1150,9 +1321,9 @@ export default function FrontDeskFoliosPage() {
                       </ul>
                     )}
                   </div>
-                </div>
+                </FormField>
               </div>
-            </div>
+            </form>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowAddCharge(false)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
                 Cancel
@@ -1163,6 +1334,131 @@ export default function FrontDeskFoliosPage() {
                 className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-medium hover:bg-rose-600 disabled:opacity-50"
               >
                 {addChargeMutation.isPending ? "Posting..." : "Post charge"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && selected && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPaymentModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1">Record Payment</p>
+                <h3 className="text-lg font-bold text-gray-900">Add payment to folio</h3>
+                <p className="text-sm text-gray-500">Enter payment amount and gateway.</p>
+              </div>
+              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={confirmRecordPayment} className="space-y-4">
+              <FormField label="Amount" required error={paymentForm.formState.errors.amount?.message} htmlFor="payment-amount">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
+                  <input
+                    id="payment-amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...paymentForm.register("amount")}
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  />
+                </div>
+              </FormField>
+              <FormField label="Payment Gateway" required error={paymentForm.formState.errors.paymentGateway?.message} htmlFor="payment-gateway">
+                <select
+                  id="payment-gateway"
+                  {...paymentForm.register("paymentGateway")}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="ONLINE">Online</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </FormField>
+            </form>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowPaymentModal(false)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={confirmRecordPayment}
+                disabled={recordPaymentMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
+              >
+                {recordPaymentMutation.isPending ? "Processing..." : "Record payment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUpdateFolio && selected && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowUpdateFolio(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-xs font-semibold text-blue-500 uppercase tracking-wider mb-1">Update Folio</p>
+                <h3 className="text-lg font-bold text-gray-900">Edit tax & discount</h3>
+                <p className="text-sm text-gray-500">Set tax and discount as percentages of the subtotal.</p>
+              </div>
+              <button onClick={() => setShowUpdateFolio(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateFolio} className="space-y-4">
+              <FormField label="Tax (%)" error={updateFolioForm.formState.errors.tax?.message} htmlFor="update-tax">
+                <div className="relative">
+                  <input
+                    id="update-tax"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    {...updateFolioForm.register("tax")}
+                    placeholder="0"
+                    className="w-full px-4 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                </div>
+                {displaySelected && (
+                  <p className="text-xs text-gray-400 mt-1">= {formatCurrency((displaySelected.subtotal ?? 0) * Number(updateTaxValue || "0") / 100)}</p>
+                )}
+              </FormField>
+              <FormField label="Discount (%)" error={updateFolioForm.formState.errors.discount?.message} htmlFor="update-discount">
+                <div className="relative">
+                  <input
+                    id="update-discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    {...updateFolioForm.register("discount")}
+                    placeholder="0"
+                    className="w-full px-4 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                </div>
+                {displaySelected && (
+                  <p className="text-xs text-gray-400 mt-1">= {formatCurrency((displaySelected.subtotal ?? 0) * Number(updateDiscountValue || "0") / 100)}</p>
+                )}
+              </FormField>
+            </form>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowUpdateFolio(false)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateFolio}
+                disabled={updateFolioMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateFolioMutation.isPending ? "Updating..." : "Update folio"}
               </button>
             </div>
           </div>
@@ -1182,37 +1478,35 @@ export default function FrontDeskFoliosPage() {
                 <X size={18} className="text-gray-500" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <form onSubmit={handleUpdateCharge} className="space-y-4">
+              <FormField label="Description" required error={editChargeForm.formState.errors.description?.message} htmlFor="edit-charge-desc">
                 <input
+                  id="edit-charge-desc"
                   type="text"
-                  value={editChargeDescription}
-                  onChange={(e) => setEditChargeDescription(e.target.value)}
+                  {...editChargeForm.register("description")}
                   placeholder="e.g. Late checkout"
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
-              </div>
+              </FormField>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+                <FormField label="Amount" required error={editChargeForm.formState.errors.amount?.message} htmlFor="edit-charge-amount">
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
+                      id="edit-charge-amount"
                       type="number"
                       min="0"
                       step="0.01"
-                      value={editChargeAmount}
-                      onChange={(e) => setEditChargeAmount(e.target.value)}
+                      {...editChargeForm.register("amount")}
                       placeholder="0.00"
                       className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                </FormField>
+                <FormField label="Category" required error={editChargeForm.formState.errors.category?.message} htmlFor="edit-charge-category">
                   <div className="relative">
                     <input
+                      id="edit-charge-category"
                       type="text"
                       value={editCategorySearch}
                       onChange={(e) => {
@@ -1230,11 +1524,11 @@ export default function FrontDeskFoliosPage() {
                           <li
                             key={cat.value}
                             onMouseDown={() => {
-                              setEditChargeCategory(cat.value)
+                              editChargeForm.setValue("category", cat.value, { shouldValidate: true })
                               setEditCategorySearch(cat.label)
                               setEditCategoryOpen(false)
                             }}
-                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${editChargeCategory === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${editChargeCategoryValue === cat.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                           >
                             {cat.label}
                           </li>
@@ -1242,9 +1536,9 @@ export default function FrontDeskFoliosPage() {
                       </ul>
                     )}
                   </div>
-                </div>
+                </FormField>
               </div>
-            </div>
+            </form>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditingCharge(null)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
                 Cancel
@@ -1300,34 +1594,39 @@ export default function FrontDeskFoliosPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tax</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tax (%)</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
                       min="0"
+                      max="100"
                       step="0.01"
                       value={newTax}
                       onChange={(e) => setNewTax(e.target.value)}
-                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      placeholder="0"
+                      className="w-full px-4 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount (%)</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
                       min="0"
+                      max="100"
                       step="0.01"
                       value={newDiscount}
                       onChange={(e) => setNewDiscount(e.target.value)}
-                      className="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      placeholder="0"
+                      className="w-full px-4 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                   </div>
                 </div>
               </div>
+              <p className="text-xs text-gray-400">Percentages will be applied when charges are added.</p>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowCreateFolio(false)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
@@ -1342,13 +1641,6 @@ export default function FrontDeskFoliosPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {toast && (
-        <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-xl flex items-center gap-2.5 text-sm font-medium z-50">
-          <Check size={16} className="text-emerald-400" />
-          {toast}
         </div>
       )}
     </div>

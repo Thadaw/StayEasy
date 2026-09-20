@@ -255,6 +255,32 @@ export interface WalkinBookingPayload {
   special_requests?: string
 }
 
+// ─── Notifications ──────────────────────────────────────────
+
+export interface StaffNotification {
+  id: string
+  type: string
+  priority: string
+  title: string
+  message: string
+  entity_type: string
+  entity_id: string
+  actor_user_id: string
+  meta: Record<string, unknown>
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse {
+  notifications: StaffNotification[]
+  total: number
+  skip: number
+  limit: number
+  has_more: boolean
+  unread_count: number
+}
+
 export interface ArrivalGuest {
   booking_id: string
   ref_number: string

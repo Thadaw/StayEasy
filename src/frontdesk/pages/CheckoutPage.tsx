@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, CreditCard, ChevronDown, CheckCircle, FileText, X, Loader2, Wallet } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useBookingCheckOutStore } from "../stores/bookingCheckOutStore"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { checkOutGuest } from "../../services/pmsApi"
 import api from "../../services/axios"
+import { checkoutPaymentSchema } from "../schemas/paymentSchema"
+import type { CheckoutPaymentFormData } from "../schemas/paymentSchema"
+import { FormField } from "../components/FormField"
 
 interface BookingRoom {
   room_id: string
@@ -63,28 +68,42 @@ export default function CheckoutPage() {
   const { checkOut, isCheckedOut: isGuestCheckedOut } = useBookingCheckOutStore()
   const queryClient = useQueryClient()
 
-  const [roomStatus, setRoomStatus] = useState("needs_cleaning")
+  const handleBackToDashboard = () => { navigate("/frontdesk") }
+
   const [isCheckedOut, setIsCheckedOut] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [folioError, setFolioError] = useState<string | null>(null)
-  const [paymentGateway, setPaymentGateway] = useState("CASH")
-  const [paymentAmount, setPaymentAmount] = useState("")
-  const [discount, setDiscount] = useState("")
 
-  // Single API call: guest-folio returns booking + guest + folio data
-  const { data: booking, isLoading } = useQuery({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CheckoutPaymentFormData>({
+    resolver: zodResolver(checkoutPaymentSchema),
+    defaultValues: {
+      paymentGateway: "CASH",
+      discount: "",
+      paymentAmount: "",
+      roomStatus: "needs_cleaning",
+    },
+  })
+
+  const watchedPaymentGateway = watch("paymentGateway")
+  const watchedDiscount = watch("discount")
+  const watchedPaymentAmount = watch("paymentAmount")
+  const watchedRoomStatus = watch("roomStatus")
+
+  const { data: booking, isLoading, isError } = useQuery({
     queryKey: ["checkout-booking", currentPropertyId, id],
     queryFn: async (): Promise<Booking | null> => {
       if (!currentPropertyId || !id) return null
-      try {
-        const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
-        )
-        const wrapped = result as { data?: Booking }
-        return (wrapped?.data ?? result) as Booking
-      } catch {
-        return null
-      }
+      const { data: result } = await api.get(
+        `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
+      )
+      const wrapped = result as { data?: Booking }
+      return (wrapped?.data ?? result) as Booking
     },
     enabled: !!currentPropertyId && !!id,
   })
@@ -95,33 +114,30 @@ export default function CheckoutPage() {
     queryKey: ["folio-detail", folioId],
     queryFn: async () => {
       if (!folioId) return null
-      try {
-        const { data: result } = await api.get(`/staff/folios/${folioId}`)
-        const wrapped = result as { success?: boolean; data?: {
-          id: string
-          subtotal: number
-          tax: number
-          discount: number
-          total: number
-          charges: Array<{ id: string; folio_id: string; description: string; amount: number; category: string; posted_by: string; posted_by_name: string; posted_at: string }>
-        } }
-        if (wrapped?.success && wrapped.data) {
-          const d = wrapped.data
-          return {
-            ...d,
-            subtotal: Number(d.subtotal) || 0,
-            tax: Number(d.tax) || 0,
-            discount: Number(d.discount) || 0,
-            total: Number(d.total) || 0,
-            charges: (d.charges || []).map((c) => ({
-              ...c,
-              amount: Number(c.amount) || 0,
-            })),
-          }
+      const { data: result } = await api.get(`/staff/folios/${folioId}`)
+      const wrapped = result as { success?: boolean; data?: {
+        id: string
+        subtotal: number
+        tax: number
+        discount: number
+        total: number
+        charges: Array<{ id: string; folio_id: string; description: string; amount: number; category: string; posted_by: string; posted_by_name: string; posted_at: string }>
+      } }
+      if (wrapped?.success && wrapped.data) {
+        const d = wrapped.data
+        return {
+          ...d,
+          subtotal: Number(d.subtotal) || 0,
+          tax: Number(d.tax) || 0,
+          discount: Number(d.discount) || 0,
+          total: Number(d.total) || 0,
+          charges: (d.charges || []).map((c) => ({
+            ...c,
+            amount: Number(c.amount) || 0,
+          })),
         }
-      } catch {
-        return null
       }
+      return null
     },
     enabled: !!folioId,
   })
@@ -194,11 +210,22 @@ export default function CheckoutPage() {
     )
   }
 
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
+        <p className="text-red-600">Failed to load booking details</p>
+        <button onClick={handleBackToDashboard} className="text-blue-600 hover:text-blue-700 font-medium">
+          Back to Dashboard
+        </button>
+      </div>
+    )
+  }
+
   if (!booking) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500">Booking not found</p>
-        <button onClick={() => navigate("/frontdesk")} className="text-blue-600 hover:text-blue-700 font-medium">
+        <button onClick={handleBackToDashboard} className="text-blue-600 hover:text-blue-700 font-medium">
           Back to Dashboard
         </button>
       </div>
@@ -226,6 +253,15 @@ export default function CheckoutPage() {
     checkOut: booking.checkout_date,
     stayDates: `${booking.checkin_date} – ${booking.checkout_date}`,
     nights,
+  }
+
+  const onFormSubmit = (data: CheckoutPaymentFormData) => {
+    checkOutMutation.mutate({
+      refNumber: booking.ref_number,
+      paymentAmount: Number(data.paymentAmount) || 0,
+      paymentGateway: data.paymentGateway,
+      discount: Number(data.discount) || 0,
+    })
   }
 
   return (
@@ -277,7 +313,7 @@ export default function CheckoutPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <button
-          onClick={() => navigate("/frontdesk")}
+          onClick={handleBackToDashboard}
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -476,11 +512,12 @@ export default function CheckoutPage() {
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Gateway</label>
+                <FormField label="Payment Gateway" error={errors.paymentGateway?.message} required htmlFor="paymentGateway">
                   <select
-                    value={paymentGateway}
-                    onChange={(e) => setPaymentGateway(e.target.value)}
+                    id="paymentGateway"
+                    {...register("paymentGateway")}
+                    value={watchedPaymentGateway}
+                    onChange={(e) => setValue("paymentGateway", e.target.value)}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="CASH">Cash</option>
@@ -489,52 +526,54 @@ export default function CheckoutPage() {
                     <option value="ESWA">eSewa</option>
                     <option value="BANK_TRANSFER">Bank Transfer</option>
                   </select>
-                </div>
+                </FormField>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
+                <FormField label="Discount" error={errors.discount?.message} htmlFor="discount">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                     <input
                       type="number"
+                      id="discount"
+                      {...register("discount")}
                       min="0"
                       max={remainingBalance}
                       step="0.01"
-                      value={discount}
-                      onChange={(e) => setDiscount(e.target.value)}
+                      value={watchedDiscount}
+                      onChange={(e) => setValue("discount", e.target.value)}
                       placeholder="0.00"
                       className="w-full pl-12 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                </div>
+                </FormField>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+              <FormField label="Amount" error={errors.paymentAmount?.message} required htmlFor="paymentAmount">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                   <input
                     type="number"
+                    id="paymentAmount"
+                    {...register("paymentAmount")}
                     min="0"
-                    max={remainingBalance - Number(discount || 0)}
+                    max={remainingBalance - Number(watchedDiscount || 0)}
                     step="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder={String(Math.max(0, remainingBalance - Number(discount || 0)))}
+                    value={watchedPaymentAmount}
+                    onChange={(e) => setValue("paymentAmount", e.target.value)}
+                    placeholder={String(Math.max(0, remainingBalance - Number(watchedDiscount || 0)))}
                     className="w-full pl-12 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-              </div>
+              </FormField>
 
-              {Number(discount) > 0 && (
+              {Number(watchedDiscount) > 0 && (
                 <div className="bg-green-50 rounded-lg p-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Discount Applied</span>
-                    <span className="font-semibold text-green-600">-{formatAmount(Number(discount))}</span>
+                    <span className="font-semibold text-green-600">-{formatAmount(Number(watchedDiscount))}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-1">
                     <span className="font-semibold text-gray-900">Final Amount</span>
-                    <span className="font-bold text-gray-900">{formatAmount(Math.max(0, remainingBalance - Number(discount)))}</span>
+                    <span className="font-bold text-gray-900">{formatAmount(Math.max(0, remainingBalance - Number(watchedDiscount)))}</span>
                   </div>
                 </div>
               )}
@@ -547,8 +586,9 @@ export default function CheckoutPage() {
             <h3 className="text-base font-bold text-gray-900">Room after checkout</h3>
             <div className="relative w-full sm:w-auto">
               <select
-                value={roomStatus}
-                onChange={(e) => setRoomStatus(e.target.value)}
+                {...register("roomStatus")}
+                value={watchedRoomStatus}
+                onChange={(e) => setValue("roomStatus", e.target.value)}
                 className="appearance-none pl-3 pr-9 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer bg-white"
               >
                 <option value="needs_cleaning">Needs Cleaning</option>
@@ -563,7 +603,7 @@ export default function CheckoutPage() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
           <button
-            onClick={() => navigate("/frontdesk")}
+            onClick={handleBackToDashboard}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
           >
             Cancel
@@ -576,14 +616,7 @@ export default function CheckoutPage() {
             View Receipt
           </button>
           <button
-            onClick={() => {
-              checkOutMutation.mutate({
-                refNumber: booking.ref_number,
-                paymentAmount: Number(paymentAmount) || 0,
-                paymentGateway,
-                discount: Number(discount) || 0,
-              })
-            }}
+            onClick={handleSubmit(onFormSubmit)}
             disabled={alreadyCheckedOut || isCheckedOut || checkOutMutation.isPending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
