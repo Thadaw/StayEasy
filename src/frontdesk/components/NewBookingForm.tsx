@@ -1,38 +1,16 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useForm, useFieldArray } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { ChevronLeft, ChevronRight, Check, User, Bed, Calendar, CreditCard, AlertCircle, Upload, X } from "lucide-react"
 import { getRooms, getRoomTypes, getBedTypes, getAvailableRooms, getRoomCalendar, createWalkinBooking } from "../../services/pmsApi"
 import { usePropertyStore } from "../../stores/propertyStore"
+import { createBookingSchema } from "../schemas/bookingSchema"
+import type { CreateBookingFormData } from "../schemas/bookingSchema"
 import type { AvailableRoom, RoomCalendarRoom } from "../../types/pms"
 
-interface GuestInfo {
-  fullName: string
-  email: string
-  phone: string
-  countryCode: string
-  country: string
-  verificationDocFront: File | null
-  verificationDocBack: File | null
-}
-
-interface StayDetails {
-  checkInDate: string
-  checkOutDate: string
-  adults: number
-  children: number
-  roomType: string
-  specialRequests: string
-}
-
-interface BookingSummary {
-  guest: GuestInfo
-  stay: StayDetails
-  roomNumber?: string
-  totalAmount?: number
-}
-
 interface NewBookingFormProps {
-  onComplete?: (booking: BookingSummary) => void
+  onComplete?: (booking: CreateBookingFormData) => void
   onCancel?: () => void
   formatAmount?: (amount: number) => string
   currency?: string
@@ -53,88 +31,58 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [currentStep, setCurrentStep] = useState(1)
   const [bookingSuccess, setBookingSuccess] = useState(false)
-  const [guestInfo, setGuestInfo] = useState<GuestInfo>({
-    fullName: "",
-    email: "",
-    phone: "",
-    countryCode: "+977",
-    country: "Nepal",
-    verificationDocFront: null,
-    verificationDocBack: null,
-  })
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const formatDate = (d: Date) => d.toISOString().split("T")[0]
 
-  const [stayDetails, setStayDetails] = useState<StayDetails>({
-    checkInDate: initialCheckinDate || formatDate(today),
-    checkOutDate: initialCheckoutDate || formatDate(tomorrow),
-    adults: 2,
-    children: 0,
-    roomType: "standard",
-    specialRequests: "",
-  })
-  const [paymentMethod, setPaymentMethod] = useState("cash")
-  const [paymentType, setPaymentType] = useState("full")
-  const [advanceReceived, setAdvanceReceived] = useState("")
-  const [discount, setDiscount] = useState("")
-  const [selectedRooms, setSelectedRooms] = useState<string[]>([])
   const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([])
   const [calendarRooms, setCalendarRooms] = useState<RoomCalendarRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [roomsError, setRoomsError] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [submitting, setSubmitting] = useState(false)
+  const [selectedRooms, setSelectedRooms] = useState<string[]>([])
   const [submitError, setSubmitError] = useState("")
 
-  const clearError = (field: string) => {
-    setErrors(prev => {
-      if (!prev[field]) return prev
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateBookingFormData>({
+    resolver: zodResolver(createBookingSchema) as any,
+    defaultValues: {
+      stay: {
+        checkInDate: initialCheckinDate || formatDate(today),
+        checkOutDate: initialCheckoutDate || formatDate(tomorrow),
+        adults: 2,
+        children: 0,
+        roomType: "standard",
+        specialRequests: "",
+      },
+      guest: {
+        fullName: "",
+        email: "",
+        phone: "",
+        countryCode: "+977",
+        country: "Nepal",
+      },
+      paymentMethod: "cash",
+      paymentType: "full",
+      advanceReceived: "",
+      discount: "",
+      selectedRooms: [],
+    },
+  })
 
-  const validateStep = (step: number): boolean => {
-    const newErrors: Record<string, string> = {}
-    if (step === 1) {
-      if (!stayDetails.checkInDate) newErrors.checkInDate = "Check-in date is required"
-      if (!stayDetails.checkOutDate) newErrors.checkOutDate = "Check-out date is required"
-      else if (stayDetails.checkInDate && stayDetails.checkOutDate && stayDetails.checkOutDate <= stayDetails.checkInDate) newErrors.checkOutDate = "Check-out must be after check-in"
-      if (selectedRooms.length === 0) newErrors.rooms = "Select at least one room"
-      else if (capacityError) newErrors.rooms = `Selected room(s) fit ${capacityAdults} Adult${capacityAdults !== 1 ? "s" : ""}, ${capacityChildren} Children but ${stayDetails.adults} Adult${stayDetails.adults !== 1 ? "s" : ""}, ${stayDetails.children} Children needed.`
-    }
-    if (step === 2) {
-      if (!guestInfo.fullName.trim()) newErrors.fullName = "Full name is required"
-      if (!guestInfo.email.trim()) newErrors.email = "Email is required"
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) newErrors.email = "Invalid email format"
-      if (!guestInfo.phone.trim()) newErrors.phone = "Phone number is required"
-    }
-    if (step === 3 && paymentType === "advance") {
-      if (!advanceReceived || advanceReceivedNum <= 0) newErrors.advance = "Enter advance amount"
-      else if (advanceReceivedNum > grandTotal) newErrors.advance = "Advance cannot exceed total"
-    }
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const capacityAdults = selectedRooms.reduce((sum, id) => {
-    const room = availableRooms.find((r) => r.id === id)
-    return sum + (room ? Number(room.max_adults) : 0)
-  }, 0)
-  const capacityChildren = selectedRooms.reduce((sum, id) => {
-    const room = availableRooms.find((r) => r.id === id)
-    return sum + (room ? Number(room.max_children) : 0)
-  }, 0)
-  const capacityError = selectedRooms.length > 0 && (capacityAdults < stayDetails.adults || capacityChildren < stayDetails.children)
-
-  const toggleRoom = (id: string) => {
-    setSelectedRooms((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
-    )
-  }
+  const stayDetails = watch("stay")
+  const guestInfo = watch("guest")
+  const paymentMethod = watch("paymentMethod")
+  const paymentType = watch("paymentType")
+  const advanceReceived = watch("advanceReceived")
+  const discount = watch("discount")
 
   useEffect(() => {
     if (!currentPropertyId) {
@@ -204,6 +152,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
       const room = availableRooms.find((r) => r.id === initialRoomId)
       if (room) {
         setSelectedRooms([initialRoomId])
+        setValue("selectedRooms", [initialRoomId])
       }
     }
   }, [initialRoomId, availableRooms])
@@ -215,16 +164,35 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     return acc
   }, {} as Record<number, AvailableRoom[]>)
 
-  const handleGuestInfoChange = (field: keyof GuestInfo, value: string) => {
-    setGuestInfo(prev => ({ ...prev, [field]: value }))
+  const toggleRoom = (id: string) => {
+    setSelectedRooms((prev) => {
+      const next = prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+      setValue("selectedRooms", next)
+      return next
+    })
   }
 
-  const handleStayDetailsChange = (field: keyof StayDetails, value: string | number) => {
-    setStayDetails(prev => ({ ...prev, [field]: value }))
-  }
+  const capacityAdults = selectedRooms.reduce((sum, id) => {
+    const room = availableRooms.find((r) => r.id === id)
+    return sum + (room ? Number(room.max_adults) : 0)
+  }, 0)
+  const capacityChildren = selectedRooms.reduce((sum, id) => {
+    const room = availableRooms.find((r) => r.id === id)
+    return sum + (room ? Number(room.max_children) : 0)
+  }, 0)
+  const capacityError = selectedRooms.length > 0 && (capacityAdults < stayDetails.adults || capacityChildren < stayDetails.children)
 
-  const nextStep = () => {
-    if (!validateStep(currentStep)) return
+  const nextStep = async () => {
+    let fieldsToValidate: (keyof CreateBookingFormData)[] = []
+    if (currentStep === 1) fieldsToValidate = ["stay", "selectedRooms"]
+    if (currentStep === 2) fieldsToValidate = ["guest"]
+
+    const valid = await trigger(fieldsToValidate)
+    if (!valid) return
+
+    if (currentStep === 1 && selectedRooms.length === 0) return
+    if (currentStep === 1 && capacityError) return
+
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -236,28 +204,34 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     }
   }
 
-  const handleSubmit = async () => {
-    if (!validateStep(3)) return
+  const onSubmit = async (data: CreateBookingFormData) => {
     if (!currentPropertyId) return
-    setSubmitting(true)
     setSubmitError("")
     try {
+      const totalRate = selectedRooms.reduce((sum, id) => {
+        const room = availableRooms.find((r) => r.id === id)
+        return sum + (room ? Number(room.base_rate) * nights : 0)
+      }, 0)
+      const discountNum = parseFloat(data.discount || "0") || 0
+      const grandTotal = totalRate - discountNum
+      const advanceReceivedNum = parseFloat(data.advanceReceived || "0") || 0
+
       const payload = {
         idempotency_key: crypto.randomUUID(),
         property_id: currentPropertyId,
         room_ids: selectedRooms,
-        check_in: stayDetails.checkInDate,
-        check_out: stayDetails.checkOutDate,
-        adults: stayDetails.adults,
-        children: stayDetails.children,
-        guest_full_name: guestInfo.fullName,
-        guest_email: guestInfo.email,
-        guest_phone: `${guestInfo.countryCode} ${guestInfo.phone}`,
-        guest_nationality: guestInfo.country,
-        payment_method: paymentMethod === "cash" ? "PAY_ON_ARRIVAL" : paymentMethod.toUpperCase(),
-        amount_paid: paymentType === "full" ? grandTotal : advanceReceivedNum,
+        check_in: data.stay.checkInDate,
+        check_out: data.stay.checkOutDate,
+        adults: data.stay.adults,
+        children: data.stay.children,
+        guest_full_name: data.guest.fullName,
+        guest_email: data.guest.email,
+        guest_phone: `${data.guest.countryCode} ${data.guest.phone}`,
+        guest_nationality: data.guest.country,
+        payment_method: data.paymentMethod === "cash" ? "PAY_ON_ARRIVAL" : data.paymentMethod.toUpperCase(),
+        amount_paid: data.paymentType === "full" ? grandTotal : advanceReceivedNum,
         advance_amount: advanceReceivedNum,
-        special_requests: stayDetails.specialRequests || undefined,
+        special_requests: data.stay.specialRequests || undefined,
         discount: discountNum || undefined,
       }
       await createWalkinBooking(payload)
@@ -265,10 +239,9 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
       setTimeout(() => {
         navigate("/frontdesk/bookings")
       }, 2000)
-    } catch (err: any) {
-      setSubmitError(err?.response?.data?.detail || "Failed to create booking. Please try again.")
-    } finally {
-      setSubmitting(false)
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } }
+      setSubmitError(error?.response?.data?.detail || "Failed to create booking. Please try again.")
     }
   }
 
@@ -298,9 +271,9 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     return sum + (room ? Number(room.base_rate) * nights : 0)
   }, 0)
 
-  const discountNum = parseFloat(discount) || 0
+  const discountNum = parseFloat(discount || "0") || 0
   const grandTotal = totalRate - discountNum
-  const advanceReceivedNum = parseFloat(advanceReceived) || 0
+  const advanceReceivedNum = parseFloat(advanceReceived || "0") || 0
   const remainingAfterAdvance = grandTotal - advanceReceivedNum
 
   const renderStep = () => {
@@ -317,21 +290,19 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <label className="block text-sm font-medium text-gray-700 mb-1">Check-In Date *</label>
                 <input
                   type="date"
-                  value={stayDetails.checkInDate}
-                  onChange={(e) => { handleStayDetailsChange("checkInDate", e.target.value); clearError("checkInDate") }}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkInDate ? "border-red-400" : "border-gray-200"}`}
+                  {...register("stay.checkInDate")}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.stay?.checkInDate ? "border-red-400" : "border-gray-200"}`}
                 />
-                {errors.checkInDate && <p className="text-xs text-red-500 mt-1">{errors.checkInDate}</p>}
+                {errors.stay?.checkInDate && <p className="text-xs text-red-500 mt-1">{errors.stay.checkInDate.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Check-Out Date *</label>
                 <input
                   type="date"
-                  value={stayDetails.checkOutDate}
-                  onChange={(e) => { handleStayDetailsChange("checkOutDate", e.target.value); clearError("checkOutDate") }}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.checkOutDate ? "border-red-400" : "border-gray-200"}`}
+                  {...register("stay.checkOutDate")}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.stay?.checkOutDate ? "border-red-400" : "border-gray-200"}`}
                 />
-                {errors.checkOutDate && <p className="text-xs text-red-500 mt-1">{errors.checkOutDate}</p>}
+                {errors.stay?.checkOutDate && <p className="text-xs text-red-500 mt-1">{errors.stay.checkOutDate.message}</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -340,7 +311,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleStayDetailsChange("adults", Math.max(1, stayDetails.adults - 1))}
+                    onClick={() => setValue("stay.adults", Math.max(1, stayDetails.adults - 1))}
                     className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
                   >
                     -
@@ -348,7 +319,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <span className="w-10 text-center text-lg font-semibold">{stayDetails.adults}</span>
                   <button
                     type="button"
-                    onClick={() => handleStayDetailsChange("adults", stayDetails.adults + 1)}
+                    onClick={() => setValue("stay.adults", stayDetails.adults + 1)}
                     className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
                   >
                     +
@@ -360,7 +331,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleStayDetailsChange("children", Math.max(0, stayDetails.children - 1))}
+                    onClick={() => setValue("stay.children", Math.max(0, stayDetails.children - 1))}
                     className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
                   >
                     -
@@ -368,7 +339,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <span className="w-10 text-center text-lg font-semibold">{stayDetails.children}</span>
                   <button
                     type="button"
-                    onClick={() => handleStayDetailsChange("children", stayDetails.children + 1)}
+                    onClick={() => setValue("stay.children", stayDetails.children + 1)}
                     className="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm font-medium"
                   >
                     +
@@ -382,7 +353,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 <label className="text-sm font-medium text-gray-700">Available Rooms</label>
                 <span className="text-xs text-gray-500">{availableRooms.length} rooms available · {selectedRooms.length} selected</span>
               </div>
-              {errors.rooms && <p className="text-xs text-red-500 mb-2">{errors.rooms}</p>}
+              {errors.selectedRooms && <p className="text-xs text-red-500 mb-2">{errors.selectedRooms.message}</p>}
               {capacityError && (
                 <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-2">
                   <AlertCircle size={16} />
@@ -516,30 +487,27 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <label className="block text-sm font-medium text-gray-700 mb-1">Full name *</label>
               <input
                 type="text"
-                value={guestInfo.fullName}
-                onChange={(e) => { handleGuestInfoChange("fullName", e.target.value); clearError("fullName") }}
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.fullName ? "border-red-400" : "border-gray-200"}`}
-                placeholder="e.g. Olivia Martin"
+                {...register("guest.fullName")}
+                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.guest?.fullName ? "border-red-400" : "border-gray-200"}`}
+                placeholder="e.g. Ram Sharma"
               />
-              {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+              {errors.guest?.fullName && <p className="text-xs text-red-500 mt-1">{errors.guest.fullName.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email address *</label>
               <input
                 type="email"
-                value={guestInfo.email}
-                onChange={(e) => { handleGuestInfoChange("email", e.target.value); clearError("email") }}
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.email ? "border-red-400" : "border-gray-200"}`}
-                placeholder="olivia.martin@email.com"
+                {...register("guest.email")}
+                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.guest?.email ? "border-red-400" : "border-gray-200"}`}
+                placeholder="ram.sharma@email.com"
               />
-              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+              {errors.guest?.email && <p className="text-xs text-red-500 mt-1">{errors.guest.email.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
               <div className="flex gap-2">
                 <select
-                  value={guestInfo.countryCode}
-                  onChange={(e) => handleGuestInfoChange("countryCode", e.target.value)}
+                  {...register("guest.countryCode")}
                   className="w-20 sm:w-28 px-2 sm:px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="+977">NP +977</option>
@@ -549,19 +517,17 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 </select>
                 <input
                   type="tel"
-                  value={guestInfo.phone}
-                  onChange={(e) => { handleGuestInfoChange("phone", e.target.value); clearError("phone") }}
-                  className={`flex-1 px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.phone ? "border-red-400" : "border-gray-200"}`}
-                  placeholder="e.g. +1 (555) 000-0000"
+                  {...register("guest.phone")}
+                  className={`flex-1 px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.guest?.phone ? "border-red-400" : "border-gray-200"}`}
+                  placeholder="e.g. 9841234567"
                 />
               </div>
-              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+              {errors.guest?.phone && <p className="text-xs text-red-500 mt-1">{errors.guest.phone.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country / Region *</label>
               <select
-                value={guestInfo.country}
-                onChange={(e) => handleGuestInfoChange("country", e.target.value)}
+                {...register("guest.country")}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="Nepal">Nepal</option>
@@ -575,85 +541,28 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Verification Document</label>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {/* Front */}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Front</p>
-                  {guestInfo.verificationDocFront ? (
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                        <Check size={14} className="text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">{guestInfo.verificationDocFront.name}</p>
-                        <p className="text-[10px] text-gray-500">{(guestInfo.verificationDocFront.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setGuestInfo({ ...guestInfo, verificationDocFront: null })}
-                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        <X size={12} className="text-gray-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
-                      <Upload size={16} className="text-gray-400" />
-                      <span className="text-xs text-gray-600">Upload front</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null
-                          setGuestInfo({ ...guestInfo, verificationDocFront: file })
-                        }}
-                      />
-                    </label>
-                  )}
+                  <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                    <Upload size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-600">Upload front</span>
+                    <input type="file" accept="image/*" className="hidden" />
+                  </label>
                 </div>
-                {/* Back */}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Back</p>
-                  {guestInfo.verificationDocBack ? (
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                        <Check size={14} className="text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">{guestInfo.verificationDocBack.name}</p>
-                        <p className="text-[10px] text-gray-500">{(guestInfo.verificationDocBack.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setGuestInfo({ ...guestInfo, verificationDocBack: null })}
-                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        <X size={12} className="text-gray-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
-                      <Upload size={16} className="text-gray-400" />
-                      <span className="text-xs text-gray-600">Upload back</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null
-                          setGuestInfo({ ...guestInfo, verificationDocBack: file })
-                        }}
-                      />
-                    </label>
-                  )}
+                  <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                    <Upload size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-600">Upload back</span>
+                    <input type="file" accept="image/*" className="hidden" />
+                  </label>
                 </div>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
               <textarea
-                value={stayDetails.specialRequests}
-                onChange={(e) => handleStayDetailsChange("specialRequests", e.target.value)}
+                {...register("stay.specialRequests")}
                 placeholder="Any special requests or notes..."
                 rows={3}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -673,8 +582,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                 <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  {...register("paymentMethod")}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="cash">Cash</option>
@@ -686,10 +594,10 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
                 <select
-                  value={paymentType}
+                  {...register("paymentType")}
                   onChange={(e) => {
-                    setPaymentType(e.target.value)
-                    setAdvanceReceived("")
+                    setValue("paymentType", e.target.value as "full" | "advance" | "checkout")
+                    if (e.target.value !== "advance") setValue("advanceReceived", "")
                   }}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
@@ -709,13 +617,12 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                     type="number"
                     min="0"
                     max={grandTotal}
-                    value={advanceReceived}
-                    onChange={(e) => { setAdvanceReceived(e.target.value); clearError("advance") }}
-                    className={`w-full pl-14 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.advance ? "border-red-400" : "border-gray-200"}`}
+                    {...register("advanceReceived")}
+                    className={`w-full pl-14 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.advanceReceived ? "border-red-400" : "border-gray-200"}`}
                     placeholder="0.00"
                   />
                 </div>
-                {errors.advance && <p className="text-xs text-red-500 mt-1">{errors.advance}</p>}
+                {errors.advanceReceived && <p className="text-xs text-red-500 mt-1">{errors.advanceReceived.message}</p>}
                 <p className="text-xs text-gray-500 mt-1">Total: {formatAmount(grandTotal)}</p>
               </div>
             )}
@@ -728,8 +635,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   type="number"
                   min="0"
                   max={totalRate}
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
+                  {...register("discount")}
                   className="w-full pl-14 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="0.00"
                 />
@@ -793,7 +699,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Guest Details */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <User size={16} className="text-blue-600" />
@@ -825,7 +730,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 </div>
               </div>
 
-              {/* Stay & Room */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Bed size={16} className="text-blue-600" />
@@ -856,7 +760,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               </div>
             </div>
 
-            {/* Payment Details */}
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <CreditCard size={16} className="text-blue-600" />
@@ -882,7 +785,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               </div>
             </div>
 
-            {/* Pricing Summary */}
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-semibold text-gray-900">Pricing Summary</h4>
               <div className="flex justify-between text-sm">
@@ -930,10 +832,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <Check size={16} />
-              <span>Instant confirmation upon final step</span>
-            </div>
+
           </div>
         )
 
@@ -953,12 +852,10 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
           onClick={onCancel}
           className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
         >
-          <span className="text-lg">×</span>
-          <span className="hidden sm:inline">Cancel</span>
+          Cancel
         </button>
       </div>
 
-      {/* Step indicator - scrollable on mobile */}
       <div className="flex items-center mb-6 sm:mb-8 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         {steps.map((step, index) => (
           <div key={step.id} className="flex items-center flex-1 min-w-0">
@@ -1009,10 +906,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Phone</span>
                     <span className="text-gray-900 font-medium">{guestInfo.phone ? `${guestInfo.countryCode} ${guestInfo.phone}` : "—"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Country</span>
-                    <span className="text-gray-900 font-medium">{guestInfo.country || "—"}</span>
                   </div>
                 </div>
 
@@ -1077,10 +970,6 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                   <p className="text-xs text-gray-500 mt-1">{nights > 0 ? `${nights} nights` : "0 nights"} · taxes included</p>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-green-600 pt-2">
-                  <Check size={14} />
-                  <span>Instant confirmation upon final step</span>
-                </div>
               </div>
             </div>
           </div>
@@ -1112,11 +1001,11 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
           </button>
         ) : (
           <button
-            onClick={handleSubmit}
-            disabled={submitting}
+            onClick={handleSubmit(onSubmit as any)}
+            disabled={isSubmitting}
             className="px-5 sm:px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "Creating..." : "Complete Booking"}
+            {isSubmitting ? "Creating..." : "Complete Booking"}
             <Check size={16} className="inline ml-1" />
           </button>
         )}

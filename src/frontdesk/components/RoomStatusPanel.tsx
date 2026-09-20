@@ -60,14 +60,14 @@ export function RoomStatusPanel({ onClose }: RoomStatusPanelProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [floorFilter, setFloorFilter] = useState("All Floors")
 
+  const search = searchQuery.trim().toLowerCase()
   const filtered = floorsData
     .filter((f) => floorFilter === "All Floors" || f.label === floorFilter)
     .map((f) => ({
       ...f,
-      rooms: f.rooms.filter(
-        (r) =>
-          r.number.includes(searchQuery) ||
-          r.status.toLowerCase().includes(searchQuery.toLowerCase())
+      rooms: f.rooms.filter((room) =>
+        room.number.includes(search) ||
+        room.status.toLowerCase().includes(search)
       ),
     }))
     .filter((f) => f.rooms.length > 0)

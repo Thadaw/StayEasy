@@ -3,7 +3,6 @@ import * as XLSX from "xlsx"
 import {
   Search,
   ChevronDown,
-  Download,
   Eye,
   X,
 } from "lucide-react"
@@ -12,6 +11,7 @@ import "react-datepicker/dist/react-datepicker.css"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
+import { ExportButton } from "../components/ExportButton"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -140,7 +140,7 @@ export default function FrontDeskPaymentsPage() {
     queryFn: getPaymentStatuses,
   })
 
-  const { data: transactionsData, isLoading } = useQuery({
+  const { data: transactionsData, isLoading, isError } = useQuery({
     queryKey: [
       "frontdesk-transactions",
       currentPropertyId,
@@ -156,64 +156,60 @@ export default function FrontDeskPaymentsPage() {
       if (!currentPropertyId) {
         return { data: EMPTY_TRANSACTIONS, total: 0, has_more: false }
       }
-      try {
-        const skip = (currentPage - 1) * PAGE_SIZE
-        const params: Record<string, string> = {
-          limit: String(PAGE_SIZE),
-          skip: String(skip),
-        }
-        if (searchQuery.trim()) params.search = searchQuery.trim()
-        if (methodFilter) params.payment_method = methodFilter
-        if (gatewayFilter) params.payment_gateway = gatewayFilter
-        if (statusFilter) params.payment_status = statusFilter
-        if (dateRange[0]) params.start_date = dateRange[0].toISOString().split("T")[0]
-        if (dateRange[1]) params.end_date = dateRange[1].toISOString().split("T")[0]
-
-        const { data: result } = await api.get(
-          `/properties/${currentPropertyId}/bookings`,
-          { params }
-        )
-        const wrapped = result as {
-          data?: Booking[]
-          meta?: { total?: number; has_more?: boolean }
-          total?: number
-          has_more?: boolean
-        }
-        const apiData = (wrapped?.data ?? result) as Booking[]
-        const total = wrapped?.meta?.total ?? wrapped?.total ?? apiData.length
-        const has_more = wrapped?.meta?.has_more ?? wrapped?.has_more ?? false
-
-        let filtered = apiData
-        if (activeTab === "refunds") {
-          filtered = apiData.filter((b) => b.payment_status === "refunded")
-        }
-
-        const transactions: Transaction[] = filtered.map((b) => ({
-          id: b.id,
-          reference_number: b.booking_number,
-          guest_name: b.guest_name,
-          guest_email: b.guest_email,
-          booking_number: b.booking_number,
-          room_number: b.room_names?.[0] || "—",
-          payment_method: b.payment_method || "—",
-          payment_gateway: b.payment_gateway || "—",
-          booking_type: b.booking_type || "—",
-          amount: parseFloat(b.total_amount) || 0,
-          type: b.payment_status === "refunded" ? "refund" as const : "payment" as const,
-          status: b.payment_status || "pending",
-          checkin_date: b.checkin_date,
-          checkout_date: b.checkout_date,
-          subtotal: parseFloat(b.subtotal) || 0,
-          total_amount: parseFloat(b.total_amount) || 0,
-          amount_paid: parseFloat(b.amount_paid || "0") || 0,
-          amount_due: parseFloat(b.amount_due || "0") || 0,
-          created_at: b.created_at,
-        }))
-
-        return { data: transactions, total, has_more }
-      } catch {
-        return { data: EMPTY_TRANSACTIONS, total: 0, has_more: false }
+      const skip = (currentPage - 1) * PAGE_SIZE
+      const params: Record<string, string> = {
+        limit: String(PAGE_SIZE),
+        skip: String(skip),
       }
+      if (searchQuery.trim()) params.search = searchQuery.trim()
+      if (methodFilter) params.payment_method = methodFilter
+      if (gatewayFilter) params.payment_gateway = gatewayFilter
+      if (statusFilter) params.payment_status = statusFilter
+      if (dateRange[0]) params.start_date = dateRange[0].toISOString().split("T")[0]
+      if (dateRange[1]) params.end_date = dateRange[1].toISOString().split("T")[0]
+
+      const { data: result } = await api.get(
+        `/properties/${currentPropertyId}/bookings`,
+        { params }
+      )
+      const wrapped = result as {
+        data?: Booking[]
+        meta?: { total?: number; has_more?: boolean }
+        total?: number
+        has_more?: boolean
+      }
+      const apiData = (wrapped?.data ?? result) as Booking[]
+      const total = wrapped?.meta?.total ?? wrapped?.total ?? apiData.length
+      const has_more = wrapped?.meta?.has_more ?? wrapped?.has_more ?? false
+
+      let filtered = apiData
+      if (activeTab === "refunds") {
+        filtered = apiData.filter((b) => b.payment_status === "refunded")
+      }
+
+      const transactions: Transaction[] = filtered.map((b) => ({
+        id: b.id,
+        reference_number: b.booking_number,
+        guest_name: b.guest_name,
+        guest_email: b.guest_email,
+        booking_number: b.booking_number,
+        room_number: b.room_names?.[0] || "—",
+        payment_method: b.payment_method || "—",
+        payment_gateway: b.payment_gateway || "—",
+        booking_type: b.booking_type || "—",
+        amount: parseFloat(b.total_amount) || 0,
+        type: b.payment_status === "refunded" ? "refund" as const : "payment" as const,
+        status: b.payment_status || "pending",
+        checkin_date: b.checkin_date,
+        checkout_date: b.checkout_date,
+        subtotal: parseFloat(b.subtotal) || 0,
+        total_amount: parseFloat(b.total_amount) || 0,
+        amount_paid: parseFloat(b.amount_paid || "0") || 0,
+        amount_due: parseFloat(b.amount_due || "0") || 0,
+        created_at: b.created_at,
+      }))
+
+      return { data: transactions, total, has_more }
     },
     enabled: !!currentPropertyId,
   })
@@ -304,13 +300,7 @@ export default function FrontDeskPaymentsPage() {
               <p className="text-sm text-gray-500 mt-1">Track guest payments, refunds, and receipts.</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              >
-                <Download size={16} />
-                Export CSV
-              </button>
+              <ExportButton onClick={handleExportCSV} label="Export" />
             </div>
           </div>
 
@@ -331,9 +321,9 @@ export default function FrontDeskPaymentsPage() {
                   }`}
                 >
                   {tab.key === "all"
-                    ? `All transactions (${totalTransactions})`
+                    ? <>All transactions <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 ml-1.5">{totalTransactions}</span></>
                     : tab.key === "refunds"
-                    ? `Refunds (${transactions.filter((t) => t.type === "refund" || t.status === "refunded").length})`
+                    ? <>Refunds <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 ml-1.5">{transactions.filter((t) => t.type === "refund" || t.status === "refunded").length}</span></>
                     : tab.label}
                 </button>
               ))}
@@ -454,6 +444,12 @@ export default function FrontDeskPaymentsPage() {
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
                 <p className="text-sm text-gray-500">Loading payment history...</p>
+              </div>
+            ) : isError ? (
+              <div className="text-center py-16">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
+                  Failed to load payment history. Please try again.
+                </p>
               </div>
             ) : transactions.length === 0 ? (
               <div className="text-center py-16">

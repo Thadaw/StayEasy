@@ -20,28 +20,35 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+const avatarColors = [
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-green-100 text-green-700",
+  "bg-pink-100 text-pink-700",
+  "bg-purple-100 text-purple-700",
+  "bg-indigo-100 text-indigo-700",
+]
+
 function getAvatarColor(index: number): string {
-  const colors = [
-    "bg-blue-100 text-blue-700",
-    "bg-yellow-100 text-yellow-700",
-    "bg-green-100 text-green-700",
-    "bg-pink-100 text-pink-700",
-    "bg-purple-100 text-purple-700",
-    "bg-indigo-100 text-indigo-700",
-  ]
-  return colors[index % colors.length]
+  return avatarColors[index % avatarColors.length]
 }
 
 function getPaymentStatus(booking: ArrivalGuest): "paid_in_full" | "balance_due" {
-  if (booking.payment_status?.toLowerCase() === "paid" || booking.payment_status?.toLowerCase() === "completed") return "paid_in_full"
-  if (booking.amount_due > 0) return "balance_due"
+  const status = booking.payment_status?.toLowerCase()
+  if (status === "paid" || status === "completed") {
+    return "paid_in_full"
+  }
+  if (booking.amount_due > 0) {
+    return "balance_due"
+  }
   return "paid_in_full"
 }
 
 function getNights(booking: ArrivalGuest): number {
   const checkin = new Date(booking.checkin_date)
   const checkout = new Date(booking.checkout_date)
-  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.max(0, Math.ceil((checkout.getTime() - checkin.getTime()) / msPerDay))
 }
 
 export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
@@ -59,26 +66,25 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
     },
   })
 
-  const { data: arrivals = [], isLoading } = useQuery({
+  const { data: arrivals = [], isLoading, isError } = useQuery({
     queryKey: ["today-arrivals", currentPropertyId],
     queryFn: async () => {
       if (!currentPropertyId) return []
-      try {
-        const result = await getTodayArrivals(currentPropertyId)
-        return result
-      } catch {
-        return []
-      }
+      return await getTodayArrivals(currentPropertyId)
     },
     enabled: !!currentPropertyId,
   })
 
-  const filtered = arrivals.filter(
-    (g) =>
-      g.guest?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.ref_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.rooms?.some((r) => r.room_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const search = searchQuery.trim().toLowerCase()
+  const filtered = arrivals.filter((departure) => {
+    const guestName = departure.guest?.full_name?.toLowerCase() || ""
+    const refNumber = departure.ref_number?.toLowerCase() || ""
+    return (
+      guestName.includes(search) ||
+      refNumber.includes(search) ||
+      departure.rooms?.some((room) => room.room_name?.toLowerCase().includes(search))
+    )
+  })
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -112,6 +118,12 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      ) : isError ? (
+        <div className="text-center py-16">
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
+            Failed to load arrivals. Please try again.
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -244,7 +256,7 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
 
       {!isLoading && filtered.length === 0 && (
         <div className="p-8 text-center text-gray-500 text-sm">
-          No arrivals found matching "{searchQuery}"
+          No Arrivals Found "{searchQuery}"
         </div>
       )}
     </div>

@@ -126,13 +126,12 @@ export default function Login() {
         {/* Animated video panel — on the LEFT for login, hidden on mobile */}
         <div
           style={{
-            width: '50%',
             background: '#000',
             order: 1,
             flexShrink: 0,
             overflow: 'hidden',
           }}
-          className="hidden sm:block"
+          className="hidden sm:block sm:w-1/2"
         >
           <video
             src={loginAni}
@@ -150,7 +149,6 @@ export default function Login() {
         {/* Form panel */}
         <div
           style={{
-            width: '50%',
             background: '#fff',
             display: 'flex',
             flexDirection: 'column',
@@ -160,6 +158,7 @@ export default function Login() {
             flexShrink: 0,
             boxSizing: 'border-box',
           }}
+          className="w-full sm:w-1/2"
         >
           {/* Tabs */}
           <div style={{ display: 'flex', marginBottom: 8 }}>

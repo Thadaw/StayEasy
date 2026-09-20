@@ -1,10 +1,14 @@
-import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Banknote, CreditCard, Wallet, Globe, Loader2 } from "lucide-react"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
 import api from "../../services/axios"
+import { collectPaymentSchema } from "../schemas/paymentSchema"
+import type { CollectPaymentFormData } from "../schemas/paymentSchema"
+import { FormField } from "../components/FormField"
 
 type PaymentMethod = "cash" | "credit_card" | "debit_card" | "online"
 
@@ -13,41 +17,49 @@ export default function CollectPaymentPage() {
   const { id } = useParams()
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash")
-  const [paymentAmount, setPaymentAmount] = useState("")
-  const [transactionId, setTransactionId] = useState("")
+  const {
+    register,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CollectPaymentFormData>({
+    resolver: zodResolver(collectPaymentSchema),
+    defaultValues: {
+      paymentGateway: "cash",
+      paymentAmount: "",
+      transactionId: "",
+    },
+  })
 
-  const { data: guest, isLoading } = useQuery({
+  const paymentMethod = watch("paymentGateway")
+
+  const { data: guest, isLoading, isError } = useQuery({
     queryKey: ["collect-payment", id, currentPropertyId],
     queryFn: async () => {
       if (!currentPropertyId || !id) return null
-      try {
-        const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
-        )
-        const wrapped = result as { data?: any }
-        const folio = wrapped?.data || result
-        const booking = folio?.booking || folio
-        const guestData = booking?.guest || {}
-        const rooms = booking?.rooms || []
-        const room = rooms[0] || {}
-        const totalBill = Number(booking?.total_amount) || Number(folio?.total) || 0
-        const amountPaid = Number(booking?.amount_paid) || 0
-        const balanceDue = totalBill - amountPaid
-        return {
-          guestName: guestData.full_name || "Guest",
-          initials: (guestData.full_name || "G").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
-          avatarColor: "bg-orange-100 text-orange-700",
-          roomNumber: room.room_number || room.room_name || "—",
-          roomType: room.room_type || "—",
-          bookingNumber: booking?.ref_number || booking?.booking_number || id,
-          totalBill,
-          paidAdvance: amountPaid,
-          balanceDue: Math.max(0, balanceDue),
-          advanceMethod: booking?.payment_method || "cash",
-        }
-      } catch {
-        return null
+      const { data: result } = await api.get(
+        `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
+      )
+      const wrapped = result as { data?: { booking?: Record<string, unknown>; guest?: Record<string, unknown>; rooms?: Array<Record<string, unknown>>; total?: string | number } }
+      const folio = wrapped?.data || result
+      const booking = folio?.booking || folio
+      const guestData = booking?.guest || {}
+      const rooms = booking?.rooms || []
+      const room = rooms[0] || {}
+      const totalBill = Number(booking?.total_amount) || Number(folio?.total) || 0
+      const amountPaid = Number(booking?.amount_paid) || 0
+      const balanceDue = totalBill - amountPaid
+      return {
+        guestName: guestData.full_name || "Guest",
+        initials: (guestData.full_name || "G").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
+        avatarColor: "bg-orange-100 text-orange-700",
+        roomNumber: room.room_number || room.room_name || "—",
+        roomType: room.room_type || "—",
+        bookingNumber: booking?.ref_number || booking?.booking_number || id,
+        totalBill,
+        paidAdvance: amountPaid,
+        balanceDue: Math.max(0, balanceDue),
+        advanceMethod: booking?.payment_method || "cash",
       }
     },
     enabled: !!currentPropertyId && !!id,
@@ -60,6 +72,10 @@ export default function CollectPaymentPage() {
     { id: "online" as PaymentMethod, label: "Online Payment", icon: Globe, color: "text-orange-600" },
   ]
 
+  const handleBackToCheckout = () => {
+    navigate(`/frontdesk/checkout/${id}`)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -68,10 +84,13 @@ export default function CollectPaymentPage() {
     )
   }
 
-  if (!guest) {
+  if (isError || !guest) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500">Payment information not found.</p>
+        <button onClick={handleBackToCheckout} className="text-blue-600 hover:text-blue-700 font-medium">
+          Go Back
+        </button>
       </div>
     )
   }
@@ -81,7 +100,7 @@ export default function CollectPaymentPage() {
       <div className="max-w-3xl mx-auto px-6 py-6">
         {/* Back Button */}
         <button
-          onClick={() => navigate(`/frontdesk/checkout/${id}`)}
+          onClick={handleBackToCheckout}
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -136,7 +155,8 @@ export default function CollectPaymentPage() {
             {paymentMethods.map((method) => (
               <button
                 key={method.id}
-                onClick={() => setPaymentMethod(method.id)}
+                type="button"
+                onClick={() => setValue("paymentGateway", method.id, { shouldValidate: true })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
                   paymentMethod === method.id
                     ? "border-blue-600 bg-blue-50"
@@ -152,36 +172,28 @@ export default function CollectPaymentPage() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Payment Amount
-              </label>
+            <FormField label="Payment Amount" error={errors.paymentAmount?.message} className="w-full">
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">{formatAmount(0).split(" ")[0]}</span>
                 <input
                   type="number"
                   min="0"
                   max={guest.balanceDue}
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  {...register("paymentAmount")}
                   className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
                 />
               </div>
-            </div>
+            </FormField>
 
             {paymentMethod !== "cash" && (
-              <div>
-                <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Transaction / Reference ID
-                </label>
+              <FormField label="Transaction / Reference ID" error={errors.transactionId?.message} className="w-full">
                 <input
                   type="text"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
                   placeholder="Enter transaction ID"
+                  {...register("transactionId")}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
+              </FormField>
             )}
           </div>
         </div>
@@ -189,13 +201,13 @@ export default function CollectPaymentPage() {
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mt-6">
           <button
-            onClick={() => navigate(`/frontdesk/checkout/${id}`)}
+            onClick={handleBackToCheckout}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
-            onClick={() => navigate(`/frontdesk/checkout/${id}`)}
+            onClick={handleBackToCheckout}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
             Confirm Payment

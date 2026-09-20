@@ -4,8 +4,6 @@ import * as XLSX from "xlsx"
 import {
   Search,
   CalendarCheck,
-  Download,
-  Filter,
   MoreHorizontal,
   Plus,
   ChevronDown,
@@ -20,13 +18,16 @@ import {
   Bed,
   CreditCard,
   FileText,
+  LogIn,
+  LogOut,
 } from "lucide-react"
-import { useAuth } from "../../auth/AuthContext"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
+import { ExportButton } from "../components/ExportButton"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import api from "../../services/axios"
 import { getBookingStatuses, getPaymentStatuses, getPaymentGateways, getPaymentMethods, getBookingTypes } from "../../services/pmsApi"
 import { FrontDeskPagination } from "../components/FrontDeskPagination"
@@ -68,8 +69,12 @@ function getBookingGuestEmail(b: Booking): string {
 
 interface RoomDetail {
   id?: string
+  room_unit_id?: string
   room_name?: string
   room_number?: string
+  room_type?: string
+  bed_type?: string
+  base_rate?: number
   name?: string
 }
 
@@ -218,11 +223,27 @@ function extractGuestPhone(detail: any): string {
   return ""
 }
 
+function getTodayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+function isTodayCheckin(booking: Booking): boolean {
+  const status = booking.status?.toUpperCase()
+  const isEligible = status === "CONFIRMED" || status === "PENDING"
+  return isEligible && booking.checkin_date === getTodayStr()
+}
+
+function isTodayCheckout(booking: Booking): boolean {
+  const status = booking.status?.toUpperCase()
+  const isEligible = status === "CHECKED_IN" || status === "IN_HOUSE"
+  return isEligible && booking.checkout_date === getTodayStr()
+}
+
 const EMPTY_BOOKINGS: Booking[] = []
 
 export default function FrontdeskBookingsPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { currentPropertyId } = usePropertyStore()
   const { formatAmount } = usePropertyCurrency()
   const [searchParams] = useSearchParams()
@@ -310,38 +331,32 @@ export default function FrontdeskBookingsPage() {
     queryFn: getBookingTypes,
   })
 
-  const { data: bookingDetail, isLoading: isLoadingDetail } = useQuery({
+  const handleNewBooking = () => { navigate("/frontdesk?panel=new-booking") }
+  const handleViewFolio = (bookingId: string) => { navigate(`/frontdesk/folios?booking=${bookingId}`) }
+
+  const { data: bookingDetail, isLoading: isLoadingDetail, isError: isDetailError } = useQuery({
     queryKey: ["booking-detail", selectedBookingRef],
     queryFn: async (): Promise<BookingDetail | null> => {
       if (!selectedBookingRef) return null
-      try {
-        const response = await api.get(`/staff/bookings/${selectedBookingRef}`)
-        const res = response.data
-        
-        console.log("API Response:", res)
-        
-        // Structure: { success: true, data: { booking_id, ref_number, ... } }
-        if (res?.success && res?.data) {
-          console.log("Booking guest data:", res.data.booking_guest)
-          return res.data as BookingDetail
-        }
-        
-        // Fallback: data is directly in response
-        if (res?.data && (res.data.ref_number || res.data.booking_id)) {
-          return res.data as BookingDetail
-        }
-        
-        // Fallback: response is the booking directly
-        if (res?.ref_number || res?.booking_id) {
-          return res as BookingDetail
-        }
-        
-        console.log("No booking detail found in:", res)
-        return null
-      } catch (err) {
-        console.error("Failed to fetch booking detail:", err)
-        return null
+      const response = await api.get(`/staff/bookings/${selectedBookingRef}`)
+      const res = response.data
+
+      // Structure: { success: true, data: { booking_id, ref_number, ... } }
+      if (res?.success && res?.data) {
+        return res.data as BookingDetail
       }
+
+      // Fallback: data is directly in response
+      if (res?.data && (res.data.ref_number || res.data.booking_id)) {
+        return res.data as BookingDetail
+      }
+
+      // Fallback: response is the booking directly
+      if (res?.ref_number || res?.booking_id) {
+        return res as BookingDetail
+      }
+
+      return null
     },
     enabled: !!selectedBookingRef,
     retry: false,
@@ -357,11 +372,11 @@ export default function FrontdeskBookingsPage() {
   const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { refNumber: string; payload: any }) => {
+    mutationFn: async (data: { refNumber: string; payload: Record<string, unknown> }) => {
       const response = await api.patch(`/staff/${data.refNumber}/booking-modify`, data.payload)
       return response.data
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result: { data?: { message?: string }; message?: string }) => {
       queryClient.invalidateQueries({ queryKey: ["booking-detail", selectedBookingRef] })
       queryClient.invalidateQueries({ queryKey: ["frontdesk-bookings"] })
       setIsEditing(false)
@@ -369,8 +384,9 @@ export default function FrontdeskBookingsPage() {
       setToastType("success")
       setToastMessage(msg)
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.detail?.[0]?.msg || err?.response?.data?.message || "Failed to update booking"
+    onError: (err: AxiosError<{ detail?: string | { msg?: string }[]; message?: string }>) => {
+      const detail = err.response?.data?.detail
+      const msg = (Array.isArray(detail) ? detail[0]?.msg : detail) || err.response?.data?.message || "Failed to update booking"
       setToastType("error")
       setToastMessage(msg)
     },
@@ -387,21 +403,28 @@ export default function FrontdeskBookingsPage() {
       setCancelBookingName("")
       setCancelReason("")
     },
+    onError: (err: AxiosError<{ detail?: string | { msg?: string }[]; message?: string }>) => {
+      const detail = err.response?.data?.detail
+      const msg = (Array.isArray(detail) ? detail[0]?.msg : detail) || err.response?.data?.message || "Failed to cancel booking"
+      setToastType("error")
+      setToastMessage(msg)
+      setCancelBookingId(null)
+    },
   })
 
   const startEditing = () => {
     if (!bookingDetail) return
-    const rooms = (bookingDetail as any).rooms
+    const rooms = bookingDetail.rooms
     const roomUnitIds = Array.isArray(rooms)
-      ? rooms.map((r: any) => r.room_unit_id || r.id).filter(Boolean)
+      ? rooms.map((r) => typeof r === "string" ? null : (r as RoomDetail).room_unit_id || (r as RoomDetail).id).filter(Boolean) as string[]
       : []
     setEditForm({
       checkin_date: bookingDetail.checkin_date || "",
       checkout_date: bookingDetail.checkout_date || "",
-      special_requests: (bookingDetail as any).special_requests || "",
-      notes: (bookingDetail as any).notes || "",
-      number_of_adults: (bookingDetail as any).number_of_adults || 0,
-      number_of_children: (bookingDetail as any).number_of_children || 0,
+      special_requests: bookingDetail.special_requests || "",
+      notes: bookingDetail.notes || "",
+      number_of_adults: bookingDetail.number_of_adults || 0,
+      number_of_children: bookingDetail.number_of_children || 0,
       room_unit_ids: roomUnitIds,
       reason: "",
     })
@@ -431,7 +454,6 @@ export default function FrontdeskBookingsPage() {
     return map
   }, [paymentStatusOptions])
 
-  const STATUS_OPTIONS = ["", ...statusOptions.map((s) => s.value)]
   const statusLabelMap = useMemo(() => {
     const map: Record<string, string> = {}
     statusOptions.forEach((s) => { map[s.value] = s.label })
@@ -457,8 +479,8 @@ export default function FrontdeskBookingsPage() {
 
           const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params })
           const wrapped = result as { data?: Booking[]; meta?: { has_more?: boolean } }
-          const apiData = (wrapped?.data ?? result) as Booking[]
-          allData = [...allData, ...apiData]
+          const pageData = (wrapped?.data ?? result) as Booking[]
+          allData = [...allData, ...pageData]
           hasMore = wrapped?.meta?.has_more ?? false
           skip += 50
         }
@@ -522,32 +544,28 @@ export default function FrontdeskBookingsPage() {
     setCurrentPage(1)
   }
 
-  const { data: bookingsData, isLoading } = useQuery({
+  const { data: bookingsData, isLoading, isError: isBookingsError } = useQuery({
     queryKey: ["frontdesk-bookings", currentPropertyId, filters, currentPage, searchQuery],
     queryFn: async () => {
       if (!currentPropertyId) return { data: EMPTY_BOOKINGS, total: 0, skip: 0, limit: PAGE_SIZE, has_more: false }
-      try {
-        const skip = (currentPage - 1) * PAGE_SIZE
-        const params: Record<string, string> = { limit: String(PAGE_SIZE), skip: String(skip) }
-        if (searchQuery.trim()) params.search = searchQuery.trim()
-        if (filters.status) params.status = filters.status
-        if (filters.payment_status) params.payment_status = filters.payment_status
-        if (filters.payment_method) params.payment_method = filters.payment_method
-        if (filters.payment_gateway) params.payment_gateway = filters.payment_gateway
-        if (filters.booking_type) params.booking_type = filters.booking_type
+      const skip = (currentPage - 1) * PAGE_SIZE
+      const params: Record<string, string> = { limit: String(PAGE_SIZE), skip: String(skip) }
+      if (searchQuery.trim()) params.search = searchQuery.trim()
+      if (filters.status) params.status = filters.status
+      if (filters.payment_status) params.payment_status = filters.payment_status
+      if (filters.payment_method) params.payment_method = filters.payment_method
+      if (filters.payment_gateway) params.payment_gateway = filters.payment_gateway
+      if (filters.booking_type) params.booking_type = filters.booking_type
 
-        const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params })
-        const wrapped = result as { data?: Booking[]; meta?: { total?: number; skip?: number; limit?: number; has_more?: boolean }; total?: number; skip?: number; limit?: number; has_more?: boolean }
-        const apiData = (wrapped?.data ?? result) as Booking[]
-        const meta = wrapped?.meta
-        const total = meta?.total ?? wrapped?.total ?? apiData.length
-        const skipVal = meta?.skip ?? wrapped?.skip ?? 0
-        const limitVal = meta?.limit ?? wrapped?.limit ?? PAGE_SIZE
-        const has_more = meta?.has_more ?? wrapped?.has_more ?? false
-        return { data: apiData, total, skip: skipVal, limit: limitVal, has_more }
-      } catch {
-        return { data: EMPTY_BOOKINGS, total: 0, skip: 0, limit: PAGE_SIZE, has_more: false }
-      }
+      const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params })
+      const wrapped = result as { data?: Booking[]; meta?: { total?: number; skip?: number; limit?: number; has_more?: boolean }; total?: number; skip?: number; limit?: number; has_more?: boolean }
+      const apiData = (wrapped?.data ?? result) as Booking[]
+      const meta = wrapped?.meta
+      const total = meta?.total ?? wrapped?.total ?? apiData.length
+      const skipVal = meta?.skip ?? wrapped?.skip ?? 0
+      const limitVal = meta?.limit ?? wrapped?.limit ?? PAGE_SIZE
+      const has_more = meta?.has_more ?? wrapped?.has_more ?? false
+      return { data: apiData, total, skip: skipVal, limit: limitVal, has_more }
     },
     enabled: !!currentPropertyId,
   })
@@ -557,6 +575,9 @@ export default function FrontdeskBookingsPage() {
   const hasMore = bookingsData?.has_more ?? false
   const totalPages = Math.max(1, Math.ceil(totalBookings / PAGE_SIZE))
   const paginatedBookings = bookings
+
+  const todayCheckinCount = bookings.filter(isTodayCheckin).length
+  const todayCheckoutCount = bookings.filter(isTodayCheckout).length
 
   return (
     <FrontDeskSidebarProvider>
@@ -576,13 +597,37 @@ export default function FrontdeskBookingsPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate("/frontdesk?panel=new-booking")}
+              onClick={handleNewBooking}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
             >
               <Plus size={16} />
               New booking
             </button>
           </div>
+
+          {/* Today's Activity */}
+          {(todayCheckinCount > 0 || todayCheckoutCount > 0) && (
+            <div className="flex items-center gap-3 mb-6 flex-wrap">
+              {todayCheckinCount > 0 && (
+                <button
+                  onClick={() => navigate("/frontdesk/check-in")}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl text-sm font-medium text-green-700 hover:bg-green-100 transition-colors"
+                >
+                  <LogIn size={16} className="text-green-600" />
+                  <span>{todayCheckinCount} check-in{todayCheckinCount !== 1 ? "s" : ""} today</span>
+                </button>
+              )}
+              {todayCheckoutCount > 0 && (
+                <button
+                  onClick={() => navigate("/frontdesk/check-out")}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-medium text-orange-700 hover:bg-orange-100 transition-colors"
+                >
+                  <LogOut size={16} className="text-orange-600" />
+                  <span>{todayCheckoutCount} check-out{todayCheckoutCount !== 1 ? "s" : ""} today</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Filters Bar */}
           <div className="bg-white rounded-xl border border-gray-200 mb-6">
@@ -661,13 +706,7 @@ export default function FrontdeskBookingsPage() {
                 <ResetButton
                   onClick={() => setFilters({ status: "", payment_status: "", payment_method: "", payment_gateway: "", booking_type: "" })}
                 />
-                <button
-                  onClick={handleExport}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Download size={14} />
-                  Export
-                </button>
+                <ExportButton onClick={handleExport} />
               </div>
             </div>
           </div>
@@ -712,6 +751,16 @@ export default function FrontdeskBookingsPage() {
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
                 <p className="text-sm text-gray-500">Loading bookings...</p>
+              </div>
+            ) : isBookingsError ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X size={24} className="text-red-500" />
+                </div>
+                <p className="text-red-600 font-semibold">Failed to load bookings</p>
+                <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  Something went wrong while fetching bookings. Please try again later.
+                </p>
               </div>
             ) : paginatedBookings.length === 0 ? (
               <div className="text-center py-16">
@@ -773,6 +822,28 @@ export default function FrontdeskBookingsPage() {
                           </span>
                         </div>
                       </div>
+                      {(isTodayCheckin(booking) || isTodayCheckout(booking)) && (
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                          {isTodayCheckin(booking) && !isCheckedIn(booking.id) && (
+                            <button
+                              onClick={() => navigate("/frontdesk/check-in")}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                            >
+                              <LogIn size={13} />
+                              Check In
+                            </button>
+                          )}
+                          {isTodayCheckout(booking) && (
+                            <button
+                              onClick={() => navigate(`/frontdesk/checkout/${booking.id}`)}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+                            >
+                              <LogOut size={13} />
+                              Check Out
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -870,7 +941,25 @@ export default function FrontdeskBookingsPage() {
                       </div>
 
                       {/* Action */}
-                      <div className="text-right">
+                      <div className="text-right flex items-center justify-end gap-1.5">
+                        {isTodayCheckin(booking) && !isCheckedIn(booking.id) && (
+                          <button
+                            onClick={() => navigate("/frontdesk/check-in")}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                          >
+                            <LogIn size={13} />
+                            Check In
+                          </button>
+                        )}
+                        {isTodayCheckout(booking) && (
+                          <button
+                            onClick={() => navigate(`/frontdesk/checkout/${booking.id}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+                          >
+                            <LogOut size={13} />
+                            Check Out
+                          </button>
+                        )}
                         <div className="relative inline-block">
                           <button
                             onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === booking.id ? null : booking.id) }}
@@ -912,6 +1001,24 @@ export default function FrontdeskBookingsPage() {
                                 <X size={14} />
                                 Cancel
                               </button>
+                              {isTodayCheckin(booking) && !isCheckedIn(booking.id) && (
+                                <button
+                                  onClick={() => { navigate("/frontdesk/check-in"); setActiveMenu(null) }}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+                                >
+                                  <LogIn size={14} />
+                                  Check In
+                                </button>
+                              )}
+                              {isTodayCheckout(booking) && (
+                                <button
+                                  onClick={() => { navigate(`/frontdesk/checkout/${booking.id}`); setActiveMenu(null) }}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                                >
+                                  <LogOut size={14} />
+                                  Check Out
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -985,6 +1092,16 @@ export default function FrontdeskBookingsPage() {
                   </div>
                 </div>
               </div>
+            ) : isDetailError ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X size={24} className="text-red-500" />
+                </div>
+                <p className="text-red-600 font-semibold">Failed to load booking details</p>
+                <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  Something went wrong while fetching the booking. Please try again later.
+                </p>
+              </div>
             ) : bookingDetail ? (
               <div className="flex flex-col h-full">
                 {/* Sticky Header */}
@@ -1021,7 +1138,7 @@ export default function FrontdeskBookingsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => navigate(`/frontdesk/folios?booking=${(bookingDetail as any).booking_id || bookingDetail.id}`)}
+                          onClick={() => handleViewFolio(bookingDetail.booking_id || bookingDetail.id)}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <FileText size={14} />
@@ -1167,9 +1284,9 @@ export default function FrontdeskBookingsPage() {
                               ) : (
                                 <>
                                   <p className="text-sm text-gray-900">
-                                    {(bookingDetail as any).number_of_adults || bookingDetail.adults || 0} adults
-                                    {((bookingDetail as any).number_of_children || bookingDetail.children)
-                                      ? `, ${(bookingDetail as any).number_of_children || bookingDetail.children} children`
+                                    {bookingDetail.number_of_adults || bookingDetail.adults || 0} adults
+                                    {(bookingDetail.number_of_children || bookingDetail.children)
+                                      ? `, ${bookingDetail.number_of_children || bookingDetail.children} children`
                                       : ""}
                                   </p>
                                   <p className="text-xs text-gray-500">Guests</p>
@@ -1236,12 +1353,12 @@ export default function FrontdeskBookingsPage() {
                               <span className="text-sm text-gray-600">Subtotal</span>
                               <span className="text-sm font-medium text-gray-900">{formatAmount(Number(bookingDetail.subtotal) || 0)}</span>
                             </div>
-                            {(bookingDetail as any).coupon_discount > 0 && (
+                            {bookingDetail.coupon_discount && bookingDetail.coupon_discount > 0 && (
                               <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-600">
-                                  Coupon{((bookingDetail as any).coupon_code ? ` (${(bookingDetail as any).coupon_code})` : "")}
+                                  Coupon{(bookingDetail.coupon_code ? ` (${bookingDetail.coupon_code})` : "")}
                                 </span>
-                                <span className="text-sm font-medium text-green-600">-{formatAmount(Number((bookingDetail as any).coupon_discount))}</span>
+                                <span className="text-sm font-medium text-green-600">-{formatAmount(Number(bookingDetail.coupon_discount))}</span>
                               </div>
                             )}
                             <div className="flex justify-between items-center pt-2 border-t border-gray-100">
@@ -1357,8 +1474,8 @@ export default function FrontdeskBookingsPage() {
                 Keep Booking
               </button>
               <button
-                onClick={() => cancelMutation.mutate({ refNumber: cancelBookingId, reason: cancelReason || "No reason provided" })}
-                disabled={cancelMutation.isPending}
+                onClick={() => cancelBookingId && cancelMutation.mutate({ refNumber: cancelBookingId, reason: cancelReason || "No reason provided" })}
+                    disabled={cancelMutation.isPending}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel Booking"}
