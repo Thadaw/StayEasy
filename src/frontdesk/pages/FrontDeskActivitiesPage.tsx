@@ -393,6 +393,40 @@ export default function FrontDeskActivitiesPage() {
                           </div>
                         )}
                       </div>
+                      <div className="lg:hidden divide-y divide-gray-100">
+                        {completedTasks.map((activity) => (
+                          <div key={activity.id} className="px-6 py-4 hover:bg-gray-50 transition-colors opacity-60">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+                                <span className="text-sm text-gray-700 line-through truncate">{activity.description || "—"}</span>
+                              </div>
+                              <span className={`shrink-0 ml-2 inline-block px-2.5 py-1 rounded text-xs font-medium ${getTypeStyle(activity.activity_type)}`}>
+                                {activity.activity_type || "—"}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2 line-clamp-2">{activity.description || "—"}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatarColor(activity.staff_name)}`}>
+                                  {getInitials(activity.staff_name)}
+                                </span>
+                                <span className="text-xs text-gray-600">{activity.staff_name || "—"}</span>
+                              </div>
+                                <span className="text-xs text-emerald-600">{formatTime(activity.created_at)}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {completedTasks.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-16 gap-3">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                              <CheckCircle size={20} className="text-gray-400" />
+                            </div>
+                            <p className="text-gray-700 font-semibold">No completed activities</p>
+                            <p className="text-sm text-gray-500">Completed tasks will appear here.</p>
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
