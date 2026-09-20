@@ -51,7 +51,7 @@ export default function CollectPaymentPage() {
       const balanceDue = totalBill - amountPaid
       return {
         guestName: guestData.full_name || "Guest",
-        initials: (guestData.full_name || "G").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
+        initials: (guestData.full_name || "G").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
         avatarColor: "bg-orange-100 text-orange-700",
         roomNumber: room.room_number || room.room_name || "—",
         roomType: room.room_type || "—",

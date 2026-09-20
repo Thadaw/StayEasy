@@ -81,7 +81,7 @@ export default function CheckoutPage() {
     setValue,
     formState: { errors },
   } = useForm<CheckoutPaymentFormData>({
-    resolver: zodResolver(checkoutPaymentSchema),
+    resolver: zodResolver(checkoutPaymentSchema) as any,
     defaultValues: {
       paymentGateway: "CASH",
       discount: "",
@@ -616,7 +616,7 @@ export default function CheckoutPage() {
             View Receipt
           </button>
           <button
-            onClick={handleSubmit(onFormSubmit)}
+            onClick={handleSubmit(onFormSubmit as any)}
             disabled={alreadyCheckedOut || isCheckedOut || checkOutMutation.isPending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >

@@ -359,6 +359,7 @@ export interface FrontDeskSummary {
   total_available_rooms: number
   dirty_rooms: number
   occupied_rooms: number
+  occupancy_vs_last_week?: number
 }
 
 export const getFrontDeskSummary = async (propertyId: string): Promise<FrontDeskSummary> => {

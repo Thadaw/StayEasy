@@ -1059,7 +1059,7 @@ export default function FrontDeskFoliosPage() {
 
                 {/* Balance Card */}
                 {(() => {
-                  const computedSubtotal = displaySelected.charges?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: Charge) => sum + (Number(c.amount) || 0), 0) ?? 0
                   const computedTotal = computedSubtotal + (displaySelected.tax || 0) - (displaySelected.discount || 0)
                   const amountPaid = displaySelected.amount_paid ?? 0
                   const remaining = displaySelected.remaining_balance ?? computedTotal
@@ -1146,7 +1146,7 @@ export default function FrontDeskFoliosPage() {
                     </button>
                   </div>
                   <div className="space-y-3">
-                    {displaySelected.charges.map((charge) => (
+                    {displaySelected.charges.map((charge: Charge) => (
                       <div key={charge.id} className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-xl group">
                         <ChargeIcon type={charge.icon} />
                         <div className="flex-1 min-w-0">
@@ -1184,7 +1184,7 @@ export default function FrontDeskFoliosPage() {
 
                 {/* Totals */}
                 {(() => {
-                  const computedSubtotal = displaySelected.charges?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) ?? 0
+                  const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: Charge) => sum + (Number(c.amount) || 0), 0) ?? 0
                   const tax = displaySelected.tax || 0
                   const discount = displaySelected.discount || 0
                   const computedTotal = computedSubtotal + tax - discount

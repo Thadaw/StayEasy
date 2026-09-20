@@ -52,7 +52,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<CreateBookingFormData>({
-    resolver: zodResolver(createBookingSchema),
+    resolver: zodResolver(createBookingSchema) as any,
     defaultValues: {
       stay: {
         checkInDate: initialCheckinDate || formatDate(today),
@@ -1001,7 +1001,7 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
           </button>
         ) : (
           <button
-            onClick={handleSubmit(onSubmit)}
+            onClick={handleSubmit(onSubmit as any)}
             disabled={isSubmitting}
             className="px-5 sm:px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >

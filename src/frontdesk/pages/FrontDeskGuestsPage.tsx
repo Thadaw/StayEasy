@@ -407,7 +407,7 @@ export default function FrontDeskGuestsPage() {
                       </div>
                     ))
                   ) : (
-                    paginatedGuests.map((guest) => {
+                    (paginatedGuests as GuestProfile[]).map((guest) => {
                     const statusStyle = getStatusStyle(guest.status, guest.room_number)
                     return (
                       <div
@@ -521,7 +521,7 @@ export default function FrontDeskGuestsPage() {
                       </div>
                     ))
                   ) : (
-                    paginatedGuests.map((guest) => {
+                    (paginatedGuests as GuestProfile[]).map((guest) => {
                     const statusStyle = getStatusStyle(guest.status, guest.room_number)
                     return (
                       <div

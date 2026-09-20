@@ -128,7 +128,7 @@ export default function FrontDeskRoomStatusPage() {
     watch,
     formState: { errors },
   } = useForm<WalkInBookingFormData>({
-    resolver: zodResolver(walkInBookingSchema),
+    resolver: zodResolver(walkInBookingSchema) as any,
     defaultValues: {
       guestName: "",
       phone: "",
