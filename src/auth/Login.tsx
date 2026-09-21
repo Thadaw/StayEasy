@@ -62,6 +62,8 @@ export default function Login() {
       }
 
       const redirectTo = searchParams.get('redirect')
+      const isAuthPage =
+        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup'
       const isValidRedirect = redirectTo
         && redirectTo.startsWith('/')
         && !redirectTo.startsWith('//')

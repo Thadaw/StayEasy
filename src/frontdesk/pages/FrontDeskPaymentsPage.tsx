@@ -217,7 +217,7 @@ export default function FrontDeskPaymentsPage() {
 
   const transactions = transactionsData?.data ?? EMPTY_TRANSACTIONS
   const totalTransactions = transactionsData?.total ?? transactions.length
-  const totalRefunds = transactionsData?.total_refunds ?? transactions.filter((t) => t.type === "refund" || t.status === "refunded").length
+  const totalRefunds = transactions.filter((t) => t.type === "refund" || t.status === "refunded").length
   const hasMore = transactionsData?.has_more ?? false
   const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE))
 

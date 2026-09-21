@@ -118,7 +118,7 @@ export function HeroSection() {
         name: p.name,
         city: p.city || "",
         country: p.country || "",
-        price: Math.round(p.lowest_rate),
+        price: Math.round(p.lowest_rate ?? 0),
         currency: p.currency || "$",
         image: p.cover_photo || "",
         distance: p.distance_km,

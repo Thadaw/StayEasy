@@ -363,13 +363,6 @@ export default function FrontdeskBookingsPage() {
     retry: false,
   })
 
-  // Auto-populate edit form when opening in edit mode
-  useEffect(() => {
-    if (isEditing && bookingDetail) {
-      startEditing()
-    }
-  }, [isEditing, bookingDetail, startEditing])
-
   const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
@@ -431,6 +424,13 @@ export default function FrontdeskBookingsPage() {
     })
     setIsEditing(true)
   }
+
+  // Auto-populate edit form when opening in edit mode
+  useEffect(() => {
+    if (isEditing && bookingDetail) {
+      startEditing()
+    }
+  }, [isEditing, bookingDetail, startEditing])
 
   const handleSaveEdit = () => {
     if (!bookingDetail) return

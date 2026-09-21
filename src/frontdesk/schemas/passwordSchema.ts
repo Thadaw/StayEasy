@@ -21,6 +21,8 @@ export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>
 
 export const staffProfileSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   email: z.string().min(1, "Email is required").email("Invalid email format"),
   phone: z.string().optional(),
 })
