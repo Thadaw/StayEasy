@@ -12,6 +12,7 @@ import api from "../../services/axios"
 import { checkoutPaymentSchema } from "../schemas/paymentSchema"
 import type { CheckoutPaymentFormData } from "../schemas/paymentSchema"
 import { FormField } from "../components/FormField"
+import { CheckoutPageSkeleton } from "../components/CheckoutPageSkeleton"
 
 interface BookingRoom {
   room_id: string
@@ -28,8 +29,18 @@ interface BookingFolio {
   tax: number
   discount: number
   total: number
+  amount_paid: number
+  remaining_balance: number
   charges_count: number
   settled_at: string | null
+  charges?: Array<{
+    charge_id: string
+    description: string
+    amount: number
+    category?: string
+    posted_by_name?: string
+    created_at: string
+  }>
 }
 
 interface Booking {
@@ -142,8 +153,6 @@ export default function CheckoutPage() {
     enabled: !!folioId,
   })
 
-  const charges = folioData?.charges || []
-
   const alreadyCheckedOut = isGuestCheckedOut(id || "")
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -185,29 +194,26 @@ export default function CheckoutPage() {
       }
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { detail?: string; message?: string } } }
-      const msg = err?.response?.data?.detail || err?.response?.data?.message || "Checkout failed. Please try again."
+      const err = error as { response?: { data?: { detail?: string; message?: string; error?: string } } }
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error || "Checkout failed. Please try again."
+      console.error("Checkout error:", error)
       setCheckoutError(msg)
       setIsCheckedOut(false)
     },
   })
 
   useEffect(() => {
-    if (isCheckedOut || alreadyCheckedOut) {
+    if (isCheckedOut) {
       setShowToast(true)
       const timer = setTimeout(() => {
         navigate("/frontdesk/check-out")
       }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [isCheckedOut, alreadyCheckedOut, navigate])
+  }, [isCheckedOut, navigate])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-      </div>
-    )
+    return <CheckoutPageSkeleton />
   }
 
   if (isError) {
@@ -233,13 +239,31 @@ export default function CheckoutPage() {
   }
 
   const nights = getNights(booking)
-  const computedSubtotal = charges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
-  const subtotal = computedSubtotal || (Number(folioData?.subtotal) || Number(booking.total_amount) || 0)
-  const folioTax = Number(folioData?.tax) || 0
-  const folioDiscount = Number(folioData?.discount) || 0
-  const total = (computedSubtotal + folioTax - folioDiscount) || (Number(folioData?.total) || Number(booking.total_amount) || 0)
+  const charges = folioData?.charges || (booking.folio?.charges || []).map((c) => ({
+    id: c.charge_id,
+    folio_id: booking.folio!.folio_id,
+    description: c.description || "",
+    amount: Number(c.amount) || 0,
+    category: c.category || "",
+    posted_by_name: c.posted_by_name || "System",
+    posted_at: c.created_at || "",
+  }))
+  const roomCharges = (booking.rooms || []).map((room, idx) => ({
+    id: `room-${idx}`,
+    description: `${room.room_name} (${room.room_type}, ${room.bed_type})`,
+    category: "room",
+    amount: (Number(room.base_rate) || 0) * nights,
+    posted_by_name: "System",
+    posted_at: booking.checkin_date,
+  }))
+  const displayCharges = charges.length > 0 ? charges : roomCharges
+  const computedSubtotal = displayCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
+  const subtotal = computedSubtotal || (Number(folioData?.subtotal) || Number(booking.folio?.subtotal) || Number(booking.total_amount) || 0)
+  const folioTax = Number(folioData?.tax) || Number(booking.folio?.tax) || 0
+  const folioDiscount = Number(folioData?.discount) || Number(booking.folio?.discount) || 0
+  const total = (computedSubtotal + folioTax - folioDiscount) || (Number(folioData?.total) || Number(booking.folio?.total) || Number(booking.total_amount) || 0)
   const advancePaid = Number(booking.amount_paid) || 0
-  const remainingBalance = Math.max(0, total - advancePaid)
+  const remainingBalance = booking.folio?.remaining_balance ?? Math.max(0, total - advancePaid)
 
   const guest = {
     name: booking.guest_name || "—",
@@ -256,11 +280,14 @@ export default function CheckoutPage() {
   }
 
   const onFormSubmit = (data: CheckoutPaymentFormData) => {
+    const paymentAmount = Number(data.paymentAmount) || 0
+    const discount = Number(data.discount) || 0
+    const amount = paymentAmount > 0 ? paymentAmount : Math.max(0, remainingBalance - discount)
     checkOutMutation.mutate({
       refNumber: booking.ref_number,
-      paymentAmount: Number(data.paymentAmount) || 0,
+      paymentAmount: amount,
       paymentGateway: data.paymentGateway,
-      discount: Number(data.discount) || 0,
+      discount,
     })
   }
 
@@ -386,7 +413,7 @@ export default function CheckoutPage() {
           <h3 className="text-base font-bold text-gray-900 mb-4">Folio / Bill</h3>
 
           {/* Charges Table - Desktop */}
-          {charges.length > 0 && (
+          {displayCharges.length > 0 && (
             <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden mb-4">
               <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                 <div>Description</div>
@@ -394,7 +421,7 @@ export default function CheckoutPage() {
                 <div className="text-right">Amount</div>
               </div>
               <div className="divide-y divide-gray-50">
-                {charges.map((charge) => (
+                {displayCharges.map((charge) => (
                   <div key={charge.id} className="grid grid-cols-[2fr_1fr_1fr] gap-4 px-4 py-3 items-center">
                     <div>
                       <span className="text-sm text-gray-900 font-medium">{charge.description}</span>
@@ -409,9 +436,9 @@ export default function CheckoutPage() {
           )}
 
           {/* Charges Cards - Mobile */}
-          {charges.length > 0 && (
+          {displayCharges.length > 0 && (
             <div className="md:hidden space-y-3 mb-4">
-              {charges.map((charge) => (
+              {displayCharges.map((charge) => (
                 <div key={charge.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-gray-900 font-medium">{charge.description}</span>
@@ -424,8 +451,8 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {charges.length === 0 && (
-            <p className="text-sm text-gray-400 mb-4">No additional charges</p>
+          {displayCharges.length === 0 && (
+            <p className="text-sm text-gray-400 mb-4">No charges yet</p>
           )}
 
           {/* Summary from folio */}
@@ -547,7 +574,8 @@ export default function CheckoutPage() {
                 </FormField>
               </div>
 
-              <FormField label="Amount" error={errors.paymentAmount?.message} required htmlFor="paymentAmount">
+              {remainingBalance > 0 && (
+              <FormField label="Amount" error={errors.paymentAmount?.message} required={remainingBalance > 0} htmlFor="paymentAmount">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
                   <input
@@ -564,6 +592,7 @@ export default function CheckoutPage() {
                   />
                 </div>
               </FormField>
+              )}
 
               {Number(watchedDiscount) > 0 && (
                 <div className="bg-green-50 rounded-lg p-3">
@@ -609,7 +638,7 @@ export default function CheckoutPage() {
             Cancel
           </button>
           <button
-            onClick={() => window.open(`/frontdesk/checkout/${id}/receipt`, "_blank")}
+            onClick={() => window.open(`/frontdesk/checkout/${id}/receipt`, "_blank", "noopener,noreferrer")}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <FileText size={16} />

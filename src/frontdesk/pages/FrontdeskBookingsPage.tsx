@@ -25,6 +25,7 @@ import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
 import { ExportButton } from "../components/ExportButton"
+import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
@@ -362,13 +363,6 @@ export default function FrontdeskBookingsPage() {
     retry: false,
   })
 
-  // Auto-populate edit form when opening in edit mode
-  useEffect(() => {
-    if (isEditing && bookingDetail) {
-      startEditing()
-    }
-  }, [isEditing, bookingDetail])
-
   const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
@@ -431,6 +425,13 @@ export default function FrontdeskBookingsPage() {
     setIsEditing(true)
   }
 
+  // Auto-populate edit form when opening in edit mode
+  useEffect(() => {
+    if (isEditing && bookingDetail) {
+      startEditing()
+    }
+  }, [isEditing, bookingDetail, startEditing])
+
   const handleSaveEdit = () => {
     if (!bookingDetail) return
     const refNumber = bookingDetail.ref_number || bookingDetail.booking_number || bookingDetail.id
@@ -468,8 +469,11 @@ export default function FrontdeskBookingsPage() {
         let allData: Booking[] = []
         let skip = 0
         let hasMore = true
+        let iterations = 0
+        const MAX_ITERATIONS = 100
 
-        while (hasMore) {
+        while (hasMore && iterations < MAX_ITERATIONS) {
+          iterations++
           const params: Record<string, string> = { limit: "50", skip: String(skip) }
           if (filters.status) params.status = filters.status
           if (filters.payment_status) params.payment_status = filters.payment_status
@@ -748,10 +752,7 @@ export default function FrontdeskBookingsPage() {
             </div>
 
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading bookings...</p>
-              </div>
+              <FrontdeskRowSkeleton columns={8} />
             ) : isBookingsError ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">

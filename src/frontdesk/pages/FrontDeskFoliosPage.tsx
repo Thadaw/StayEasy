@@ -21,6 +21,8 @@ import {
 import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ExportButton } from "../components/ExportButton"
+import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { Skeleton } from "../../shared/ui/Skeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -337,7 +339,10 @@ export default function FrontDeskFoliosPage() {
         let all: Array<{ id: string; booking_number: string }> = []
         let skip = 0
         let hasMore = true
-        while (hasMore) {
+        let iterations = 0
+        const MAX_ITERATIONS = 100
+        while (hasMore && iterations < MAX_ITERATIONS) {
+          iterations++
           const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, {
             params: { limit: 50, skip },
           })
@@ -928,9 +933,7 @@ export default function FrontDeskFoliosPage() {
                 </div>
                 <div className="overflow-y-auto">
                   {isLoading ? (
-                    <div className="flex items-center justify-center py-16">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                    </div>
+                    <FrontdeskRowSkeleton rows={6} columns={4} />
                   ) : (
                     <>
                       {filteredFolios.map((folio) => (
@@ -1003,8 +1006,44 @@ export default function FrontDeskFoliosPage() {
             </div>
 
             {isLoadingDetail ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-5">
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                      <div>
+                        <Skeleton className="h-5 w-32 mb-1" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-8 w-full rounded-lg mb-3" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <Skeleton className="h-5 w-28 mb-4" />
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                </div>
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <Skeleton className="h-5 w-24 mb-4" />
+                    <div className="space-y-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded shrink-0" />
+                          <div className="flex-1">
+                            <Skeleton className="h-4 w-40 mb-1" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : displaySelected && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1108,7 +1147,7 @@ export default function FrontDeskFoliosPage() {
                     {displaySelected.status?.toUpperCase() === "SETTLED" ? "Settled" : "Payment"}
                   </button>
                   <button
-                    onClick={() => window.open(`/frontdesk/folio/${displaySelected.id}/invoice`, "_blank")}
+                    onClick={() => window.open(`/frontdesk/folio/${displaySelected.booking_number || displaySelected.id}/invoice`, "_blank", "noopener,noreferrer")}
                     className="flex items-center justify-center gap-2 px-4 py-3.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <FileText size={18} />

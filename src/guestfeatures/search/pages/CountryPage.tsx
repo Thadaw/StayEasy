@@ -56,9 +56,10 @@ export default function CountryPage() {
           },
         });
         if (cancelled) return;
-        setSearchResults(parseSearchResponse<SearchProperty>(data));
+        const parsed = parseSearchResponse<SearchProperty>(data);
+        setSearchResults(parsed);
         const meta = parseSearchMeta(data);
-        setTotal(meta?.total ?? parseSearchResponse<SearchProperty>(data).length);
+        setTotal(meta?.total ?? parsed.length);
       } catch {
         if (!cancelled) {
           setSearchResults([]);

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFavorites } from '../../../context/FavoritesContext'
 import { Heart, MapPin, Building2 } from 'lucide-react'
 import { FavouriteButton } from '../../../shared/components/FavouriteButton'
+import { FavouritesSkeleton } from './FavouritesSkeleton'
 
 export default function Favourites() {
   const { favorites, getFavoriteProperties, toggleFavorite, isFavorite, loading } = useFavorites()
@@ -10,14 +11,7 @@ export default function Favourites() {
   const properties = getFavoriteProperties()
 
   if (loading) {
-    return (
-      <div className="max-w-3xl">
-        <div className="bg-white rounded-xl border border-brand-card-border p-12 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
-          <p className="text-sm text-brand-text-secondary">Loading favourites...</p>
-        </div>
-      </div>
-    )
+    return <FavouritesSkeleton />
   }
 
   if (favorites.size === 0) {

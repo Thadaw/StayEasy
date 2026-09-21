@@ -36,7 +36,7 @@ const SupportPage = lazy(() => import('../pages/SupportPage'))
 const CountryPage = lazy(() => import('../guestfeatures/search/pages/CountryPage'))
 const PropertyDetailPage = lazy(() => import('../guestfeatures/property/pages/PropertyDetailPage'))
 const SearchResultsPage = lazy(() => import('../guestfeatures/search/pages/SearchResultsPage'))
-const ComingSoon = lazy(() => import('../guestfeatures/misc/pages/ComingSoon'))
+const ComingSoon = lazy(() => import('../guestfeatures/extraPage/pages/ComingSoon'))
 const BookingPage = lazy(() => import('../guestfeatures/booking/pages/GuestBookingDetailsPage'))
 const BookingViewPage = lazy(() => import('../guestfeatures/booking/pages/BookingSummaryPage'))
 const ReservePage = lazy(() => import('../guestfeatures/booking/pages/ReservePage'))
@@ -59,7 +59,6 @@ const CheckOutListPage = lazy(() => import('../frontdesk/pages/CheckOutListPage'
 const CheckoutPage = lazy(() => import('../frontdesk/pages/CheckoutPage'))
 const EditBookingPage = lazy(() => import('../frontdesk/pages/EditBookingPage'))
 const CheckoutReceiptPage = lazy(() => import('../frontdesk/pages/CheckoutReceiptPage'))
-const CollectPaymentPage = lazy(() => import('../frontdesk/pages/CollectPaymentPage'))
 const FrontDeskPaymentsPage = lazy(() => import('../frontdesk/pages/FrontDeskPaymentsPage'))
 const FrontDeskRoomStatusPage = lazy(() => import('../frontdesk/pages/FrontDeskRoomStatusPage'))
 const FrontDeskGuestsPage = lazy(() => import('../frontdesk/pages/FrontDeskGuestsPage'))
@@ -68,8 +67,8 @@ const FrontDeskFoliosPage = lazy(() => import('../frontdesk/pages/FrontDeskFolio
 const FolioInvoicePage = lazy(() => import('../frontdesk/pages/FolioInvoicePage'))
 const FrontDeskNotificationsPage = lazy(() => import('../frontdesk/pages/FrontDeskNotificationsPage'))
 const InHousePage = lazy(() => import('../frontdesk/pages/InHousePage'))
-const NotFoundPage = lazy(() => import('../guestfeatures/misc/pages/NotFoundPage'))
-const FooterPage = lazy(() => import('../guestfeatures/misc/pages/FooterPage'))
+const NotFoundPage = lazy(() => import('../guestfeatures/extraPage/pages/NotFoundPage'))
+const FooterPage = lazy(() => import('../guestfeatures/extraPage/pages/FooterPage'))
 
 export function AppRoutes() {
   return (
@@ -121,7 +120,6 @@ export function AppRoutes() {
       <Route path="/frontdesk/booking/:id/edit" element={<ProtectedRoute allowedRoles={['staff']}><EditBookingPage /></ProtectedRoute>} />
       <Route path="/frontdesk/checkout/:id" element={<ProtectedRoute allowedRoles={['staff']}><CheckoutPage /></ProtectedRoute>} />
       <Route path="/frontdesk/checkout/:id/receipt" element={<ProtectedRoute allowedRoles={['staff']}><CheckoutReceiptPage /></ProtectedRoute>} />
-      <Route path="/frontdesk/checkout/:id/collect-payment" element={<ProtectedRoute allowedRoles={['staff']}><CollectPaymentPage /></ProtectedRoute>} />
       <Route path="/frontdesk/account" element={<ProtectedRoute allowedRoles={['staff']}><StaffAccountPage /></ProtectedRoute>} />
       <Route path="/frontdesk/change-password" element={<ProtectedRoute allowedRoles={['staff']}><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/country/:code" element={<CountryPage />} />

@@ -33,6 +33,21 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function sanitizeUrl(url: string): string {
+  const trimmed = url.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return '#'
+}
+
 function formatDateTime(dateStr: string): string {
   if (!dateStr) return ''
   try {
@@ -70,10 +85,10 @@ export function printReceipt(params: ReceiptParams) {
     .map(
       (r) => `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:#222" colspan="2">${r.room_name} (${r.room_type})</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:700;color:#222;white-space:nowrap">${params.currency} ${(r.base_rate ?? 0).toFixed(2)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:#222" colspan="2">${escapeHtml(r.room_name)} (${escapeHtml(r.room_type)})</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:700;color:#222;white-space:nowrap">${escapeHtml(params.currency)} ${(r.base_rate ?? 0).toFixed(2)}</td>
       </tr>
-      ${r.photo ? `<tr><td colspan="3" style="padding:0 12px 10px"><img src="${r.photo}" style="max-width:260px;height:120px;object-fit:cover;border-radius:8px;display:block" /></td></tr>` : ''}
+      ${r.photo ? `<tr><td colspan="3" style="padding:0 12px 10px"><img src="${sanitizeUrl(r.photo)}" style="max-width:260px;height:120px;object-fit:cover;border-radius:8px;display:block" /></td></tr>` : ''}
       <tr>
         <td colspan="3" style="padding:0 12px 8px">
           <div style="background:#f9fafb;border-radius:6px;padding:8px 10px;font-size:11px;color:#666">
@@ -86,7 +101,7 @@ export function printReceipt(params: ReceiptParams) {
     .join("")
 
   const html = `<!DOCTYPE html>
-<html><head><title>Receipt - ${params.confirmationCode}</title>
+<html><head><title>Receipt - ${escapeHtml(params.confirmationCode)}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;padding:0;color:#222}
@@ -137,22 +152,22 @@ export function printReceipt(params: ReceiptParams) {
   <div class="header">
     <div class="brand">ServerIQ</div>
     <h1>Booking confirmation</h1>
-    <div class="booking-no">Booking No. ${params.confirmationCode}</div>
+    <div class="booking-no">Booking No. ${escapeHtml(params.confirmationCode)}</div>
     <div class="booked-on">Booked on ${bookedOn}</div>
   </div>
 
   <div class="booking-number-bar">
-    Booking number: <strong>${params.confirmationCode}</strong>
+    Booking number: <strong>${escapeHtml(params.confirmationCode)}</strong>
   </div>
 
   <div class="property-info">
     <div class="details">
-      <h2>${params.propertyName}</h2>
-      <p><strong>Address:</strong> ${params.propertyLocation || '—'}</p>
-      ${params.propertyPhone ? `<p><strong>Phone:</strong> ${params.propertyPhone}</p>` : ''}
-      ${params.propertyEmail ? `<p><strong>Email:</strong> <a href="mailto:${params.propertyEmail}">${params.propertyEmail}</a></p>` : ''}
+      <h2>${escapeHtml(params.propertyName)}</h2>
+      <p><strong>Address:</strong> ${escapeHtml(params.propertyLocation || '—')}</p>
+      ${params.propertyPhone ? `<p><strong>Phone:</strong> ${escapeHtml(params.propertyPhone)}</p>` : ''}
+      ${params.propertyEmail ? `<p><strong>Email:</strong> <a href="mailto:${escapeHtml(params.propertyEmail)}">${escapeHtml(params.propertyEmail)}</a></p>` : ''}
     </div>
-    ${params.propertyImage ? `<img src="${params.propertyImage}" alt="${params.propertyName}" class="logo" />` : ''}
+    ${params.propertyImage ? `<img src="${sanitizeUrl(params.propertyImage)}" alt="${escapeHtml(params.propertyName)}" class="logo" />` : ''}
   </div>
 
   <div class="section">
@@ -177,7 +192,7 @@ export function printReceipt(params: ReceiptParams) {
         </tr>
       </tbody>
     </table>
-    <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(params.propertyName)}&dates=${params.checkIn.replace(/-/g, '')}T120000/${params.checkOut.replace(/-/g, '')}T120000&location=${encodeURIComponent(params.propertyLocation || '')}" target="_blank" class="calendar-link">
+    <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(params.propertyName)}&dates=${params.checkIn.replace(/-/g, '')}T120000/${params.checkOut.replace(/-/g, '')}T120000&location=${encodeURIComponent(params.propertyLocation || '')}" target="_blank" rel="noopener noreferrer" class="calendar-link">
       📅 Add to Google Calendar
     </a>
   </div>
@@ -185,10 +200,10 @@ export function printReceipt(params: ReceiptParams) {
   <div class="section">
     <div class="section-title">Customer Information</div>
     <table class="info-table">
-      <tr><td>Full name</td><td>${params.guestName || '—'}</td></tr>
-      <tr><td>Phone</td><td>${params.guestPhone || '—'}</td></tr>
-      <tr><td>Email</td><td>${params.guestEmail || '—'}</td></tr>
-      <tr><td>Special Notes / Comments</td><td>${params.specialRequests || 'None'}</td></tr>
+      <tr><td>Full name</td><td>${escapeHtml(params.guestName || '—')}</td></tr>
+      <tr><td>Phone</td><td>${escapeHtml(params.guestPhone || '—')}</td></tr>
+      <tr><td>Email</td><td>${escapeHtml(params.guestEmail || '—')}</td></tr>
+      <tr><td>Special Notes / Comments</td><td>${escapeHtml(params.specialRequests || 'None')}</td></tr>
     </table>
   </div>
 
@@ -196,32 +211,32 @@ export function printReceipt(params: ReceiptParams) {
     <div class="section-title">Booking cost</div>
     ${roomLines}
     <table class="cost-table">
-      <tr><td class="label">Subtotal</td><td class="value">${params.currency} ${params.rooms.reduce((s, r) => s + (r.subtotal ?? 0), 0).toLocaleString()}</td></tr>
+      <tr><td class="label">Subtotal</td><td class="value">${escapeHtml(params.currency)} ${params.rooms.reduce((s, r) => s + (r.subtotal ?? 0), 0).toLocaleString()}</td></tr>
       <tr><td class="label">Taxes and fees</td><td class="value">Included</td></tr>
-      <tr class="total-row"><td>Total cost</td><td style="text-align:right">${params.currency} ${params.totalAmount.toLocaleString()}</td></tr>
+      <tr class="total-row"><td>Total cost</td><td style="text-align:right">${escapeHtml(params.currency)} ${params.totalAmount.toLocaleString()}</td></tr>
     </table>
     <div style="padding:10px 12px;font-size:12px;color:#666;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0">
       <span>Payment method</span>
-      <span>${paymentMethodText}</span>
+      <span>${escapeHtml(paymentMethodText)}</span>
     </div>
   </div>
 
   <div class="location">
-    <h3>Location ${params.propertyName}</h3>
-    <p><strong>Address:</strong> ${params.propertyLocation || '—'}</p>
-    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(params.propertyLocation || params.propertyName)}" target="_blank" class="map-btn">View location on google map</a>
+    <h3>Location ${escapeHtml(params.propertyName)}</h3>
+    <p><strong>Address:</strong> ${escapeHtml(params.propertyLocation || '—')}</p>
+    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(params.propertyLocation || params.propertyName)}" target="_blank" rel="noopener noreferrer" class="map-btn">View location on google map</a>
   </div>
 
   <div class="footer">
-    <div>© 2026 ${params.propertyName}</div>
-    <div>${params.propertyLocation || ''}</div>
+    <div>© 2026 ${escapeHtml(params.propertyName)}</div>
+    <div>${escapeHtml(params.propertyLocation || '')}</div>
     <div class="copy">This message was automatically generated by ServerIQ.</div>
   </div>
 </div>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`
 
-  const printWindow = window.open("", "_blank", "width=700,height=900")
+  const printWindow = window.open("", "_blank", "width=700,height=900,noopener,noreferrer")
   if (printWindow) {
     printWindow.document.write(html)
     printWindow.document.close()

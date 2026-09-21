@@ -112,25 +112,29 @@ export function FrontDeskPage() {
 
   useEffect(() => {
     if (showNewBooking) {
-      setTimeout(() => bookingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => bookingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showNewBooking])
 
   useEffect(() => {
     if (showArrivals) {
-      setTimeout(() => arrivalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => arrivalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showArrivals])
 
   useEffect(() => {
     if (showDepartures) {
-      setTimeout(() => departuresRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => departuresRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showDepartures])
 
   useEffect(() => {
     if (showRooms) {
-      setTimeout(() => roomsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => roomsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showRooms])
 
@@ -199,7 +203,8 @@ export function FrontDeskPage() {
   })
 
   const markReadMutation = useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn: ({ notificationId }: { notificationId: string }) =>
+      markNotificationRead({ notificationId, propertyId: currentPropertyId! }),
     onSuccess: () => {
       refetchNotifications()
       refetchUnreadCount()
@@ -448,7 +453,7 @@ export function FrontDeskPage() {
                                 key={notification.id}
                                 onClick={() => {
                                   if (!notification.is_read) {
-                                    markReadMutation.mutate(notification.id)
+                                    markReadMutation.mutate({ notificationId: notification.id })
                                   }
                                 }}
                                 className={`flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 ${
@@ -544,7 +549,14 @@ export function FrontDeskPage() {
             </div>
           </div>
 
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-end gap-3 mb-6">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Handover</span>
+            </button>
             <button
               onClick={() => setShowNewBooking(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
@@ -559,57 +571,6 @@ export function FrontDeskPage() {
               <StatCard key={index} {...stat} />
             ))}
           </div>
-
-          {/* Today's Action Cards */}
-          {todayDepartures.length > 0 && (
-            <div className="mb-6">
-              {/* Departures needing checkout */}
-              {todayDepartures.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <LogOutIcon size={16} className="text-orange-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900">Departures Today</h3>
-                        <p className="text-xs text-gray-500">{todayDepartures.length} guest{todayDepartures.length !== 1 ? 's' : ''} to checkout</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => navigate("/frontdesk/check-out")}
-                      className="text-xs font-semibold text-orange-600 hover:text-orange-700"
-                    >
-                      View all →
-                    </button>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {todayDepartures.slice(0, 4).map((guest) => (
-                      <div key={guest.booking_id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-xs font-bold text-orange-700 shrink-0">
-                            {guest.guest?.full_name?.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'G'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{guest.guest?.full_name || 'Guest'}</p>
-                            <p className="text-xs text-gray-500">Room {guest.rooms?.map((r: { room_name?: string }) => r.room_name).join(', ') || '—'}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs text-gray-400 shrink-0 ml-2">#{guest.ref_number?.slice(0, 6) || guest.booking_id?.slice(0, 6)}</span>
-                      </div>
-                    ))}
-                    {todayDepartures.length > 4 && (
-                      <div className="px-5 py-2 text-center">
-                        <button onClick={() => navigate("/frontdesk/check-out")} className="text-xs font-medium text-blue-600 hover:text-blue-700">
-                          +{todayDepartures.length - 4} more
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <OccupancyChart 

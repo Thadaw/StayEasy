@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import toast from "react-hot-toast"
 import { Loader2, CreditCard } from "lucide-react"
 import { useRazorpay } from "../../../shared/hooks/useRazorpay"
@@ -10,6 +12,7 @@ import { useNotifications } from "../../../context/NotificationContext"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
+import { ReservePageSkeleton } from "../components/ReservePageSkeleton"
 import { ReserveLayout } from "../components/ReserveLayout"
 import { ReserveStepper } from "../components/ReserveStepper"
 import { PropertySummaryCard } from "../components/PropertySummaryCard"
@@ -25,6 +28,7 @@ import { parseJSON } from "../../../shared/utils/helpers"
 import { calculateNights } from "../../../shared/utils/time"
 import api from "../../../services/axios"
 import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "../hooks/useBookingQueries"
+import { promoCodeSchema, type PromoCodeFormData } from "../schemas/bookingSchemas"
 import type { PaymentMethod } from "../types"
 
 interface AppliedDiscount {
@@ -84,7 +88,10 @@ export default function ReservePage() {
   const currency = property?.currency || booking?.property?.currency || 'USD'
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [promoInput, setPromoInput] = useState('')
+  const promoForm = useForm<PromoCodeFormData>({
+    resolver: zodResolver(promoCodeSchema),
+    defaultValues: { code: '' },
+  })
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(() => {
     const dc = searchParams.get('discountCode')
     const dt = searchParams.get('discountType') as 'percentage' | 'fixed' | null
@@ -128,9 +135,12 @@ export default function ReservePage() {
 
   const { isLoaded: razorpayLoaded } = useRazorpay(selectedPayment === "razorpay")
 
-  // Apply coupon from booking response if present
+  const couponAppliedRef = useRef(false)
+
+  // Apply coupon from booking response if present (only once)
   useEffect(() => {
-    if (booking?.coupon_code && booking.coupon_discount > 0 && !appliedDiscount) {
+    if (booking?.coupon_code && booking.coupon_discount > 0 && !couponAppliedRef.current) {
+      couponAppliedRef.current = true
       setAppliedDiscount({
         code: booking.coupon_code,
         type: 'fixed',
@@ -183,10 +193,12 @@ export default function ReservePage() {
     return () => { cancelled = true }
   }, [selectedPayment, refNumber, razorpayRetryCount, advanceAmount])
 
+  const handleRazorpayPaymentRef = useRef<(options?: RazorpayPayOptions) => void>(() => {})
+
   // Auto-open official Razorpay checkout once order is created and SDK is loaded
   useEffect(() => {
     if (selectedPayment !== "razorpay" || !razorpayLoaded || !razorpayState.orderId || razorpayState.response || razorpayState.loading) return
-    handleRazorpayPayment({ type: 'card' })
+    handleRazorpayPaymentRef.current({ type: 'card' })
   }, [selectedPayment, razorpayLoaded, razorpayState.orderId, razorpayState.response, razorpayState.loading])
 
   useEffect(() => {
@@ -339,7 +351,7 @@ export default function ReservePage() {
   }, [searchParams, refNumber])
 
   const handleApplyPromo = async () => {
-    const code = promoInput.trim().toUpperCase()
+    const code = promoForm.getValues('code').trim().toUpperCase()
     if (!code) return
     if (!refNumber) {
       setPromoError('No booking reference found')
@@ -355,7 +367,7 @@ export default function ReservePage() {
           amount: discount.amount || discount.discount || 0,
         })
         setPromoError('')
-        setPromoInput('')
+        promoForm.reset({ code: '' })
       } else {
         setPromoError('Invalid or expired discount code')
       }
@@ -495,6 +507,7 @@ export default function ReservePage() {
           }
           document.body.appendChild(form)
           form.submit()
+          setTimeout(() => { form.remove() }, 0)
           return
         }
 
@@ -543,6 +556,7 @@ export default function ReservePage() {
       }
     } finally { setPaymentLoading(false) }
   }
+  handleRazorpayPaymentRef.current = handleRazorpayPayment
 
   const handleConfirmBooking = async () => {
     if (!selectedPayment || confirmingBooking) return
@@ -700,7 +714,7 @@ export default function ReservePage() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading reservation..." />
+    return <ReservePageSkeleton />
   }
 
   if (!hotel && !booking) {
@@ -800,9 +814,9 @@ export default function ReservePage() {
                 }
               }}
               appliedDiscount={appliedDiscount}
-              promoInput={promoInput}
+              promoInput={promoForm.watch('code')}
               promoError={promoError}
-              onPromoInputChange={setPromoInput}
+              onPromoInputChange={(value) => promoForm.setValue('code', value)}
               onApplyPromo={handleApplyPromo}
               onRemovePromo={handleRemovePromo}
               onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}

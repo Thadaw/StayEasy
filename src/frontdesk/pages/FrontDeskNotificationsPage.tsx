@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -98,7 +99,8 @@ export default function FrontDeskNotificationsPage() {
   const notifications = notificationsData?.notifications ?? []
 
   const markReadMutation = useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn: ({ notificationId }: { notificationId: string }) =>
+      markNotificationRead({ notificationId, propertyId: currentPropertyId! }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff-notifications", currentPropertyId] })
       queryClient.invalidateQueries({ queryKey: ["unread-notifications-count", currentPropertyId] })
@@ -141,7 +143,7 @@ export default function FrontDeskNotificationsPage() {
   const handleNotificationClick = (notification: StaffNotification) => {
     setSelectedNotification(notification)
     if (!notification.is_read) {
-      markReadMutation.mutate(notification.id)
+      markReadMutation.mutate({ notificationId: notification.id })
     }
   }
 
@@ -201,10 +203,7 @@ export default function FrontDeskNotificationsPage() {
           {/* Notifications List */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="text-center py-16">
-                <Loader2 size={32} className="mx-auto text-gray-400 animate-spin mb-3" />
-                <p className="text-gray-500 font-medium">Loading notifications...</p>
-              </div>
+              <FrontdeskRowSkeleton rows={6} columns={4} />
             ) : isError ? (
               <div className="text-center py-16">
                 <Bell size={48} className="mx-auto text-gray-300 mb-4" />

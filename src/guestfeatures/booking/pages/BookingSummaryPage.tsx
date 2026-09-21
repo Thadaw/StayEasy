@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { ArrowLeft, Copy, Share2, Download, QrCode, ArrowRight, Heart, Star } from "lucide-react"
+import { ArrowLeft, Copy, Share2, Download, QrCode, ArrowRight, Heart, Star, Pencil } from "lucide-react"
 import QRCodeLib from "qrcode"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
+import { BookingSummarySkeleton } from "../components/BookingSummarySkeleton"
 import { BookingHeader } from "../components/BookingHeader"
 import { StayInformation } from "../components/StayInformation"
 import { BookingRoomDetails } from "../components/BookingRoomDetails"
@@ -13,7 +14,10 @@ import { CancellationCard } from "../components/CancellationCard"
 import { BookingPaymentSummary } from "../components/BookingPaymentSummary"
 import { useBookingActions } from "../../../shared/hooks/useBookingActions"
 import { useBookingDetails } from "../hooks/useBookingDetails"
+import { usePropertyReviews } from "../../review/hooks/usePropertyReviews"
+import { useAuth } from "../../../auth/AuthContext"
 import { WriteReviewModal } from "../../review/components/WriteReviewModal"
+import { EditReviewModal } from "../../review/components/EditReviewModal"
 import { getStatusColor, canCancelBooking, buildShareText, buildQrData } from "../../../shared/utils/bookingHelpers"
 import { formatDateFull } from "../../../shared/utils/format"
 
@@ -38,6 +42,7 @@ export default function BookingDetailsView() {
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
   const [localCopied, setLocalCopied] = useState(false)
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   const {
     booking,
@@ -77,7 +82,19 @@ export default function BookingDetailsView() {
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const reviewPropertyId = booking?.property?.id || ""
+
+  const { user } = useAuth()
+  const { reviews, isLoading: reviewsLoading, refetch: refetchReviews } = usePropertyReviews(
+    UUID_RE.test(reviewPropertyId) ? reviewPropertyId : undefined
+  )
+
   const canReview = bookingStatus === "completed" && UUID_RE.test(reviewPropertyId)
+
+  const userFullName = user ? (user.full_name || `${user.first_name} ${user.last_name}`).trim() : ""
+  const existingReview = reviews.find(
+    (r) => r.guest_name?.toLowerCase() === userFullName.toLowerCase()
+  )
+  const hasReviewed = !!existingReview
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -205,7 +222,7 @@ export default function BookingDetailsView() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading booking details..." />
+    return <BookingSummarySkeleton />
   }
 
   if (!booking && !localBooking) {
@@ -366,7 +383,7 @@ export default function BookingDetailsView() {
               </button>
             </div>
 
-            {canReview && (
+            {canReview && !hasReviewed && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <h3 className="text-sm font-bold text-gray-900 mb-1">Write a Review</h3>
               <p className="text-xs text-gray-500 mb-3">Share your experience at this property.</p>
@@ -378,6 +395,28 @@ export default function BookingDetailsView() {
               </button>
             </div>
             )}
+
+            {canReview && hasReviewed && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-1">Your Review</h3>
+              <div className="flex items-center gap-1 mb-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    size={14}
+                    className={i < (existingReview?.rating || 0) ? "fill-amber-400 stroke-amber-400" : "fill-gray-200 stroke-gray-200"}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">{existingReview?.comment}</p>
+              <button
+                onClick={() => setEditModalOpen(true)}
+                className="w-full py-3 rounded-xl border border-[#1A3C5E] text-[#1A3C5E] font-semibold text-sm hover:bg-[#1A3C5E] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Pencil size={14} /> Edit Review
+              </button>
+            </div>
+            )}
           </div>
         </div>
       </div>
@@ -386,7 +425,22 @@ export default function BookingDetailsView() {
         <WriteReviewModal
           propertyId={reviewPropertyId}
           propertyName={propertyName}
-          onClose={() => setReviewModalOpen(false)}
+          onClose={() => {
+            setReviewModalOpen(false)
+            refetchReviews()
+          }}
+        />
+      )}
+
+      {editModalOpen && existingReview && (
+        <EditReviewModal
+          propertyId={reviewPropertyId}
+          reviewId={String(existingReview.id)}
+          propertyName={propertyName}
+          initialRating={existingReview.rating}
+          initialComment={existingReview.comment}
+          onClose={() => setEditModalOpen(false)}
+          onUpdated={refetchReviews}
         />
       )}
 

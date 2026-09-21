@@ -104,6 +104,7 @@ const navSections: NavSection[] = [
       { to: "/frontdesk/in-house", icon: Home, label: "In House" },
       { to: "/frontdesk/room-status", icon: BedDouble, label: "Room Status" },
       { to: "/frontdesk/guests", icon: Users, label: "Guests" },
+      { to: "/frontdesk/tasks", icon: CheckSquare, label: "Booking Activities" },
     ],
   },
   {
@@ -111,7 +112,6 @@ const navSections: NavSection[] = [
     items: [
       { to: "/frontdesk/payments", icon: CreditCard, label: "Payments" },
       { to: "/frontdesk/folios", icon: FileText, label: "Folios" },
-      { to: "/frontdesk/tasks", icon: CheckSquare, label: "Booking Activities" },
       { to: "/frontdesk/notifications", icon: Bell, label: "Notifications" },
     ],
   },
@@ -263,24 +263,24 @@ function SidebarContent() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3 px-4 py-2">
+      <div className="px-3 py-2 border-t border-white/10">
+        <div className="flex items-center gap-2 px-2 py-1.5">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold uppercase text-white shrink-0"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold uppercase text-white shrink-0"
             style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
           >
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{displayName}</p>
-            <p className="text-xs text-white/60 capitalize">{user?.role?.replace('_', ' ') || 'Staff'}</p>
+            <p className="text-xs font-medium truncate leading-tight">{displayName}</p>
+            <p className="text-[9px] text-white/50 uppercase tracking-wider leading-tight">{user?.role?.replace('_', ' ') || 'Staff'}</p>
           </div>
           <button
             onClick={handleLogout}
             className="text-white/40 hover:text-white transition-colors shrink-0"
             title="Sign out"
           >
-            <LogOut size={16} />
+            <LogOut size={13} />
           </button>
         </div>
       </div>

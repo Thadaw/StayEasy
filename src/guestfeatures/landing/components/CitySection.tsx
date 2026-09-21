@@ -7,7 +7,7 @@ interface CitySectionProps {
 }
 
 export function CitySection({ city }: CitySectionProps) {
-  const { properties, loading } = useSearchProperties(city, 10);
+  const { data: properties = [], isLoading: loading } = useSearchProperties(city, 10);
 
   return (
     <PropertySection

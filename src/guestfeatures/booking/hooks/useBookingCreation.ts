@@ -1,5 +1,6 @@
-import { useState, useRef } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../../services/axios"
+import { bookingKeys } from "../../../lib/queryKeys"
 
 interface CreateBookingPayload {
   property_id: string
@@ -21,20 +22,10 @@ interface UseBookingCreationReturn {
 }
 
 export function useBookingCreation(): UseBookingCreationReturn {
-  const [isCreating, setIsCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  const queryClient = useQueryClient()
 
-  const createBooking = async (payload: CreateBookingPayload): Promise<string> => {
-    // Cancel any in-flight request
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    setIsCreating(true)
-    setError(null)
-
-    try {
+  const mutation = useMutation({
+    mutationFn: async (payload: CreateBookingPayload): Promise<string> => {
       const idempotencyKey = crypto.randomUUID()
       const bookingPayload: Record<string, unknown> = {
         idempotency_key: idempotencyKey,
@@ -49,21 +40,17 @@ export function useBookingCreation(): UseBookingCreationReturn {
       if (payload.guest_email) bookingPayload.guest_email = payload.guest_email
       if (payload.guest_phone) bookingPayload.guest_phone = payload.guest_phone
       if (payload.guest_nationality) bookingPayload.guest_nationality = payload.guest_nationality
-      const { data } = await api.post("/bookings/", bookingPayload, { signal: controller.signal })
+      const { data } = await api.post("/bookings/", bookingPayload)
       return data?.data?.ref_number || data?.ref_number || ""
-    } catch (err) {
-      if (controller.signal.aborted) return ""
-      const message = err instanceof Error ? err.message : "Failed to create booking"
-      setError(message)
-      throw err
-    } finally {
-      if (!controller.signal.aborted) setIsCreating(false)
-    }
-  }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.all })
+    },
+  })
 
   return {
-    createBooking,
-    isCreating,
-    error,
+    createBooking: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error?.message || null,
   }
 }

@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { RoomStatusCalendarSkeleton } from "../components/RoomStatusCalendarSkeleton"
+import { Skeleton } from "../../shared/ui/Skeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { getRooms } from "../../services/pmsApi"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -215,7 +217,7 @@ export default function FrontDeskRoomStatusPage() {
         floorNumber,
         rooms: floorRooms.sort((a, b) => a.room_name.localeCompare(b.room_name)),
       }))
-  }, [calendarRooms])
+  }, [calendarRoomsWithRates])
 
   const dates = useMemo(() => {
     return Array.from({ length: daysCount }, (_, i) => addDays(startDate, i))
@@ -553,9 +555,17 @@ export default function FrontDeskRoomStatusPage() {
           {/* Mobile Card View */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden lg:hidden">
             {calendarLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading room calendar...</p>
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Skeleton className="h-4 w-4 rounded shrink-0" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-3 w-16 mb-2" />
+                    <Skeleton className="h-8 w-full rounded" />
+                  </div>
+                ))}
               </div>
             ) : calendarError ? (
               <div className="text-center py-16 px-4">
@@ -622,10 +632,7 @@ export default function FrontDeskRoomStatusPage() {
           {/* Desktop Calendar Grid */}
           <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
             {calendarLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading room calendar...</p>
-              </div>
+              <RoomStatusCalendarSkeleton />
             ) : calendarError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

@@ -5,6 +5,53 @@ import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { InvoiceReceipt } from "../components/InvoiceReceipt"
 
+interface BookingRoom {
+  room_id: string
+  room_name: string
+  room_type: string
+  bed_type: string
+  base_rate: number
+}
+
+interface BookingFolio {
+  folio_id: string
+  status: string
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  amount_paid: number
+  remaining_balance: number
+  charges_count: number
+  settled_at: string | null
+  charges?: Array<{
+    charge_id: string
+    description: string
+    amount: number
+    category?: string
+    posted_by_name?: string
+    created_at: string
+  }>
+}
+
+interface Booking {
+  booking_id: string
+  guest_name: string
+  guest_email: string
+  guest_phone: string
+  guest_nationality: string
+  ref_number: string
+  status: string
+  checkin_date: string
+  checkout_date: string
+  total_amount: number
+  amount_paid: number
+  amount_due: number
+  rooms: BookingRoom[]
+  folio: BookingFolio | null
+  payment_method?: string
+}
+
 export default function FolioInvoicePage() {
   const { id } = useParams()
   const { currentPropertyId } = usePropertyStore()
@@ -23,83 +70,26 @@ export default function FolioInvoicePage() {
     enabled: !!currentPropertyId,
   })
 
-  const { data: folio, isLoading } = useQuery({
-    queryKey: ["folio-invoice", id],
-    queryFn: async () => {
-      if (!id) return null
-      try {
-        const { data: result } = await api.get(`/staff/folios/${id}`)
-        const envelope = result as { success?: boolean; data?: Record<string, unknown> }
-        const d = (envelope?.data ?? result) as Record<string, unknown> | null
-        if (!d || !d.id) return null
-        const chargesRaw = Array.isArray(d.charges) ? d.charges as Array<Record<string, unknown>> : []
-        const charges = chargesRaw.map((c) => ({
-          id: String(c.id ?? ""),
-          folio_id: String(c.folio_id ?? ""),
-          description: String(c.description ?? ""),
-          amount: Number(c.amount) || 0,
-          category: String(c.category ?? ""),
-          posted_by_name: String(c.posted_by_name ?? "Staff"),
-          posted_at: String(c.posted_at ?? ""),
-        }))
-        const subtotal = charges.reduce((sum, c) => sum + c.amount, 0)
-        const tax = Number(d.tax) || 0
-        const discount = Number(d.discount) || 0
-        return {
-          id: String(d.id),
-          booking_id: String(d.booking_id ?? ""),
-          guest_id: String(d.guest_id ?? ""),
-          guest_name: String(d.guest_name ?? ""),
-          guest_email: String(d.guest_email ?? ""),
-          status: String(d.status ?? "OPEN"),
-          subtotal,
-          tax,
-          discount,
-          total: subtotal + tax - discount,
-          amount_paid: Number(d.amount_paid) || 0,
-          remaining_balance: Number(d.remaining_balance) || (subtotal + tax - discount),
-          settled_at: d.settled_at as string | null,
-          charges,
-          created_at: String(d.created_at ?? ""),
-          updated_at: String(d.updated_at ?? ""),
-        }
-      } catch {
-        return null
-      }
-    },
-    enabled: !!id,
-  })
-
-  const { data: guestInfo } = useQuery({
-    queryKey: ["invoice-guest", currentPropertyId, folio?.booking_id],
-    queryFn: async () => {
-      if (!currentPropertyId || !folio?.booking_id) return null
+  const { data: booking, isLoading } = useQuery({
+    queryKey: ["folio-invoice-booking", currentPropertyId, id],
+    queryFn: async (): Promise<Booking | null> => {
+      if (!currentPropertyId || !id) return null
       try {
         const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/booking-guests`,
-          { params: { skip: 0, limit: 100 } }
+          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
         )
-        const envelope = result as { success?: boolean; data?: Array<Record<string, unknown>> }
-        const guests = envelope?.data ?? (result as unknown as Array<Record<string, unknown>>)
-        if (!Array.isArray(guests) || guests.length === 0) return null
-        const match = guests.find((g) => g.ref_number === folio.booking_id || g.guest_id === folio.guest_id) ?? guests[0]
-        return {
-          guest_name: String(match.full_name ?? ""),
-          guest_email: String(match.email ?? ""),
-          guest_phone: String(match.phone ?? ""),
-          checkin_date: String(match.checkin_date ?? ""),
-          checkout_date: String(match.checkout_date ?? ""),
-        }
+        const wrapped = result as { data?: Booking }
+        return (wrapped?.data ?? result) as Booking
       } catch {
         return null
       }
     },
-    enabled: !!currentPropertyId && !!folio?.booking_id,
+    enabled: !!currentPropertyId && !!id,
   })
 
   useEffect(() => {
-    if (folio) window.print()
-  }, [folio])
+    if (booking) window.print()
+  }, [booking])
 
   if (isLoading) {
     return (
@@ -109,62 +99,76 @@ export default function FolioInvoicePage() {
     )
   }
 
-  if (!folio) {
+  if (!booking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Folio not found</p>
+        <p className="text-gray-500">Booking not found</p>
       </div>
     )
   }
 
-  const guestName = guestInfo?.guest_name || "—"
-  const guestEmail = guestInfo?.guest_email || "—"
+  const nights = Math.max(1, Math.ceil(
+    (new Date(booking.checkout_date).getTime() - new Date(booking.checkin_date).getTime()) / (1000 * 60 * 60 * 24)
+  ))
+  const roomNames = booking.rooms?.map((r) => r.room_name).join(", ") || "—"
+  const folio = booking.folio
+  const hasFolioCharges = folio?.charges && folio.charges.length > 0
 
-  const summaryItems = [
-    { label: "Subtotal", value: folio.subtotal },
-    ...(folio.tax > 0 ? [{ label: "Tax", value: folio.tax }] : []),
-    ...(folio.discount > 0 ? [{ label: "Discount", value: folio.discount, type: "discount" as const }] : []),
-    { label: "Total", value: folio.total, type: "bold" as const },
-    ...(folio.amount_paid > 0 ? [
-      { label: "Amount Paid", value: folio.amount_paid },
-      { label: "Remaining Balance", value: folio.remaining_balance },
-    ] : []),
-    {
-      label: "Status",
-      value: 0,
-      type: "status" as const,
-      statusLabel: folio.status?.toUpperCase() === "SETTLED" ? "Paid" :
-                   folio.status?.toUpperCase() === "PARTIALLY_PAID" ? "Partially Paid" :
-                   folio.status,
-      statusColor: folio.status?.toUpperCase() === "SETTLED" ? "bg-emerald-100 text-emerald-700" :
-                   folio.status?.toUpperCase() === "PARTIALLY_PAID" ? "bg-amber-100 text-amber-700" :
-                   "bg-blue-100 text-blue-700",
-    },
-  ]
+  const receiptCharges = hasFolioCharges
+    ? folio!.charges!.map((c) => ({
+        id: c.charge_id,
+        description: c.description,
+        amount: Number(c.amount) || 0,
+        category: c.category,
+        date: new Date(c.created_at).toLocaleDateString(),
+      }))
+    : booking.rooms?.map((room, i) => ({
+        id: String(i),
+        description: `${room.room_name} (${nights} night${nights !== 1 ? "s" : ""}, incl. tax)`,
+        amount: room.base_rate * nights,
+      })) || []
+
+  const subtotal = hasFolioCharges ? (folio!.subtotal || receiptCharges.reduce((sum, c) => sum + c.amount, 0)) : receiptCharges.reduce((sum, c) => sum + c.amount, 0)
+  const tax = folio?.tax || 0
+  const discount = folio?.discount || 0
+  const total = hasFolioCharges ? (folio!.total || subtotal + tax - discount) : subtotal
+  const advancePaid = booking.amount_paid || 0
+  const checkoutPayment = booking.amount_due > 0 ? booking.amount_due : 0
+  const totalPaid = advancePaid + checkoutPayment
+  const balance = folio?.remaining_balance ?? Math.max(0, total - totalPaid)
 
   return (
     <InvoiceReceipt
       propertyName={property?.name}
-      invoiceNumber={folio.id.slice(0, 8)}
-      invoiceDate={new Date(folio.created_at).toLocaleDateString()}
+      invoiceNumber={booking.ref_number}
+      invoiceDate={booking.checkout_date}
       title="INVOICE"
       printLabel="Print Invoice"
       guestInfo={{
-        name: guestName,
-        email: guestEmail,
+        name: booking.guest_name || "—",
+        email: booking.guest_email || "—",
+        phone: booking.guest_phone || "—",
+        nationality: booking.guest_nationality || "—",
       }}
-      rooms="—"
-      checkinDate={guestInfo?.checkin_date}
-      checkoutDate={guestInfo?.checkout_date}
+      rooms={roomNames}
+      checkinDate={booking.checkin_date}
+      checkoutDate={booking.checkout_date}
       summaryTitle="Folio Summary"
-      summary={summaryItems}
-      charges={folio.charges.map((charge) => ({
-        id: charge.id,
-        description: charge.description,
-        amount: charge.amount,
-        category: charge.category,
-        date: new Date(charge.posted_at).toLocaleDateString(),
-      }))}
+      summary={[
+        { label: `Room Charges (${nights} night${nights !== 1 ? "s" : ""}, incl. tax)`, value: subtotal },
+        ...(tax > 0 ? [{ label: "Tax", value: tax }] : []),
+        ...(discount > 0 ? [{ label: "Discount", value: discount, type: "discount" as const }] : []),
+        { label: "Total Bill", value: total, type: "bold" },
+        { label: "Advance Paid", value: advancePaid },
+        ...(checkoutPayment > 0 ? [{ label: "Checkout Payment", value: checkoutPayment }] : []),
+        { label: "Total Paid", value: totalPaid, type: "bold" },
+        { label: "Remaining Balance", value: balance, type: "highlight" as const },
+      ]}
+      charges={receiptCharges}
+      payments={[
+        { date: booking.checkin_date, description: "Advance Payment", method: booking.payment_method, amount: advancePaid },
+        ...(checkoutPayment > 0 ? [{ date: booking.checkout_date, description: "Checkout Payment", method: booking.payment_method, amount: checkoutPayment }] : []),
+      ]}
     />
   )
 }
