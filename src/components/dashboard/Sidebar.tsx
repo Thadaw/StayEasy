@@ -65,6 +65,7 @@ const sections: NavSection[] = [
         children: [
           { label: 'Staffs', icon: <Users size={16} />, path: '/host/staff' },
           { label: 'Shift & Attendance', icon: <CalendarDays size={16} />, path: '/host/staff/shifts' },
+          { label: 'Shift Coverage', icon: <CalendarDays size={16} />, path: '/host/staff/shift-coverage' },
         ],
       },
       { label: 'Housekeeping', icon: <Sparkles size={18} />, path: '/host/housekeeping' },

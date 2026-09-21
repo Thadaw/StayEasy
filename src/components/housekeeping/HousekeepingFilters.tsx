@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Search, ChevronDown, Filter, Plus, Calendar, X } from 'lucide-react'
+import { Search, ChevronDown, Calendar } from 'lucide-react'
 
 interface HousekeepingFiltersProps {
   search: string
@@ -12,11 +11,6 @@ interface HousekeepingFiltersProps {
   onRoomTypeChange: (value: string) => void
   date: string
   onDateChange: (value: string) => void
-  onAddTask: () => void
-  assignedStaff?: string
-  onAssignedStaffChange?: (value: string) => void
-  cleaningStatus?: string
-  onCleaningStatusChange?: (value: string) => void
 }
 
 const selectStyle: React.CSSProperties = {
@@ -27,13 +21,13 @@ const selectStyle: React.CSSProperties = {
   border: '1px solid #E5E7EB',
   borderRadius: 8,
   padding: '10px 36px 10px 14px',
-  fontSize: 14,
+  fontSize: 13,
   color: '#374151',
   fontWeight: 500,
   cursor: 'pointer',
   outline: 'none',
   backgroundImage: 'none',
-  minWidth: 150,
+  minWidth: 140,
 }
 
 const dropdownWrapperStyle: React.CSSProperties = {
@@ -44,7 +38,7 @@ const dropdownWrapperStyle: React.CSSProperties = {
 
 const dropdownIconStyle: React.CSSProperties = {
   position: 'absolute',
-  right: 12,
+  right: 10,
   pointerEvents: 'none',
   color: '#9CA3AF',
 }
@@ -60,38 +54,30 @@ export default function HousekeepingFilters({
   onRoomTypeChange,
   date,
   onDateChange,
-  onAddTask,
-  assignedStaff,
-  onAssignedStaffChange,
-  cleaningStatus,
-  onCleaningStatusChange,
 }: HousekeepingFiltersProps) {
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
-  const staffOptions = ['Sunita Shrestha', 'Kiran Gurung', 'Anita Lama', 'Bikash Magar', 'Pooja Adhikari']
-  const cleaningStatusOptions = ['Scheduled', 'Completed', 'Missed', 'Rescheduled']
-
   return (
-    <div style={{ marginBottom: 20 }}>
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 12,
+        marginBottom: 20,
         flexWrap: 'wrap',
       }}
     >
+      {/* Search */}
       <div
         style={{
           position: 'relative',
           flex: '1 1 260px',
-          maxWidth: 360,
+          maxWidth: 320,
         }}
       >
         <Search
-          size={18}
+          size={16}
           style={{
             position: 'absolute',
-            left: 14,
+            left: 12,
             top: '50%',
             transform: 'translateY(-50%)',
             color: '#9CA3AF',
@@ -101,13 +87,13 @@ export default function HousekeepingFilters({
           type="text"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="Search by room number or type..."
+          placeholder="Search by room number or type ..."
           style={{
             width: '100%',
-            padding: '10px 14px 10px 42px',
+            padding: '10px 14px 10px 38px',
             border: '1px solid #E5E7EB',
             borderRadius: 8,
-            fontSize: 14,
+            fontSize: 13,
             color: '#374151',
             outline: 'none',
             background: '#fff',
@@ -115,6 +101,7 @@ export default function HousekeepingFilters({
         />
       </div>
 
+      {/* All Floors */}
       <div style={dropdownWrapperStyle}>
         <select
           value={floor}
@@ -127,9 +114,10 @@ export default function HousekeepingFilters({
           <option value="3rd Floor">3rd Floor</option>
           <option value="4th Floor">4th Floor</option>
         </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
+        <ChevronDown size={14} style={dropdownIconStyle} />
       </div>
 
+      {/* All Status */}
       <div style={dropdownWrapperStyle}>
         <select
           value={status}
@@ -142,9 +130,10 @@ export default function HousekeepingFilters({
           <option value="In Progress">In Progress</option>
           <option value="Out of Service">Out of Service</option>
         </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
+        <ChevronDown size={14} style={dropdownIconStyle} />
       </div>
 
+      {/* All Room Types */}
       <div style={dropdownWrapperStyle}>
         <select
           value={roomType}
@@ -157,27 +146,13 @@ export default function HousekeepingFilters({
           <option value="Standard Room">Standard Room</option>
           <option value="Family Room">Family Room</option>
         </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
+        <ChevronDown size={14} style={dropdownIconStyle} />
       </div>
 
+      {/* Date */}
       <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-        <input
-          type="date"
-          value={date}
-          onChange={e => onDateChange(e.target.value)}
-          style={{
-            padding: '10px 14px 10px 36px',
-            border: '1px solid #E5E7EB',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#374151',
-            outline: 'none',
-            background: '#fff',
-            minWidth: 160,
-          }}
-        />
         <Calendar
-          size={16}
+          size={14}
           style={{
             position: 'absolute',
             left: 12,
@@ -185,115 +160,22 @@ export default function HousekeepingFilters({
             color: '#9CA3AF',
           }}
         />
+        <input
+          type="date"
+          value={date}
+          onChange={e => onDateChange(e.target.value)}
+          style={{
+            padding: '10px 14px 10px 34px',
+            border: '1px solid #E5E7EB',
+            borderRadius: 8,
+            fontSize: 13,
+            color: '#374151',
+            outline: 'none',
+            background: '#fff',
+            minWidth: 150,
+          }}
+        />
       </div>
-
-      <button
-        onClick={() => setShowMoreFilters(!showMoreFilters)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '10px 16px',
-          border: showMoreFilters ? '1px solid var(--primary)' : '1px solid #E5E7EB',
-          borderRadius: 8,
-          background: showMoreFilters ? '#F5F3FF' : '#fff',
-          fontSize: 14,
-          fontWeight: 500,
-          color: showMoreFilters ? 'var(--primary)' : '#374151',
-          cursor: 'pointer',
-        }}
-      >
-        {showMoreFilters ? <X size={16} /> : <Filter size={16} />}
-        {showMoreFilters ? 'Less Filters' : 'More Filters'}
-      </button>
-
-      <button
-        onClick={onAddTask}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: 8,
-          background: 'var(--primary)',
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#fff',
-          cursor: 'pointer',
-          marginLeft: 'auto',
-        }}
-      >
-        <Plus size={18} />
-        Add Task
-      </button>
-    </div>
-
-    {showMoreFilters && (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '16px',
-          background: '#F9FAFB',
-          borderRadius: 8,
-          border: '1px solid #E5E7EB',
-          flexWrap: 'wrap',
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>More Filters:</span>
-        
-        <div style={dropdownWrapperStyle}>
-          <select
-            value={assignedStaff || ''}
-            onChange={e => onAssignedStaffChange?.(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="">All Staff</option>
-            {staffOptions.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <ChevronDown size={16} style={dropdownIconStyle} />
-        </div>
-
-        <div style={dropdownWrapperStyle}>
-          <select
-            value={cleaningStatus || ''}
-            onChange={e => onCleaningStatusChange?.(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="">All Cleaning Status</option>
-            {cleaningStatusOptions.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <ChevronDown size={16} style={dropdownIconStyle} />
-        </div>
-
-        {(assignedStaff || cleaningStatus) && (
-          <button
-            onClick={() => {
-              onAssignedStaffChange?.('')
-              onCleaningStatusChange?.('')
-            }}
-            style={{
-              padding: '8px 14px',
-              border: '1px solid #E5E7EB',
-              borderRadius: 8,
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 500,
-              color: '#6B7280',
-              cursor: 'pointer',
-            }}
-          >
-            Clear All
-          </button>
-        )}
-      </div>
-    )}
     </div>
   )
 }

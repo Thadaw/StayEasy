@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { useQuery } from '@tanstack/react-query'
@@ -6,7 +6,7 @@ import { usePropertyStore } from '../../stores/propertyStore'
 import { getAllProperties } from '../../services/pmsApi'
 import { propertyKeys } from '../../lib/queryKeys'
 import type { GeneralInfoResponse } from '../../types/pms'
-import { Bell, ChevronDown, Calendar, Menu } from 'lucide-react'
+import { Bell, ChevronDown, Calendar, Menu, User, LogOut } from 'lucide-react'
 
 import { Layers } from 'lucide-react'
 
@@ -17,11 +17,12 @@ interface DashboardHeaderProps {
   showOverallOption?: boolean
   onPropertyChange?: (propertyId: string | null) => void
   selectedLabel?: string
+  hideControls?: boolean
 }
 
-export default function DashboardHeader({ title, subtitle, onMenuToggle, showOverallOption, onPropertyChange, selectedLabel }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, subtitle, onMenuToggle, showOverallOption, onPropertyChange, selectedLabel, hideControls }: DashboardHeaderProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const setCurrentPropertyId = usePropertyStore((s) => s.setCurrentPropertyId)
 
@@ -37,7 +38,21 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false)
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [selectedDateRange, setSelectedDateRange] = useState('M 1, 2026 - Jul 31, 2026')
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false)
+      }
+    }
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfileMenu])
 
   const firstName = user?.firstName || user?.first_name || ''
   const lastName = user?.lastName || user?.last_name || ''
@@ -98,8 +113,10 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
 
       {/* Right - Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Property Selector */}
-        <div style={{ position: 'relative' }}>
+        {!hideControls && (
+          <>
+            {/* Property Selector */}
+            <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowPropertyDropdown(!showPropertyDropdown)
@@ -336,42 +353,159 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
             </div>
           )}
         </div>
+          </>
+        )}
 
         {/* User Profile */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '6px 12px',
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
-          borderRadius: 10,
-          cursor: 'pointer',
-        }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#fff',
-          }}>
-            {user?.avatar ? (
-              <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              initials.toUpperCase()
-            )}
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', lineHeight: 1.2 }}>
-              {firstName} {lastName}
+        <div ref={profileMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowProfileMenu(v => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 12px',
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: 10,
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#fff',
+              flexShrink: 0,
+              overflow: 'hidden',
+            }}>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                initials.toUpperCase()
+              )}
             </div>
-          </div>
-          <ChevronDown size={14} color="#9ca3af" />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', lineHeight: 1.2 }}>
+                {firstName} {lastName}
+              </div>
+            </div>
+            <ChevronDown
+              size={14}
+              color="#9ca3af"
+              style={{
+                transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0)',
+                transition: 'transform 0.2s',
+              }}
+            />
+          </button>
+
+          {showProfileMenu && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              background: '#fff',
+              borderRadius: 12,
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
+              zIndex: 50,
+              width: 240,
+              overflow: 'hidden',
+            }}>
+              {/* User info header */}
+              <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: '#fff',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                  }}>
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      initials.toUpperCase()
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {firstName} {lastName}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {user?.role || 'Administrator'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div style={{ padding: '6px 0' }}>
+                <button
+                  onClick={() => { navigate('/host/admin-profile'); setShowProfileMenu(false) }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#374151',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+                >
+                  <User size={16} style={{ color: '#6b7280' }} />
+                  View Full Profile
+                </button>
+              </div>
+
+              {/* Divider + Logout */}
+              <div style={{ borderTop: '1px solid #e5e7eb', padding: '6px 0' }}>
+                <button
+                  onClick={() => { logout(); navigate('/'); setShowProfileMenu(false) }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#ef4444',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

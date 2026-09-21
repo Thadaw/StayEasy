@@ -42,7 +42,7 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar simplified />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader title="Manage Properties" subtitle="Overview of your real estate portfolio performance and availability." />
+        <DashboardHeader title="Manage Properties" subtitle="Overview of your real estate portfolio performance and availability." hideControls />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
             <button onClick={() => navigate('/host/portal')} style={{

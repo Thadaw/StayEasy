@@ -1,4 +1,4 @@
-import { BedDouble, Sparkles, Droplets, Loader, Ban } from 'lucide-react'
+import { BedDouble, Sparkles, Droplets, Loader, Wrench } from 'lucide-react'
 import type { RoomStats } from '../../types/housekeeping'
 
 interface HousekeepingStatsProps {
@@ -11,16 +11,16 @@ const statCards = (stats: RoomStats) => [
   {
     label: 'Total Rooms',
     value: stats.total,
-    subtitle: 'All Rooms',
+    subtitle: 'Inventory',
     icon: BedDouble,
-    bg: '#DBEAFE',
+    bg: '#EFF6FF',
     color: '#2563EB',
     filterValue: '',
   },
   {
     label: 'Clean Rooms',
     value: stats.clean,
-    subtitle: `${stats.total > 0 ? ((stats.clean / stats.total) * 100).toFixed(1) : 0}% of total`,
+    subtitle: 'Ready',
     icon: Sparkles,
     bg: '#DCFCE7',
     color: '#16A34A',
@@ -29,28 +29,28 @@ const statCards = (stats: RoomStats) => [
   {
     label: 'Dirty Rooms',
     value: stats.dirty,
-    subtitle: `${stats.total > 0 ? ((stats.dirty / stats.total) * 100).toFixed(1) : 0}% of total`,
+    subtitle: 'Needs Attention',
     icon: Droplets,
-    bg: '#FEF3C7',
-    color: '#D97706',
+    bg: '#FEE2E2',
+    color: '#DC2626',
     filterValue: 'Dirty',
   },
   {
     label: 'In Progress',
     value: stats.inProgress,
-    subtitle: `${stats.total > 0 ? ((stats.inProgress / stats.total) * 100).toFixed(1) : 0}% of total`,
+    subtitle: 'Cleaning now',
     icon: Loader,
-    bg: '#F3E8FF',
-    color: 'var(--primary)',
+    bg: '#FEF3C7',
+    color: '#D97706',
     filterValue: 'In Progress',
   },
   {
-    label: 'Out of Service',
+    label: 'Maintenance',
     value: stats.outOfService,
-    subtitle: `${stats.total > 0 ? ((stats.outOfService / stats.total) * 100).toFixed(1) : 0}% of total`,
-    icon: Ban,
-    bg: '#FEE2E2',
-    color: '#DC2626',
+    subtitle: stats.total > 0 ? `${((stats.outOfService / stats.total) * 100).toFixed(1)}% of total` : '0% of total',
+    icon: Wrench,
+    bg: '#F0F9FF',
+    color: '#2563EB',
     filterValue: 'Out of Service',
   },
 ]
@@ -73,12 +73,12 @@ export default function HousekeepingStats({ stats, activeFilter, onFilterChange 
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              border: isActive ? '2px solid var(--primary)' : '1px solid #E5E7EB',
+              border: isActive ? '2px solid #2563EB' : '1px solid #E5E7EB',
               cursor: 'pointer',
               transition: 'border 0.15s, box-shadow 0.15s',
-              boxShadow: isActive ? '0 0 0 1px var(--primary)' : 'none',
+              boxShadow: isActive ? '0 0 0 1px #2563EB' : 'none',
             }}
-            onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C4B5FD' }}
+            onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#93C5FD' }}
             onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = 'none' } }}
           >
             <div
