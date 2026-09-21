@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Lock, CheckCircle, Shield } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -30,6 +30,13 @@ export default function ChangePassword() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current)
+    }
+  }, [])
   const [loading, setLoading] = useState(false)
 
   const onSubmit = async (data: ChangePasswordFormData) => {
@@ -45,7 +52,7 @@ export default function ChangePassword() {
 
     if (result.success) {
       setSuccess(true)
-      setTimeout(() => {
+      navigateTimerRef.current = setTimeout(() => {
         navigate('/frontdesk')
       }, 1500)
     } else {

@@ -5,6 +5,7 @@ import QRCodeLib from "qrcode"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
+import { BookingSummarySkeleton } from "../components/BookingSummarySkeleton"
 import { BookingHeader } from "../components/BookingHeader"
 import { StayInformation } from "../components/StayInformation"
 import { BookingRoomDetails } from "../components/BookingRoomDetails"
@@ -221,7 +222,7 @@ export default function BookingDetailsView() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading booking details..." />
+    return <BookingSummarySkeleton />
   }
 
   if (!booking && !localBooking) {

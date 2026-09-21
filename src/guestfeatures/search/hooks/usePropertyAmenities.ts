@@ -30,7 +30,7 @@ async function fetchAmenities(): Promise<Amenity[]> {
     .filter((n) => n.amenity_name)
 }
 
-export function useSystemAmenities() {
+export function usePropertyAmenities() {
   const { data: amenities = [], ...rest } = useQuery({
     queryKey: ["system-amenities"],
     queryFn: fetchAmenities,

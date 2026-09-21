@@ -5,7 +5,9 @@ import type { RoomType } from "../../../data/hotels"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
+import { GuestBookingDetailsSkeleton } from "../components/GuestBookingDetailsSkeleton"
 import { GuestInformationForm } from "../components/GuestInformationForm"
+import type { GuestInformationFormData } from "../schemas/bookingSchemas"
 import { useGuestProfile } from "../../profile/hooks/useGuestProfile"
 import { formatDate } from "../../../shared/utils/format"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
@@ -72,7 +74,7 @@ export default function BookingDetailsPage() {
     || Object.values(guestAllocation).reduce((s, c) => s + c, 0)
     || bookingParams.adults + bookingParams.children
 
-  const [guest, setGuest] = useState({
+  const [guest, setGuest] = useState<GuestInformationFormData>({
     name: "",
     email: "",
     phoneCode: DEFAULT_PHONE_CODE,
@@ -227,7 +229,7 @@ export default function BookingDetailsPage() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading booking details..." />
+    return <GuestBookingDetailsSkeleton />
   }
 
   if (!hotel) {

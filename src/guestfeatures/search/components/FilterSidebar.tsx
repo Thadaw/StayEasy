@@ -4,9 +4,9 @@ import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { SlidersHorizontal } from "lucide-react"
 import { filterParamsSchema, type FilterParams } from "../schemas/searchParams"
-import { useSystemRoomTypes } from "../hooks/useSystemRoomTypes"
-import { useSystemBedTypes } from "../hooks/useSystemBedTypes"
-import { useSystemAmenities } from "../hooks/useSystemAmenities"
+import { usePropertyRoomTypes } from "../hooks/usePropertyRoomTypes"
+import { usePropertyBedTypes } from "../hooks/usePropertyBedTypes"
+import { usePropertyAmenities } from "../hooks/usePropertyAmenities"
 
 interface FilterSidebarProps {
   maxPrice: number
@@ -26,9 +26,9 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export function FilterSidebar({ maxPrice }: FilterSidebarProps) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { roomTypes } = useSystemRoomTypes()
-  const { bedTypes } = useSystemBedTypes()
-  const { amenities: systemAmenities } = useSystemAmenities()
+  const { roomTypes } = usePropertyRoomTypes()
+  const { bedTypes } = usePropertyBedTypes()
+  const { amenities: systemAmenities } = usePropertyAmenities()
 
   const {
     control,

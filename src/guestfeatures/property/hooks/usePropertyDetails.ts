@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import type { Hotel } from "../../../data/hotels"
-import type { ApiProperty, ApiRoom } from "../../../shared/types/api"
+import type { ApiRoom } from "../../../shared/types/api"
+import type { AuthRequestConfig } from "../../../services/axios"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
 import { getDefaultDates } from "../../../shared/utils/date"
 import { calculateNights } from "../../../shared/utils/time"
-import api, { type AuthRequestConfig } from "../../../services/axios"
+import { usePropertyQuery, useAvailableRoomsQuery } from "../../booking/hooks/useBookingQueries"
 
 interface GuestCounts {
   adults: number
@@ -14,7 +15,7 @@ interface GuestCounts {
 }
 
 interface UsePropertyDetailsReturn {
-  property: ApiProperty | null
+  property: NonNullable<ReturnType<typeof usePropertyQuery>["data"]> | null
   hotel: Hotel | null
   availableRooms: ApiRoom[]
   isLoading: boolean
@@ -41,8 +42,6 @@ interface UsePropertyDetailsReturn {
 export function usePropertyDetails(id: string | undefined): UsePropertyDetailsReturn {
   const [searchParams] = useSearchParams()
   const guestsParam = searchParams.get("guests") || ""
-  const whereParam = searchParams.get("where") || ""
-  const budgetParam = searchParams.get("budget") || ""
   const checkinParam = searchParams.get("checkin") || ""
   const checkoutParam = searchParams.get("checkout") || ""
   const filterAmenities = useMemo(() => searchParams.get("amenities")?.split(",").filter(Boolean) || [], [searchParams])
@@ -51,11 +50,7 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
   const filterPriceMin = Number(searchParams.get("priceMin")) || 0
   const filterPriceMax = Number(searchParams.get("priceMax")) || 500
   const filterPropertyTypes = searchParams.get("propertyTypes")?.split(",").filter(Boolean) || []
-  const hasSearchParams = filterAmenities.length > 0 || filterBedTypes.length > 0 || filterGuestRating !== "Any" || filterPriceMin > 0 || filterPriceMax < 500 || filterPropertyTypes.length > 0 || guestsParam !== "" || whereParam !== "" || budgetParam !== "" || checkinParam !== "" || checkoutParam !== ""
-
-  const [property, setProperty] = useState<ApiProperty | null>(null)
-  const [availableRooms, setAvailableRooms] = useState<ApiRoom[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const hasSearchParams = filterAmenities.length > 0 || filterBedTypes.length > 0 || filterGuestRating !== "Any" || filterPriceMin > 0 || filterPriceMax < 500 || filterPropertyTypes.length > 0 || guestsParam !== "" || checkinParam !== "" || checkoutParam !== ""
 
   const [checkIn, setCheckIn] = useState(checkinParam || getDefaultDates().today)
   const [checkOut, setCheckOut] = useState(checkoutParam || getDefaultDates().tomorrow)
@@ -80,120 +75,32 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
     return { adults: 2, children: 0, rooms: 1 }
   })
 
-  useEffect(() => {
-    if (!id) return
-    const loadPropertyDetails = async () => {
-      setIsLoading(true)
-      try {
-        const { today, tomorrow } = getDefaultDates()
-        const checkInDate = checkinParam || today
-        const checkOutDate = checkoutParam || tomorrow
-        const adultsParam = searchParams.get("adults")
-        const childrenParam = searchParams.get("children")
-        const roomsParam = searchParams.get("rooms")
-        const adults = adultsParam ? Number(adultsParam) : (guestsParam ? Number(guestsParam.match(/\d+/g)?.[0] || "2") : 2)
-        const children = childrenParam ? Number(childrenParam) : (guestsParam ? Number(guestsParam.match(/\d+/g)?.[1] || "0") : 0)
-        const rooms = roomsParam ? Number(roomsParam) : 1
-        const propResponse = await api.get(`/properties/${id}/public`, { skipAuthRedirect: true } as AuthRequestConfig)
-        setProperty(propResponse.data?.data || null)
-        try {
-          const roomsResponse = await api.get(`/properties/${id}/rooms/available-rooms`, {
-            params: { checkin_date: checkInDate, checkout_date: checkOutDate, adults, children, rooms },
-            skipAuthRedirect: true,
-          } as AuthRequestConfig)
-          setAvailableRooms(roomsResponse.data?.data || [])
-        } catch {
-          // Room availability is non-critical on initial load — UI shows a loading state instead.
-        }
-      } catch {
-        setProperty(null)
-        setAvailableRooms([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadPropertyDetails()
-  }, [id, searchParams, checkinParam, checkoutParam, guestsParam])
+  // TanStack Query hooks for data fetching
+  const { data: property, isLoading: propertyLoading } = usePropertyQuery(id || null, { skipAuthRedirect: true } as AuthRequestConfig)
+  const { data: availableRooms = [], isLoading: roomsLoading } = useAvailableRoomsQuery(
+    id || null,
+    checkIn || getDefaultDates().today,
+    checkOut || getDefaultDates().tomorrow,
+    guests.adults,
+    guests.children,
+    guests.rooms,
+    { skipAuthRedirect: true } as AuthRequestConfig,
+  )
+
+  const isLoading = propertyLoading || (id ? roomsLoading && availableRooms.length === 0 : false)
 
   const hotel = useMemo(() => {
     if (!property) return null
     return mapPropertyToHotel(property, availableRooms)
   }, [property, availableRooms])
 
-  useEffect(() => {
-    if (!id || isLoading || !checkIn || !checkOut) return
-    const loadAvailableRooms = async () => {
-      try {
-        const roomsResponse = await api.get(`/properties/${id}/rooms/available-rooms`, {
-          params: {
-            checkin_date: checkIn,
-            checkout_date: checkOut,
-            adults: guests.adults,
-            children: guests.children,
-            rooms: guests.rooms,
-          },
-          skipAuthRedirect: true,
-        } as AuthRequestConfig)
-        setAvailableRooms(roomsResponse.data?.data || [])
-      } catch {
-        // Keep existing rooms on error — the user can still browse the current selection.
-      }
-    }
-    loadAvailableRooms()
-  }, [id, isLoading, guests.adults, guests.children, guests.rooms, checkIn, checkOut])
-
-  // Distribute guests across selected rooms proportionally to each room's max
-  // capacity. The last room absorbs any rounding remainder so the total always
-  // matches exactly.
-  useEffect(() => {
-    if (!hotel?.roomTypes) return
-    const totalGuests = guests.adults + guests.children
-    const selectedEntries = Object.entries(roomQuantities).filter(([, q]) => q > 0)
-    if (selectedEntries.length === 0 || totalGuests <= 0) {
-      setRoomGuestCounts(hotel.roomTypes.reduce((acc, rt) => ({ ...acc, [rt.id]: 1 }), {}))
-      return
-    }
-    const totalMaxCapacity = selectedEntries.reduce((s, [roomId]) => {
-      const rt = hotel.roomTypes.find(r => r.id === roomId)
-      return s + (rt ? rt.maxGuests : 2)
-    }, 0)
-    const newCounts: Record<string, number> = {}
-    let assigned = 0
-    selectedEntries.forEach(([roomId, qty], idx) => {
-      const rt = hotel.roomTypes.find(r => r.id === roomId)
-      const maxGuests = rt ? rt.maxGuests : 2
-      if (idx === selectedEntries.length - 1) {
-        newCounts[roomId] = Math.max(1, totalGuests - assigned)
-      } else {
-        const proportional = Math.round((totalGuests * maxGuests * qty) / totalMaxCapacity)
-        const count = Math.max(1, Math.min(proportional, totalGuests - assigned - (selectedEntries.length - idx - 1)))
-        newCounts[roomId] = count
-        assigned += count
-      }
-    })
-    setRoomGuestCounts(newCounts)
-  }, [hotel, roomQuantities, guests.adults, guests.children])
-
-  const handleQtyChange = (roomId: string, delta: number) => {
-    setRoomQuantities(prev => {
-      const current = prev[roomId] || 0
-      const nextVal = current + delta
-      if (nextVal < 0) return prev
-      const room = hotel?.roomTypes.find(r => r.id === roomId)
-      if (room && nextVal > room.availableRooms) return prev
-      return { ...prev, [roomId]: nextVal }
-    })
-  }
-
+  // Distribute guests across selected rooms proportionally to each room's max capacity
   const guestCount = (() => {
     if (!guestsParam) return 2
     const matches = guestsParam.match(/\d+/g)
     return matches ? matches.reduce((sum, n) => sum + parseInt(n), 0) : 2
   })()
 
-  // Validate adult, child, and total guest counts separately because rooms have
-  // independent adult and child capacity limits (e.g. a room may allow 2 adults
-  // + 1 child but not 3 adults).
   const capacityError = useMemo(() => {
     if (!hotel) return ""
     const totalGuests = guests.adults + guests.children
@@ -283,17 +190,37 @@ export function usePropertyDetails(id: string | undefined): UsePropertyDetailsRe
 
   const nights = calculateNights(checkIn, checkOut)
 
+  const handleQtyChange = (roomId: string, delta: number) => {
+    setRoomQuantities(prev => {
+      const current = prev[roomId] || 0
+      const nextVal = current + delta
+      if (nextVal < 0) return prev
+      const room = hotel?.roomTypes.find(r => r.id === roomId)
+      if (room && nextVal > room.availableRooms) return prev
+      return { ...prev, [roomId]: nextVal }
+    })
+  }
+
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    }
+  }, [])
+
   const handleSelectRoom = (roomId: string) => {
     const qty = roomQuantities[roomId] || 0
     setRoomQuantities(prev => ({ ...prev, [roomId]: qty > 0 ? 0 : 1 }))
     setSelectedRoomId(roomId)
-    setTimeout(() => setSelectedRoomId(null), 3000)
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    highlightTimerRef.current = setTimeout(() => setSelectedRoomId(null), 3000)
     const el = document.getElementById(`room-${roomId}`)
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
   return {
-    property,
+    property: property ?? null,
     hotel,
     availableRooms,
     isLoading,

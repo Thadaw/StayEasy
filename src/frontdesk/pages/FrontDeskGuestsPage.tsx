@@ -7,6 +7,7 @@ import {
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
+import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
@@ -146,8 +147,11 @@ export default function FrontDeskGuestsPage() {
       let allBookings: Booking[] = []
       let skip = 0
       let hasMore = true
+      let iterations = 0
+      const MAX_ITERATIONS = 100
 
-      while (hasMore) {
+      while (hasMore && iterations < MAX_ITERATIONS) {
+        iterations++
         const params: Record<string, string> = { limit: "50", skip: String(skip) }
         if (searchQuery.trim()) params.search = searchQuery.trim()
 
@@ -333,10 +337,7 @@ export default function FrontDeskGuestsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading guest records...</p>
-              </div>
+              <FrontdeskRowSkeleton columns={5} />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

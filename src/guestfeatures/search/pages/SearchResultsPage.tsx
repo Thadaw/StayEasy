@@ -1,11 +1,10 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LayoutList, LayoutGrid } from "lucide-react"
 import { Navbar } from "../../../shared/components/Navbar"
 import { SearchBar } from "../../../shared/components/SearchBar"
 import { StickySearchHeader } from "../../../shared/components/StickySearchHeader"
 import { Footer } from "../../../shared/components/Footer"
-import { LoadingSpinner } from "../../../shared/components/LoadingSpinner"
 import { useFavorites } from "../../../context/FavoritesContext"
 import { useSearchResults, PAGE_SIZE } from "../hooks/useSearchResults"
 import { parseSearchParams, buildFilterQueryString } from "../schemas/searchParams"
@@ -13,6 +12,7 @@ import { parseSearchParams, buildFilterQueryString } from "../schemas/searchPara
 import { FilterSidebar } from "../components/FilterSidebar"
 import { SearchResultCard } from "../components/SearchResultCard"
 import { SearchResultGridCard } from "../components/SearchResultGridCard"
+import { SearchResultListSkeleton, SearchResultGridSkeleton } from "../components/SearchResultSkeleton"
 import { Pagination } from "../components/Pagination"
 import { EmptySearch } from "../components/EmptySearch"
 
@@ -25,6 +25,10 @@ export default function SearchResultsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchParams])
 
   const guests = parsed.guests || `${Number(parsed.adults) + Number(parsed.children)} guests`
 
@@ -55,6 +59,7 @@ export default function SearchResultsPage() {
 
   const isInitialLoading = isLoading && !data
   const isRefetching = isFetching && !!data
+  const showSkeleton = isInitialLoading || isRefetching
 
   const filterParams = useMemo(
     () => buildFilterQueryString(parsed),
@@ -89,13 +94,8 @@ export default function SearchResultsPage() {
                 Filters
               </button>
               <h2 className="text-xl font-bold font-brand text-brand-heading">
-                {isInitialLoading ? "Searching..." : `${total} stays${parsed.where ? ` in ${parsed.where}` : parsed.propertyTypes ? ` - ${parsed.propertyTypes}` : ""}`}
+                {showSkeleton ? "Searching..." : `${total} stays${parsed.where ? ` in ${parsed.where}` : parsed.propertyTypes ? ` - ${parsed.propertyTypes}` : ""}`}
               </h2>
-              {isRefetching && (
-                <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-accent animate-pulse rounded-full" />
-                </div>
-              )}
               </div>
               <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
                 <button
@@ -116,10 +116,8 @@ export default function SearchResultsPage() {
             </div>
 
             <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"}>
-              {isInitialLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <LoadingSpinner />
-                </div>
+              {showSkeleton ? (
+                viewMode === "list" ? <SearchResultListSkeleton /> : <SearchResultGridSkeleton />
               ) : results.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (

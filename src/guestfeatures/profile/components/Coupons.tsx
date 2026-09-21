@@ -7,10 +7,14 @@ export default function Coupons() {
   const { activeCoupons, usedCoupons } = useCoupons()
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const handleCopyCouponCode = (code: string, id: string) => {
-    navigator.clipboard.writeText(code)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
+  const handleCopyCouponCode = async (code: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch {
+      // clipboard API may be blocked by permissions policy
+    }
   }
 
   return (

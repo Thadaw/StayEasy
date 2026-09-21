@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Search, LogIn, CheckCircle, Loader2, X, User, Bed, Calendar, CreditCard, Upload, Camera, Phone, Globe, FileText, Users } from "lucide-react"
 import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { FormField } from "../components/FormField"
+import { FrontdeskTableSkeleton } from "../components/FrontdeskTableSkeleton"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
@@ -157,9 +158,15 @@ export default function CheckInListPage() {
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (frontPreview) URL.revokeObjectURL(frontPreview)
+      if (backPreview) URL.revokeObjectURL(backPreview)
+    }
+  }, [frontPreview, backPreview])
+
   const onCheckIn = () => {
     if (!selectedBooking) return
-    checkIn(selectedBooking.booking_id)
     checkInMutation.mutate({
       refNumber: selectedBooking.ref_number,
       amount: parseFloat(paymentAmount) || 0,
@@ -196,9 +203,7 @@ export default function CheckInListPage() {
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-              </div>
+              <FrontdeskTableSkeleton columns={7} />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

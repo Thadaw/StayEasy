@@ -19,6 +19,7 @@ import { RoomDetailModal } from "../components/RoomDetailModal";
 
 import { usePropertyDetails } from "../hooks/usePropertyDetails";
 import { useBookingCreation } from "../../booking/hooks/useBookingCreation";
+import { PropertyDetailSkeleton } from "../components/PropertyDetailSkeleton";
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
@@ -92,7 +93,7 @@ export default function PropertyDetailPage() {
   }, [hotel]);
 
   if (isLoading) {
-    return <PageMessage loading title="Loading property..." />;
+    return <PropertyDetailSkeleton />;
   }
 
   if (!hotel) {

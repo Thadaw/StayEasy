@@ -3,6 +3,7 @@ import { Search, LogOut, CheckCircle } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useBookingCheckOutStore } from "../stores/bookingCheckOutStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
+import { FrontdeskTableSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
@@ -104,9 +105,7 @@ export default function CheckOutListPage() {
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
-              </div>
+              <FrontdeskTableSkeleton columns={7} />
             ) : isError ? (
               <div className="p-8 text-center text-red-500 text-sm">
                 Failed to load departures. Please try again later.

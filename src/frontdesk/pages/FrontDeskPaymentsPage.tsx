@@ -12,6 +12,7 @@ import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
 import { ExportButton } from "../components/ExportButton"
+import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -216,6 +217,7 @@ export default function FrontDeskPaymentsPage() {
 
   const transactions = transactionsData?.data ?? EMPTY_TRANSACTIONS
   const totalTransactions = transactionsData?.total ?? transactions.length
+  const totalRefunds = transactionsData?.total_refunds ?? transactions.filter((t) => t.type === "refund" || t.status === "refunded").length
   const hasMore = transactionsData?.has_more ?? false
   const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE))
 
@@ -235,8 +237,11 @@ export default function FrontDeskPaymentsPage() {
       let allBookings: Booking[] = []
       let skip = 0
       let hasMore = true
+      let iterations = 0
+      const MAX_ITERATIONS = 100
 
-      while (hasMore) {
+      while (hasMore && iterations < MAX_ITERATIONS) {
+        iterations++
         const params: Record<string, string> = { limit: "50", skip: String(skip) }
         if (searchQuery.trim()) params.search = searchQuery.trim()
         if (methodFilter) params.payment_method = methodFilter
@@ -323,7 +328,7 @@ export default function FrontDeskPaymentsPage() {
                   {tab.key === "all"
                     ? <>All transactions <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 ml-1.5">{totalTransactions}</span></>
                     : tab.key === "refunds"
-                    ? <>Refunds <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 ml-1.5">{transactions.filter((t) => t.type === "refund" || t.status === "refunded").length}</span></>
+                    ? <>Refunds <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 ml-1.5">{totalRefunds}</span></>
                     : tab.label}
                 </button>
               ))}
@@ -441,10 +446,7 @@ export default function FrontDeskPaymentsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading payment history...</p>
-              </div>
+              <FrontdeskRowSkeleton columns={7} />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../../services/axios'
 import { normalizeBookingStatus } from '../../../shared/utils/format'
 import { resolveBookingStatus } from '../../../shared/utils/bookingHelpers'
-import { CalendarDays, Clock, X, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react'
-import { LoadingSpinner } from '../../../shared/components/LoadingSpinner'
+import { CalendarDays, Clock, X, ChevronRight, RefreshCw, AlertTriangle, Star, Pencil } from 'lucide-react'
+import { BookingsSkeleton } from './BookingsSkeleton'
+import { WriteReviewModal } from '../../review/components/WriteReviewModal'
+import { EditReviewModal } from '../../review/components/EditReviewModal'
 import toast from 'react-hot-toast'
 
 type Tab = 'upcoming' | 'completed' | 'cancelled'
@@ -24,6 +26,7 @@ interface ApiBookingItem {
   total_amount: string
   created_at: string
   currency?: string
+  property_id?: string
   property?: { id: string; name?: string; city?: string; country?: string; currency?: string }
   property_name?: string
   property_photo?: string
@@ -41,10 +44,22 @@ interface NormalizedBooking {
   currency: string
   propertyName: string
   coverPhoto: string
+  propertyId: string
 }
 
 interface CancelModal {
   show: boolean
+  booking: NormalizedBooking | null
+}
+
+interface ReviewData {
+  id: string | number
+  rating: number
+  comment: string
+}
+
+interface ReviewModalState {
+  type: 'write' | 'edit' | null
   booking: NormalizedBooking | null
 }
 
@@ -61,6 +76,7 @@ function normalizeBooking(item: ApiBookingItem): NormalizedBooking {
     currency,
     propertyName: item.property?.name || item.property_name || '',
     coverPhoto: item.photos?.cover || item.property_photo || '',
+    propertyId: item.property_id || item.property?.id || '',
   }
 }
 
@@ -72,6 +88,8 @@ export default function Bookings() {
   const [error, setError] = useState(false)
   const [cancelModal, setCancelModal] = useState<CancelModal>({ show: false, booking: null })
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [reviewModal, setReviewModal] = useState<ReviewModalState>({ type: null, booking: null })
+  const [reviewedMap, setReviewedMap] = useState<Record<string, ReviewData>>({})
 
   const loadBookings = async () => {
     setLoading(true)
@@ -92,6 +110,28 @@ export default function Bookings() {
 
   useEffect(() => {
     loadBookings()
+  }, [])
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const { data } = await api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } })
+        const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+        if (Array.isArray(items)) {
+          const map: Record<string, ReviewData> = {}
+          items.forEach((r: any) => {
+            const propId = r.property?.id || r.property_id
+            if (propId) {
+              map[propId] = { id: r.id, rating: r.rating, comment: r.comment }
+            }
+          })
+          setReviewedMap(map)
+        }
+      } catch {
+        // silently fail — review buttons just won't show
+      }
+    }
+    fetchReviews()
   }, [])
 
   const closeCancelModal = useCallback(() => {
@@ -165,10 +205,7 @@ export default function Bookings() {
 
         <div className="p-4 sm:p-6">
           {loading ? (
-            <div className="flex flex-col items-center py-12">
-              <LoadingSpinner className="mb-3" />
-              <p className="text-sm text-brand-text-secondary">Loading bookings...</p>
-            </div>
+            <BookingsSkeleton />
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-sm text-brand-text-secondary mb-4">Could not load your bookings.</p>
@@ -246,6 +283,23 @@ export default function Bookings() {
                               Cancel
                             </button>
                           )}
+                          {booking.status === 'completed' && booking.propertyId && (
+                            reviewedMap[booking.propertyId] ? (
+                              <button
+                                onClick={() => setReviewModal({ type: 'edit', booking })}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-accent-light transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Pencil size={11} /> Edit Review
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setReviewModal({ type: 'write', booking })}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-accent-light transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Star size={11} /> + Review
+                              </button>
+                            )
+                          )}
                           <button
                             onClick={() => navigate(`/booking-view/${booking.refNumber}`)}
                             className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand-card-border text-brand-heading hover:bg-brand-secondary-surface transition-colors cursor-pointer flex items-center gap-1"
@@ -305,6 +359,55 @@ export default function Bookings() {
             </div>
           </div>
         </div>
+      )}
+
+      {reviewModal.type === 'write' && reviewModal.booking && (
+        <WriteReviewModal
+          propertyId={reviewModal.booking.propertyId}
+          propertyName={reviewModal.booking.propertyName}
+          onClose={() => {
+            setReviewModal({ type: null, booking: null })
+            const propId = reviewModal.booking?.propertyId
+            if (propId) {
+              api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } }).then(({ data }) => {
+                const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+                if (Array.isArray(items)) {
+                  const map: Record<string, ReviewData> = {}
+                  items.forEach((r: any) => {
+                    const pid = r.property?.id || r.property_id
+                    if (pid) map[pid] = { id: r.id, rating: r.rating, comment: r.comment }
+                  })
+                  setReviewedMap(map)
+                }
+              }).catch(() => {})
+            }
+          }}
+        />
+      )}
+
+      {reviewModal.type === 'edit' && reviewModal.booking && reviewedMap[reviewModal.booking.propertyId] && (
+        <EditReviewModal
+          propertyId={reviewModal.booking.propertyId}
+          reviewId={String(reviewedMap[reviewModal.booking.propertyId].id)}
+          propertyName={reviewModal.booking.propertyName}
+          initialRating={reviewedMap[reviewModal.booking.propertyId].rating}
+          initialComment={reviewedMap[reviewModal.booking.propertyId].comment}
+          onClose={() => setReviewModal({ type: null, booking: null })}
+          onUpdated={() => {
+            setReviewModal({ type: null, booking: null })
+            api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } }).then(({ data }) => {
+              const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+              if (Array.isArray(items)) {
+                const map: Record<string, ReviewData> = {}
+                items.forEach((r: any) => {
+                  const pid = r.property?.id || r.property_id
+                  if (pid) map[pid] = { id: r.id, rating: r.rating, comment: r.comment }
+                })
+                setReviewedMap(map)
+              }
+            }).catch(() => {})
+          }}
+        />
       )}
     </div>
   )

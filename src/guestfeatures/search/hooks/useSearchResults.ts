@@ -93,7 +93,7 @@ interface SearchResultsResponse {
   total: number
 }
 
-async function fetchSearchResults(params: UseSearchResultsParams): Promise<SearchResultsResponse> {
+async function fetchSearchResults(params: UseSearchResultsParams, signal?: AbortSignal): Promise<SearchResultsResponse> {
   const skip = (params.page - 1) * PAGE_SIZE
   const queryParams = buildParams(
     params.where,
@@ -112,7 +112,7 @@ async function fetchSearchResults(params: UseSearchResultsParams): Promise<Searc
     params.amenity_ids
   )
 
-  const pageRes = await api.get("/search", { params: queryParams })
+  const pageRes = await api.get("/search", { params: queryParams, signal })
   const results = parseSearchResponse<SearchProperty>(pageRes.data)
   const pageMeta = parseSearchMeta(pageRes.data)
 
@@ -127,7 +127,7 @@ export function useSearchResults(params: UseSearchResultsParams) {
 
   return useQuery({
     queryKey: ["search", params.where, params.propertyTypes, params.checkin, params.checkout, params.adults, params.children, params.rooms, params.page, params.min_price, params.max_price, params.room_type_ids, params.bed_type_ids, params.amenity_ids],
-    queryFn: () => fetchSearchResults(params),
+    queryFn: ({ signal }) => fetchSearchResults(params, signal),
     enabled: !!hasSearchTerm,
     placeholderData: (prev) => prev,
   })

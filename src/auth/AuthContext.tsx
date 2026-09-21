@@ -26,28 +26,35 @@ const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
-const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
+const REMEMBER_KEY = 'rememberMe'
+const EXPIRY_MS = 24 * 60 * 60 * 1000
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function storageGet(key: string): string | null {
-  return localStorage.getItem(key) || sessionStorage.getItem(key)
+  const remember = localStorage.getItem(REMEMBER_KEY) !== 'false'
+  if (remember) {
+    return localStorage.getItem(key)
+  }
+  return sessionStorage.getItem(key)
 }
 
 function readToken(): string | null {
-  const persisted = localStorage.getItem(TOKEN_KEY)
+  const remember = localStorage.getItem(REMEMBER_KEY) !== 'false'
+  const store = remember ? localStorage : sessionStorage
+  const persisted = store.getItem(TOKEN_KEY)
   if (persisted) {
-    const expiresAt = Number(localStorage.getItem(EXPIRY_KEY) || 0)
+    const expiresAt = Number(store.getItem(EXPIRY_KEY) || 0)
     if (expiresAt && Date.now() > expiresAt) {
       // Only clear the access token — keep the refresh token so the
       // axios interceptor can silently refresh the session.
-      localStorage.removeItem(TOKEN_KEY)
-      sessionStorage.removeItem(TOKEN_KEY)
+      store.removeItem(TOKEN_KEY)
       return null
     }
     return persisted
   }
-  return sessionStorage.getItem(TOKEN_KEY)
+  // Fallback: check both stores for migration
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
 }
 
 function readRole(): AuthRole {
@@ -63,11 +70,13 @@ function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken
     localStorage.removeItem(k)
     sessionStorage.removeItem(k)
   })
-  const store = remember || role === 'staff' ? localStorage : sessionStorage
+  // Always persist the remember preference in localStorage
+  localStorage.setItem(REMEMBER_KEY, remember.toString())
+  const store = remember ? localStorage : sessionStorage
   store.setItem(TOKEN_KEY, token)
   store.setItem(ROLE_KEY, role)
   if (refreshToken) store.setItem(REFRESH_KEY, refreshToken)
-  if (remember || role === 'staff') store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
+  store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
 }
 
 function clearAuth() {
@@ -133,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token) {
       // Access token is missing/expired — try silent refresh using the stored refresh token.
-      const refreshToken = localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY)
+      const refreshToken = storageGet(REFRESH_KEY)
       if (refreshToken) {
         setLoading(true)
         refreshAccessToken()
@@ -157,6 +166,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [token, loadCurrentUser])
+
+  // Sync logout across tabs: when another tab clears the token from localStorage,
+  // the storage event fires here and we clear auth state in this tab too.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY && !e.newValue) {
+        setToken(null)
+        setUser(null)
+        setRole('host')
+        setLoading(false)
+        setMustChangePassword(false)
+        setTempPassword(null)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   // Auto-refresh token before it expires
   useEffect(() => {

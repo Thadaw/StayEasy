@@ -112,25 +112,29 @@ export function FrontDeskPage() {
 
   useEffect(() => {
     if (showNewBooking) {
-      setTimeout(() => bookingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => bookingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showNewBooking])
 
   useEffect(() => {
     if (showArrivals) {
-      setTimeout(() => arrivalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => arrivalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showArrivals])
 
   useEffect(() => {
     if (showDepartures) {
-      setTimeout(() => departuresRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => departuresRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showDepartures])
 
   useEffect(() => {
     if (showRooms) {
-      setTimeout(() => roomsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      const timer = setTimeout(() => roomsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100)
+      return () => clearTimeout(timer)
     }
   }, [showRooms])
 

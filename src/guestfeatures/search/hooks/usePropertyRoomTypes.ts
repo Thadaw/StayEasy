@@ -22,7 +22,7 @@ async function fetchRoomTypes(): Promise<RoomType[]> {
   }))
 }
 
-export function useSystemRoomTypes() {
+export function usePropertyRoomTypes() {
   const { data: roomTypes = [], ...rest } = useQuery({
     queryKey: ["system-room-types"],
     queryFn: fetchRoomTypes,

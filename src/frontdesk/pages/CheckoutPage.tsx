@@ -12,6 +12,7 @@ import api from "../../services/axios"
 import { checkoutPaymentSchema } from "../schemas/paymentSchema"
 import type { CheckoutPaymentFormData } from "../schemas/paymentSchema"
 import { FormField } from "../components/FormField"
+import { CheckoutPageSkeleton } from "../components/CheckoutPageSkeleton"
 
 interface BookingRoom {
   room_id: string
@@ -202,21 +203,17 @@ export default function CheckoutPage() {
   })
 
   useEffect(() => {
-    if (isCheckedOut || alreadyCheckedOut) {
+    if (isCheckedOut) {
       setShowToast(true)
       const timer = setTimeout(() => {
         navigate("/frontdesk/check-out")
       }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [isCheckedOut, alreadyCheckedOut, navigate])
+  }, [isCheckedOut, navigate])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-      </div>
-    )
+    return <CheckoutPageSkeleton />
   }
 
   if (isError) {
@@ -641,7 +638,7 @@ export default function CheckoutPage() {
             Cancel
           </button>
           <button
-            onClick={() => window.open(`/frontdesk/checkout/${id}/receipt`, "_blank")}
+            onClick={() => window.open(`/frontdesk/checkout/${id}/receipt`, "_blank", "noopener,noreferrer")}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <FileText size={16} />

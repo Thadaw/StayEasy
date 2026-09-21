@@ -41,6 +41,8 @@ export function useBookingDetails(id: string | undefined) {
   // Track the last fetched id to prevent unnecessary re-fetches when
   // the bookings context array changes (e.g. addBooking in ReservePage).
   const lastFetchedIdRef = useRef<string | undefined>(undefined)
+  const bookingsRef = useRef(bookings)
+  bookingsRef.current = bookings
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -59,7 +61,7 @@ export function useBookingDetails(id: string | undefined) {
     }
 
     const controller = new AbortController()
-    const localMatch = bookings.find((b) => b.refNumber === id || b.id === id)
+    const localMatch = bookingsRef.current.find((b) => b.refNumber === id || b.id === id)
 
     const loadBookingDetails = async () => {
       try {
@@ -124,10 +126,9 @@ export function useBookingDetails(id: string | undefined) {
     })
 
     return () => { controller.abort() }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const localBooking = bookings.find((b) => b.refNumber === id || b.id === id)
+  const localBooking = bookingsRef.current.find((b) => b.refNumber === id || b.id === id)
 
   const propertyName = booking?.property?.name ?? localBooking?.hotelName ?? ""
   const propertyCity = booking?.property?.city ?? localBooking?.hotelCity ?? ""

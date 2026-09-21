@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { Hotel } from "../../../data/hotels";
 import { usePropertyReviews } from "../../review/hooks/usePropertyReviews";
+import { ReviewSectionSkeleton } from "./ReviewSectionSkeleton";
 
 interface ReviewSectionProps {
   hotel: Hotel;
@@ -25,7 +26,7 @@ export function ReviewSection({ hotel, propertyId }: ReviewSectionProps) {
       </div>
 
       {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading reviews...</p>
+        <ReviewSectionSkeleton />
       )}
 
       {error && (

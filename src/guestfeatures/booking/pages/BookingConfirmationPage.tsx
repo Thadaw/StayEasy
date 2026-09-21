@@ -2,6 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Navbar } from '../../../shared/components/Navbar'
 import { Footer } from '../../../shared/components/Footer'
 import { PageMessage } from '../../../shared/components/PageMessage'
+import { BookingConfirmationSkeleton } from '../components/BookingConfirmationSkeleton'
 import { ReserveLayout } from '../components/ReserveLayout'
 import { ReserveStepper } from '../components/ReserveStepper'
 import { ConfirmationBanner } from '../components/ConfirmationBanner'
@@ -78,7 +79,7 @@ export default function BookingConfirmationPage() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading confirmation..." />
+    return <BookingConfirmationSkeleton />
   }
 
   if (!booking && !localBooking) {

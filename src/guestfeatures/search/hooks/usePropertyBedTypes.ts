@@ -14,7 +14,7 @@ async function fetchBedTypes(): Promise<BedType[]> {
   return []
 }
 
-export function useSystemBedTypes() {
+export function usePropertyBedTypes() {
   const { data: bedTypes = [], ...rest } = useQuery({
     queryKey: ["system-bed-types"],
     queryFn: fetchBedTypes,

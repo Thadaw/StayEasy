@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Calendar, Mail, Phone, Search, Home, LogOut, CheckCircle, LayoutGrid, List } from "lucide-react"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { FrontDeskPagination } from "../components/FrontDeskPagination"
+import { FrontdeskTableSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useBookingCheckOutStore } from "../stores/bookingCheckOutStore"
 import { useQuery } from "@tanstack/react-query"
@@ -130,10 +131,7 @@ export default function InHousePage() {
 
             {/* Content */}
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600" />
-                <p className="text-sm text-gray-500">Loading in-house guests...</p>
-              </div>
+              <FrontdeskTableSkeleton columns={9} />
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

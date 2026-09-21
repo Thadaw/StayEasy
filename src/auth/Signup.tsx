@@ -26,8 +26,6 @@ export default function Signup() {
   const [searchParams] = useSearchParams()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
 
-  const [videoReady, setVideoReady] = useState(false)
-
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -114,6 +112,7 @@ export default function Signup() {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
@@ -145,7 +144,6 @@ export default function Signup() {
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
-          visibility: videoReady ? 'visible' : 'hidden',
           flexWrap: 'wrap',
         }}
       >
@@ -487,8 +485,6 @@ export default function Signup() {
             loop
             playsInline
             preload="auto"
-            onLoadedData={() => setVideoReady(true)}
-            onError={() => setVideoReady(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
           />
         </div>
