@@ -1,47 +1,34 @@
-import { useEffect, useState } from "react";
-import api from "../../../services/axios";
+import { useQuery } from "@tanstack/react-query"
+import api from "../../../services/axios"
 
 interface RoomType {
-  id: string;
-  room_type_name: string;
-  name?: string;
+  id: string
+  room_type_name: string
+  name?: string
+}
+
+async function fetchRoomTypes(): Promise<RoomType[]> {
+  const res = await api.get("/search/system-room-types")
+  const data = res.data
+  let items: RoomType[] = []
+  if (Array.isArray(data)) {
+    items = data
+  } else if (data && Array.isArray(data.data)) {
+    items = data.data
+  }
+  return items.map((item) => ({
+    id: item.id,
+    room_type_name: item.room_type_name || item.name || "",
+  }))
 }
 
 export function useSystemRoomTypes() {
-  const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: roomTypes = [], ...rest } = useQuery({
+    queryKey: ["system-room-types"],
+    queryFn: fetchRoomTypes,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchRoomTypes() {
-      try {
-        setLoading(true);
-        const res = await api.get("/search/system-room-types");
-        if (!cancelled) {
-          const data = res.data;
-          let items: RoomType[] = [];
-          if (Array.isArray(data)) {
-            items = data;
-          } else if (data && Array.isArray(data.data)) {
-            items = data.data;
-          }
-          const normalized = items.map((item) => ({
-            id: item.id,
-            room_type_name: item.room_type_name || item.name || "",
-          }));
-          setRoomTypes(normalized);
-        }
-      } catch (error) {
-        console.error("Failed to fetch room types:", error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchRoomTypes();
-    return () => { cancelled = true; };
-  }, []);
-
-  return { roomTypes, loading };
+  return { roomTypes, ...rest }
 }

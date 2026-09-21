@@ -341,7 +341,6 @@ export const checkInGuest = async (refNumber: string): Promise<string> => {
 
 export const checkOutGuest = async (refNumber: string, amount?: number, paymentGateway?: string): Promise<string> => {
   const { data: result } = await api.post(`/staff/check-out/${refNumber}`, {
-    idempotency_key: crypto.randomUUID(),
     amount: amount || 0,
     payment_gateway: paymentGateway || "CASH",
   })
@@ -444,8 +443,8 @@ export const getUnreadNotificationCount = async (propertyId: string): Promise<nu
   return data?.unread_count ?? 0
 }
 
-export const markNotificationRead = async (notificationId: string): Promise<void> => {
-  await api.patch(`/notifications/${notificationId}/read`)
+export const markNotificationRead = async ({ notificationId, propertyId }: { notificationId: string; propertyId: string }): Promise<void> => {
+  await api.patch(`/notifications/${notificationId}/read`, null, { params: { property_id: propertyId } })
 }
 
 export const markAllNotificationsRead = async (propertyId: string): Promise<void> => {

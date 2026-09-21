@@ -20,12 +20,18 @@ interface UsePropertyReviewsReturn {
   totalReviews: number
   isLoading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function usePropertyReviews(propertyId: string | undefined): UsePropertyReviewsReturn {
   const [reviews, setReviews] = useState<PropertyReview[]>([])
+  const [averageRating, setAverageRating] = useState(0)
+  const [totalReviews, setTotalReviews] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fetchKey, setFetchKey] = useState(0)
+
+  const refetch = () => setFetchKey((k) => k + 1)
 
   useEffect(() => {
     if (!propertyId) {
@@ -40,8 +46,11 @@ export function usePropertyReviews(propertyId: string | undefined): UsePropertyR
       setError(null)
       try {
         const response = await api.get(`/properties/${propertyId}/reviews`, { signal: controller.signal, skipAuthRedirect: true } as AuthRequestConfig)
-        const data = response.data?.data ?? response.data
-        setReviews(Array.isArray(data) ? data : [])
+        const payload = response.data?.data ?? response.data
+        const reviewList = payload?.reviews ?? (Array.isArray(payload) ? payload : [])
+        setReviews(reviewList)
+        if (payload?.average_rating != null) setAverageRating(payload.average_rating)
+        if (payload?.total_reviews != null) setTotalReviews(payload.total_reviews)
       } catch (err) {
         if (err instanceof Error && err.name === "CanceledError") return
         let message = "Failed to load reviews"
@@ -67,12 +76,7 @@ export function usePropertyReviews(propertyId: string | undefined): UsePropertyR
 
     fetchReviews()
     return () => { controller.abort() }
-  }, [propertyId])
+  }, [propertyId, fetchKey])
 
-  const totalReviews = reviews.length
-  const averageRating = totalReviews > 0
-    ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
-    : 0
-
-  return { reviews, averageRating, totalReviews, isLoading, error }
+  return { reviews, averageRating, totalReviews, isLoading, error, refetch }
 }

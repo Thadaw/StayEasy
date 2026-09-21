@@ -1,42 +1,26 @@
-import { useEffect, useState } from "react";
-import api from "../../../services/axios";
+import { useQuery } from "@tanstack/react-query"
+import api from "../../../services/axios"
 
 interface BedType {
-  id: string;
-  bed_name: string;
+  id: string
+  bed_name: string
+}
+
+async function fetchBedTypes(): Promise<BedType[]> {
+  const res = await api.get("/search/system-bed-types")
+  const data = res.data
+  if (Array.isArray(data)) return data
+  if (data && Array.isArray(data.data)) return data.data
+  return []
 }
 
 export function useSystemBedTypes() {
-  const [bedTypes, setBedTypes] = useState<BedType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: bedTypes = [], ...rest } = useQuery({
+    queryKey: ["system-bed-types"],
+    queryFn: fetchBedTypes,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchBedTypes() {
-      try {
-        setLoading(true);
-        const res = await api.get("/search/system-bed-types");
-        if (!cancelled) {
-          const data = res.data;
-          if (Array.isArray(data)) {
-            setBedTypes(data);
-          } else if (data && Array.isArray(data.data)) {
-            setBedTypes(data.data);
-          } else {
-            setBedTypes([]);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch bed types:", error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchBedTypes();
-    return () => { cancelled = true; };
-  }, []);
-
-  return { bedTypes, loading };
+  return { bedTypes, ...rest }
 }

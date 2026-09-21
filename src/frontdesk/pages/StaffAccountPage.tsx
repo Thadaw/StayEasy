@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { User, Mail, Phone, Lock, Bell, Save, Camera, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
+import { User, Mail, Phone, Lock, Camera, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useAuth } from "../../auth/AuthContext"
@@ -8,24 +8,16 @@ import { FormField } from "../components/FormField"
 import { changePasswordSchema, staffProfileSchema } from "../schemas/passwordSchema"
 import type { ChangePasswordFormData, StaffProfileFormData } from "../schemas/passwordSchema"
 
-interface NotificationSettings {
-  emailNotifications: boolean
-  pushNotifications: boolean
-  bookingAlerts: boolean
-  taskAssignments: boolean
-  shiftReminders: boolean
-}
 
 export function StaffAccountPage() {
   const { user, changePassword } = useAuth()
-  const [activeTab, setActiveTab] = useState<"profile" | "password" | "notifications">("profile")
+  const [activeTab, setActiveTab] = useState<"profile" | "password">("profile")
   const [saving, setSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [passwordError, setPasswordError] = useState("")
 
   const {
     register: registerProfile,
-    handleSubmit: handleSubmitProfile,
     reset: resetProfile,
     formState: { errors: profileErrors },
   } = useForm<StaffProfileFormData>({
@@ -53,13 +45,6 @@ export function StaffAccountPage() {
     confirm: false,
   })
 
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailNotifications: true,
-    pushNotifications: true,
-    bookingAlerts: true,
-    taskAssignments: true,
-    shiftReminders: false,
-  })
 
   const newPassword = watchPassword("newPassword")
   const confirmPassword = watchPassword("confirmPassword")
@@ -67,25 +52,13 @@ export function StaffAccountPage() {
   useEffect(() => {
     if (user) {
       resetProfile({
-        firstName: user.firstName || user.first_name || "",
-        lastName: user.lastName || user.last_name || "",
+        fullName: [user.firstName || user.first_name, user.lastName || user.last_name].filter(Boolean).join(" ") || "",
         email: user.email || "",
         phone: user.phone || "",
       })
     }
   }, [user, resetProfile])
 
-  const handleNotificationChange = (field: keyof NotificationSettings) => {
-    setNotifications((prev) => ({ ...prev, [field]: !prev[field] }))
-  }
-
-  const handleSaveProfile = async (data: StaffProfileFormData) => {
-    setSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setSaving(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 3000)
-  }
 
   const handleChangePassword = async (data: ChangePasswordFormData) => {
     setPasswordError("")
@@ -101,13 +74,6 @@ export function StaffAccountPage() {
     }
   }
 
-  const handleSaveNotifications = async () => {
-    setSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setSaving(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 3000)
-  }
 
   return (
     <FrontDeskSidebarProvider>
@@ -119,7 +85,7 @@ export function StaffAccountPage() {
           <div className="p-4 lg:p-6 pt-14 lg:pt-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage your profile, password, and notification preferences</p>
+              <p className="text-sm text-gray-500 mt-1">Manage your profile and password</p>
             </div>
 
             {showSuccess && (
@@ -131,8 +97,8 @@ export function StaffAccountPage() {
 
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="w-full lg:w-64 shrink-0">
-                <div className="bg-white rounded-xl border border-gray-100 p-4">
-                  <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+                <div className="bg-white rounded-xl p-4">
+                  <div className="flex items-center gap-4 mb-6 pb-4">
                     <div className="relative">
                       <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-xl font-bold text-white uppercase">
                         {(user?.firstName?.[0] || user?.first_name?.[0] || "S")}
@@ -167,48 +133,42 @@ export function StaffAccountPage() {
                       <Lock size={18} />
                       Password
                     </button>
-                    <button
-                      onClick={() => setActiveTab("notifications")}
-                      className={`shrink-0 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === "notifications" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Bell size={18} />
-                      Notifications
-                    </button>
                   </nav>
                 </div>
               </div>
 
               <div className="flex-1">
                 {activeTab === "profile" && (
-                  <div className="bg-white rounded-xl border border-gray-100 p-6">
+                  <div className="bg-white rounded-xl p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h2>
-                    <form onSubmit={handleSubmitProfile(handleSaveProfile)} className="space-y-5">
+                    <form className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField label="First Name" error={profileErrors.firstName?.message} required>
+                        <FormField label="First Name" error={profileErrors.firstName?.message}>
                           <input
                             type="text"
                             {...registerProfile("firstName")}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </FormField>
-                        <FormField label="Last Name" error={profileErrors.lastName?.message} required>
+                        <FormField label="Last Name" error={profileErrors.lastName?.message}>
                           <input
                             type="text"
                             {...registerProfile("lastName")}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </FormField>
                       </div>
 
-                      <FormField label="Email Address" error={profileErrors.email?.message} required>
+                      <FormField label="Email Address" error={profileErrors.email?.message}>
                         <div className="relative">
                           <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                           <input
                             type="email"
                             {...registerProfile("email")}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </div>
                       </FormField>
@@ -219,7 +179,8 @@ export function StaffAccountPage() {
                           <input
                             type="tel"
                             {...registerProfile("phone")}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </div>
                       </FormField>
@@ -230,7 +191,7 @@ export function StaffAccountPage() {
                             type="text"
                             value={user?.role?.replace("_", " ") || "Staff"}
                             disabled
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </FormField>
                         <FormField label="Department">
@@ -238,27 +199,22 @@ export function StaffAccountPage() {
                             type="text"
                             value="Front Office"
                             disabled
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
                         </FormField>
                       </div>
 
                       <div className="mt-6 pt-6 border-t border-gray-100">
-                        <button
-                          type="submit"
-                          disabled={saving}
-                          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-                        >
-                          <Save size={16} />
-                          {saving ? "Saving..." : "Save Changes"}
-                        </button>
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-sm text-yellow-700">Contact your administrator to update profile information.</p>
+                        </div>
                       </div>
                     </form>
                   </div>
                 )}
 
                 {activeTab === "password" && (
-                  <div className="bg-white rounded-xl border border-gray-100 p-6">
+                  <div className="bg-white rounded-xl p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-6">Change Password</h2>
                     <form onSubmit={handleSubmitPassword(handleChangePassword)} className="max-w-md space-y-5">
                       <FormField label="Current Password" error={passwordErrors.currentPassword?.message} required>
@@ -337,55 +293,6 @@ export function StaffAccountPage() {
                         </button>
                       </div>
                     </form>
-                  </div>
-                )}
-
-                {activeTab === "notifications" && (
-                  <div className="bg-white rounded-xl border border-gray-100 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-6">Notification Preferences</h2>
-
-                    <div className="space-y-4">
-                      {(
-                        [
-                          { key: "emailNotifications" as const, title: "Email Notifications", desc: "Receive updates via email" },
-                          { key: "pushNotifications" as const, title: "Push Notifications", desc: "Receive push notifications on your device" },
-                          { key: "bookingAlerts" as const, title: "Booking Alerts", desc: "Get notified for new bookings and cancellations" },
-                          { key: "taskAssignments" as const, title: "Task Assignments", desc: "Get notified when tasks are assigned to you" },
-                          { key: "shiftReminders" as const, title: "Shift Reminders", desc: "Receive reminders before your shift starts" },
-                        ] as const
-                      ).map(({ key, title, desc }) => (
-                        <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{title}</p>
-                            <p className="text-sm text-gray-500">{desc}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleNotificationChange(key)}
-                            className={`w-12 h-6 rounded-full transition-colors ${
-                              notifications[key] ? "bg-blue-600" : "bg-gray-300"
-                            }`}
-                          >
-                            <div
-                              className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${
-                                notifications[key] ? "translate-x-6" : "translate-x-0.5"
-                              }`}
-                            />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-100">
-                      <button
-                        onClick={handleSaveNotifications}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-                      >
-                        <Save size={16} />
-                        {saving ? "Saving..." : "Save Preferences"}
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>

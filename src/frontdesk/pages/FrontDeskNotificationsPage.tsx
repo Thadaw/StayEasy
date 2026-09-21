@@ -98,7 +98,8 @@ export default function FrontDeskNotificationsPage() {
   const notifications = notificationsData?.notifications ?? []
 
   const markReadMutation = useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn: ({ notificationId }: { notificationId: string }) =>
+      markNotificationRead({ notificationId, propertyId: currentPropertyId! }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff-notifications", currentPropertyId] })
       queryClient.invalidateQueries({ queryKey: ["unread-notifications-count", currentPropertyId] })
@@ -141,7 +142,7 @@ export default function FrontDeskNotificationsPage() {
   const handleNotificationClick = (notification: StaffNotification) => {
     setSelectedNotification(notification)
     if (!notification.is_read) {
-      markReadMutation.mutate(notification.id)
+      markReadMutation.mutate({ notificationId: notification.id })
     }
   }
 

@@ -1108,7 +1108,7 @@ export default function FrontDeskFoliosPage() {
                     {displaySelected.status?.toUpperCase() === "SETTLED" ? "Settled" : "Payment"}
                   </button>
                   <button
-                    onClick={() => window.open(`/frontdesk/folio/${displaySelected.id}/invoice`, "_blank")}
+                    onClick={() => window.open(`/frontdesk/folio/${displaySelected.booking_number || displaySelected.id}/invoice`, "_blank")}
                     className="flex items-center justify-center gap-2 px-4 py-3.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <FileText size={18} />

@@ -13,6 +13,27 @@ interface BookingRoom {
   base_rate: number
 }
 
+interface BookingFolio {
+  folio_id: string
+  status: string
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  amount_paid: number
+  remaining_balance: number
+  charges_count: number
+  settled_at: string | null
+  charges?: Array<{
+    charge_id: string
+    description: string
+    amount: number
+    category?: string
+    posted_by_name?: string
+    created_at: string
+  }>
+}
+
 interface Booking {
   booking_id: string
   guest_name: string
@@ -27,6 +48,7 @@ interface Booking {
   amount_paid: number
   amount_due: number
   rooms: BookingRoom[]
+  folio: BookingFolio | null
   payment_method?: string
 }
 
@@ -88,10 +110,33 @@ export default function CheckoutReceiptPage() {
   const nights = Math.max(1, Math.ceil(
     (new Date(booking.checkout_date).getTime() - new Date(booking.checkin_date).getTime()) / (1000 * 60 * 60 * 24)
   ))
-  const totalBill = booking.total_amount || 0
+  const roomNames = booking.rooms?.map((r) => r.room_name).join(", ") || "—"
+  const folio = booking.folio
+
+  const hasFolioCharges = folio?.charges && folio.charges.length > 0
+
+  const receiptCharges = hasFolioCharges
+    ? folio!.charges!.map((c) => ({
+        id: c.charge_id,
+        description: c.description,
+        amount: Number(c.amount) || 0,
+        category: c.category,
+        date: new Date(c.created_at).toLocaleDateString(),
+      }))
+    : booking.rooms?.map((room, i) => ({
+        id: String(i),
+        description: `${room.room_name} (${nights} night${nights !== 1 ? "s" : ""}, incl. tax)`,
+        amount: room.base_rate * nights,
+      })) || []
+
+  const subtotal = hasFolioCharges ? (folio!.subtotal || receiptCharges.reduce((sum, c) => sum + c.amount, 0)) : receiptCharges.reduce((sum, c) => sum + c.amount, 0)
+  const tax = folio?.tax || 0
+  const discount = folio?.discount || 0
+  const total = hasFolioCharges ? (folio!.total || subtotal + tax - discount) : subtotal
   const advancePaid = booking.amount_paid || 0
   const checkoutPayment = booking.amount_due > 0 ? booking.amount_due : 0
-  const roomNames = booking.rooms?.map((r) => r.room_name).join(", ") || "—"
+  const totalPaid = advancePaid + checkoutPayment
+  const balance = folio?.remaining_balance ?? Math.max(0, total - totalPaid)
 
   return (
     <InvoiceReceipt
@@ -111,18 +156,16 @@ export default function CheckoutReceiptPage() {
       checkoutDate={booking.checkout_date}
       summaryTitle="Payment Summary"
       summary={[
-        { label: `Room Charges (${nights} nights, incl. tax)`, value: totalBill },
-        { label: "Total Bill", value: totalBill, type: "bold" },
+        { label: `Room Charges (${nights} night${nights !== 1 ? "s" : ""}, incl. tax)`, value: subtotal },
+        ...(tax > 0 ? [{ label: "Tax", value: tax }] : []),
+        ...(discount > 0 ? [{ label: "Discount", value: discount, type: "discount" as const }] : []),
+        { label: "Total Bill", value: total, type: "bold" },
         { label: "Advance Paid", value: advancePaid },
         ...(checkoutPayment > 0 ? [{ label: "Checkout Payment", value: checkoutPayment }] : []),
-        { label: "Total Paid", value: advancePaid + checkoutPayment, type: "bold" },
-        { label: "Balance", value: 0, type: "highlight" },
+        { label: "Total Paid", value: totalPaid, type: "bold" },
+        { label: "Remaining Balance", value: balance, type: "highlight" as const },
       ]}
-      charges={booking.rooms?.map((room, i) => ({
-        id: String(i),
-        description: `${room.room_name} (${nights} nights, incl. tax)`,
-        amount: room.base_rate * nights,
-      })) || []}
+      charges={receiptCharges}
       payments={[
         { date: booking.checkin_date, description: "Advance Payment", method: booking.payment_method, amount: advancePaid },
         ...(checkoutPayment > 0 ? [{ date: booking.checkout_date, description: "Checkout Payment", method: booking.payment_method, amount: checkoutPayment }] : []),

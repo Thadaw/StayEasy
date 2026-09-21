@@ -1,129 +1,150 @@
-import { useState, useRef, useEffect } from "react";
-import { Search, MapPin, Calendar, Users, ChevronDown, Clock, X } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { popularSearchDestinations } from "../../data/searchDestinations";
-import { formatDateRange, formatDateShort, buildGuestLabel } from "../utils/format";
-import { getDefaultDates } from "../utils/date";
-import { CounterControl } from "./CounterControl";
+import { useState, useRef, useEffect } from "react"
+import { Search, MapPin, Calendar, Users, ChevronDown, Clock, X } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
+import { popularSearchDestinations } from "../../data/searchDestinations"
+import { formatDateRange, formatDateShort, buildGuestLabel } from "../utils/format"
+import { getDefaultDates } from "../utils/date"
+import { CounterControl } from "./CounterControl"
 
 interface GuestCount {
-  adults: number;
-  children: number;
-  infants: number;
+  adults: number
+  children: number
+  infants: number
 }
 
-const RECENT_SEARCHES_KEY = "recentSearches";
+const RECENT_SEARCHES_KEY = "recentSearches"
 
 function getRecentSearches(): string[] {
   try {
-    return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]")
   } catch {
-    return [];
+    return []
   }
 }
 
 function saveRecentSearch(where: string) {
-  if (!where.trim()) return;
-  const searches = getRecentSearches().filter(s => s !== where);
-  searches.unshift(where);
-  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches.slice(0, 5)));
+  if (!where.trim()) return
+  const searches = getRecentSearches().filter(s => s !== where)
+  searches.unshift(where)
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches.slice(0, 5)))
 }
 
 export function SearchBar() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [urlParams] = useSearchParams();
-  const { today } = getDefaultDates();
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [urlParams] = useSearchParams()
+  const { today } = getDefaultDates()
 
-  const propertyTypesParam = urlParams.get("propertyTypes");
+  const propertyTypesParam = urlParams.get("propertyTypes")
+
   const [where, setWhere] = useState(() => {
-    if (urlParams.get("where")) return urlParams.get("where")!;
-    if (propertyTypesParam) return propertyTypesParam;
-    return localStorage.getItem("nearbyLocation") || "";
-  });
-  const [checkIn, setCheckIn] = useState(() => urlParams.get("checkin") || "");
-  const [checkOut, setCheckOut] = useState(() => urlParams.get("checkout") || "");
+    if (urlParams.get("where")) return urlParams.get("where")!
+    if (propertyTypesParam) return propertyTypesParam
+    return localStorage.getItem("nearbyLocation") || ""
+  })
+  const [checkIn, setCheckIn] = useState(() => urlParams.get("checkin") || "")
+  const [checkOut, setCheckOut] = useState(() => urlParams.get("checkout") || "")
   const [guests, setGuests] = useState<GuestCount>(() => {
-    const adultsFromUrl = parseInt(urlParams.get("adults") || "0");
-    const childrenFromUrl = parseInt(urlParams.get("children") || "0");
-    const roomsFromUrl = parseInt(urlParams.get("rooms") || "0");
+    const adultsFromUrl = parseInt(urlParams.get("adults") || "0")
+    const childrenFromUrl = parseInt(urlParams.get("children") || "0")
+    const roomsFromUrl = parseInt(urlParams.get("rooms") || "0")
     if (adultsFromUrl > 0) {
       return {
         adults: adultsFromUrl,
         children: childrenFromUrl,
         infants: roomsFromUrl > 0 ? roomsFromUrl : 1,
-      };
+      }
     }
-    const total = parseInt(urlParams.get("guests") || "0");
-    if (total > 0) return { adults: total, children: 0, infants: 1 };
-    return { adults: 2, children: 0, infants: 1 };
-  });
-  const [showWhere, setShowWhere] = useState(false);
-  const [showDates, setShowDates] = useState(false);
-  const [showGuests, setShowGuests] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
+    const total = parseInt(urlParams.get("guests") || "0")
+    if (total > 0) return { adults: total, children: 0, infants: 1 }
+    return { adults: 2, children: 0, infants: 1 }
+  })
+  const [showWhere, setShowWhere] = useState(false)
+  const [showDates, setShowDates] = useState(false)
+  const [showGuests, setShowGuests] = useState(false)
+  const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches)
 
-  const whereRef = useRef<HTMLDivElement>(null);
-  const datesRef = useRef<HTMLDivElement>(null);
-  const guestsRef = useRef<HTMLDivElement>(null);
+  const whereRef = useRef<HTMLDivElement>(null)
+  const datesRef = useRef<HTMLDivElement>(null)
+  const guestsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const urlWhere = urlParams.get("where")
+    const urlCheckin = urlParams.get("checkin")
+    const urlCheckout = urlParams.get("checkout")
+    const urlAdults = parseInt(urlParams.get("adults") || "0")
+    const urlChildren = parseInt(urlParams.get("children") || "0")
+    const urlRooms = parseInt(urlParams.get("rooms") || "0")
+
+    if (urlWhere !== null) setWhere(urlWhere)
+    if (urlCheckin !== null) setCheckIn(urlCheckin)
+    if (urlCheckout !== null) setCheckOut(urlCheckout)
+    if (urlAdults > 0) {
+      setGuests({
+        adults: urlAdults,
+        children: urlChildren,
+        infants: urlRooms > 0 ? urlRooms : 1,
+      })
+    }
+  }, [urlParams])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (whereRef.current && !whereRef.current.contains(e.target as Node)) setShowWhere(false);
-      if (datesRef.current && !datesRef.current.contains(e.target as Node)) setShowDates(false);
-      if (guestsRef.current && !guestsRef.current.contains(e.target as Node)) setShowGuests(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+      if (whereRef.current && !whereRef.current.contains(e.target as Node)) setShowWhere(false)
+      if (datesRef.current && !datesRef.current.contains(e.target as Node)) setShowDates(false)
+      if (guestsRef.current && !guestsRef.current.contains(e.target as Node)) setShowGuests(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
-  const totalGuests = guests.adults + guests.children;
-  const guestLabel = buildGuestLabel(guests.adults, guests.children, guests.infants);
+  const totalGuests = guests.adults + guests.children
+  const guestLabel = buildGuestLabel(guests.adults, guests.children, guests.infants)
 
   const adjustGuest = (key: keyof GuestCount, delta: number) => {
     setGuests((prev) => ({
       ...prev,
       [key]: Math.max(key === "adults" ? 1 : 0, prev[key] + delta),
-    }));
-  };
+    }))
+  }
 
   const handleSearch = () => {
-    if (checkIn && checkOut && checkIn >= checkOut) return;
-    const params = new URLSearchParams();
-    const rawWhere = where || localStorage.getItem("nearbyLocation") || "";
-    const searchWhere = rawWhere.replace(/\s*\([\d.]+,\s*[\d.]+\)/, "").trim();
+    if (checkIn && checkOut && checkIn >= checkOut) return
+    const params = new URLSearchParams()
+    const rawWhere = where || localStorage.getItem("nearbyLocation") || ""
+    const searchWhere = rawWhere.replace(/\s*\([\d.]+,\s*[\d.]+\)/, "").trim()
     if (searchWhere) {
-      params.set("where", searchWhere);
-      saveRecentSearch(searchWhere);
-      setRecentSearches(getRecentSearches());
+      params.set("where", searchWhere)
+      saveRecentSearch(searchWhere)
+      setRecentSearches(getRecentSearches())
     }
     if (propertyTypesParam) {
-      params.set("propertyTypes", propertyTypesParam);
+      params.set("propertyTypes", propertyTypesParam)
     }
-    if (checkIn) params.set("checkin", checkIn);
-    if (checkOut) params.set("checkout", checkOut);
-    if (guests.adults > 0) params.set("adults", String(guests.adults));
-    if (guests.children > 0) params.set("children", String(guests.children));
-    params.set("rooms", String(guests.infants));
-    params.set("guests", String(totalGuests));
-    navigate(`/search?${params}`);
-  };
+    if (checkIn) params.set("checkin", checkIn)
+    if (checkOut) params.set("checkout", checkOut)
+    if (guests.adults > 0) params.set("adults", String(guests.adults))
+    if (guests.children > 0) params.set("children", String(guests.children))
+    params.set("rooms", String(guests.infants))
+    params.set("guests", String(totalGuests))
+    navigate(`/search?${params}`)
+  }
 
   const removeRecentSearch = (search: string) => {
-    const updated = recentSearches.filter(s => s !== search);
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-    setRecentSearches(updated);
-  };
+    const updated = recentSearches.filter(s => s !== search)
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
+    setRecentSearches(updated)
+  }
 
-  const dateDisplay = formatDateRange(checkIn, checkOut);
+  const dateDisplay = formatDateRange(checkIn, checkOut)
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-brand-primary-extra-light mb-3 md:mb-4 w-full">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-0 md:items-center">
         <div ref={whereRef} className="relative min-w-0 md:flex-1">
           <button
-            onClick={() => { setShowWhere((v) => !v); setShowDates(false); setShowGuests(false); }}
+            onClick={() => { setShowWhere((v) => !v); setShowDates(false); setShowGuests(false) }}
             className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-l-2xl md:rounded-tr-none"
           >
             <MapPin size={13} className="text-brand-accent shrink-0" />
@@ -143,7 +164,7 @@ export function SearchBar() {
                   placeholder={t("searchPlaceholder")}
                   value={where}
                   onChange={(e) => setWhere(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") setShowWhere(false); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") setShowWhere(false) }}
                   className="w-full text-sm bg-transparent border-none outline-none placeholder:text-gray-400"
                   autoFocus
                 />
@@ -155,14 +176,14 @@ export function SearchBar() {
                     {recentSearches.map((search) => (
                       <div key={search} className="flex items-center group">
                         <button
-                          onClick={() => { setWhere(search); setShowWhere(false); }}
+                          onClick={() => { setWhere(search); setShowWhere(false) }}
                           className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-gray-700 hover:bg-brand-primary-extra-light rounded-lg transition-colors text-left"
                         >
                           <Clock size={13} className="text-gray-400 shrink-0" />
                           {search}
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeRecentSearch(search); }}
+                          onClick={(e) => { e.stopPropagation(); removeRecentSearch(search) }}
                           className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X size={12} />
@@ -177,7 +198,7 @@ export function SearchBar() {
                   .map((d) => (
                     <button
                       key={d}
-                      onClick={() => { setWhere(d); setShowWhere(false); }}
+                      onClick={() => { setWhere(d); setShowWhere(false) }}
                       className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-gray-700 hover:bg-brand-primary-extra-light rounded-lg transition-colors text-left"
                     >
                       <MapPin size={13} className="text-brand-accent shrink-0" />
@@ -191,7 +212,7 @@ export function SearchBar() {
 
         <div ref={datesRef} className="relative min-w-0 md:flex-1">
           <button
-            onClick={() => { setShowDates((v) => !v); setShowWhere(false); setShowGuests(false); }}
+            onClick={() => { setShowDates((v) => !v); setShowWhere(false); setShowGuests(false) }}
             className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
           >
             <Calendar size={13} className="text-brand-accent shrink-0" />
@@ -211,7 +232,7 @@ export function SearchBar() {
                     type="date"
                     value={checkIn}
                     min={today}
-                    onChange={(e) => { setCheckIn(e.target.value); if (checkOut && e.target.value > checkOut) setCheckOut(""); }}
+                    onChange={(e) => { setCheckIn(e.target.value); if (checkOut && e.target.value > checkOut) setCheckOut("") }}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-accent transition-colors"
                   />
                 </div>
@@ -241,7 +262,7 @@ export function SearchBar() {
 
         <div ref={guestsRef} className="relative min-w-0 md:flex-1">
           <button
-            onClick={() => { setShowGuests((v) => !v); setShowWhere(false); setShowDates(false); }}
+            onClick={() => { setShowGuests((v) => !v); setShowWhere(false); setShowDates(false) }}
             className="w-full px-3 sm:px-4 py-3.5 md:py-4 flex items-center gap-2 md:gap-1.5 border border-brand-primary-extra-light md:border-r md:border-brand-primary-extra-light text-left transition-colors hover:bg-brand-primary-extra-light rounded-xl md:rounded-none"
           >
             <Users size={13} className="text-brand-accent shrink-0" />
@@ -288,5 +309,5 @@ export function SearchBar() {
         </button>
       </div>
     </div>
-  );
+  )
 }
