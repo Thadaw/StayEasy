@@ -236,8 +236,9 @@ export function printReceipt(params: ReceiptParams) {
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`
 
-  const printWindow = window.open("", "_blank", "width=700,height=900,noopener,noreferrer")
+  const printWindow = window.open("", "_blank", "width=700,height=900")
   if (printWindow) {
+    printWindow.document.open()
     printWindow.document.write(html)
     printWindow.document.close()
   }

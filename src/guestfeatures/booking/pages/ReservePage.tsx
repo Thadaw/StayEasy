@@ -104,10 +104,19 @@ export default function ReservePage() {
   const [razorpayState, setRazorpayState] = useState({
     response: null as RazorpayPaymentResponse | null,
     orderId: null as string | null,
+    amount: null as number | null,
+    currency: null as string | null,
     loading: false,
     error: null as string | null,
   })
   const [razorpayRetryCount, setRazorpayRetryCount] = useState(0)
+  // Incremented on every Razorpay tab click so the checkout modal re-opens
+  // even when the order was already created (e.g. after a dismissal).
+  const [razorpayOpenRequests, setRazorpayOpenRequests] = useState(0)
+  const razorpayModalOpenRef = useRef(false)
+  // True from the moment the Razorpay tab is clicked until the checkout window
+  // actually opens (or fails) — drives the checkout-style loading overlay.
+  const [razorpayCheckoutOpening, setRazorpayCheckoutOpening] = useState(false)
   const [stripeState, setStripeState] = useState({
     paymentIntentId: null as string | null,
     clientSecret: null as string | null,
@@ -133,7 +142,16 @@ export default function ReservePage() {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan>("full")
   const [khaltiCompleted, setKhaltiCompleted] = useState(false)
 
-  const { isLoaded: razorpayLoaded } = useRazorpay(selectedPayment === "razorpay")
+  const { isLoaded: razorpayLoaded, error: razorpaySdkError } = useRazorpay(selectedPayment === "razorpay")
+
+  // Surface checkout.js load failures (e.g. blocked by CSP/network) instead of
+  // leaving an endless "Loading Razorpay..." spinner with no explanation.
+  useEffect(() => {
+    if (razorpaySdkError && selectedPayment === "razorpay") {
+      setRazorpayCheckoutOpening(false)
+      setRazorpayState(prev => ({ ...prev, loading: false, error: prev.error || razorpaySdkError }))
+    }
+  }, [razorpaySdkError, selectedPayment])
 
   const couponAppliedRef = useRef(false)
 
@@ -149,16 +167,33 @@ export default function ReservePage() {
     }
   }, [booking])
 
-  const advancePercentage = booking?.advance_payment_percentage ?? 30
   const total = booking?.total_amount ?? 0
+  const minAdvancePct = booking?.min_advance_percentage ?? 10
+  const maxAdvancePct = booking?.max_advance_percentage ?? 50
   const allowAdvance = (booking?.min_advance_amount != null && booking.min_advance_amount > 0) || (booking?.advance_payment_percentage != null && booking.advance_payment_percentage > 0)
+  // Default advance %: the server-stored advance expressed as a percentage,
+  // otherwise the preferred 30% — always clamped into the property's allowed
+  // [min, max] range (the API never sends advance_payment_percentage).
+  const defaultAdvancePct = useMemo(() => {
+    const preferred = booking?.advance_amount != null && booking.advance_amount > 0 && total > 0
+      ? Math.round((booking.advance_amount / total) * 100)
+      : (booking?.advance_payment_percentage ?? 30)
+    return Math.min(maxAdvancePct, Math.max(minAdvancePct, preferred))
+  }, [booking?.advance_amount, booking?.advance_payment_percentage, total, minAdvancePct, maxAdvancePct])
+  // Guest-selected advance % from the picker (null → default).
+  const [chosenAdvancePct, setChosenAdvancePct] = useState<number | null>(null)
+  const advancePercentage = chosenAdvancePct ?? defaultAdvancePct
   const advanceAmount = useMemo(() => {
-    if (paymentPlan === "advance") {
-      if (booking?.advance_amount != null && booking.advance_amount > 0) return booking.advance_amount
-      return Math.round((total * advancePercentage) / 100)
-    }
-    return total
-  }, [paymentPlan, total, advancePercentage, booking?.advance_amount])
+    if (paymentPlan !== "advance") return total
+    if (total <= 0) return 0
+    // total keeps cents and % is an integer, so the product is whole cents.
+    let cents = Math.round(total * advancePercentage)
+    // Stay inside the property's exact amount bounds — the backend validates
+    // these and rejects the intent when the advance is out of range.
+    if (booking?.min_advance_amount != null) cents = Math.max(cents, Math.ceil(booking.min_advance_amount * 100 - 1e-6))
+    if (booking?.max_advance_amount != null) cents = Math.min(cents, Math.floor(booking.max_advance_amount * 100 + 1e-6))
+    return cents / 100
+  }, [paymentPlan, total, advancePercentage, booking?.min_advance_amount, booking?.max_advance_amount])
 
   useEffect(() => {
     if (!allowAdvance && paymentPlan === "advance") {
@@ -168,22 +203,35 @@ export default function ReservePage() {
   }, [allowAdvance, paymentPlan])
 
   useEffect(() => {
-    if (selectedPayment !== "razorpay" || !refNumber) return
+    if (selectedPayment !== "razorpay") return
+    if (!refNumber) {
+      setRazorpayState(prev => ({ ...prev, loading: false, error: "Missing booking reference — unable to start Razorpay checkout. Please reload the page." }))
+      return
+    }
     let cancelled = false
     const createOrder = async () => {
       setRazorpayState(prev => ({ ...prev, loading: true, error: null, orderId: null }))
       try {
         const response = await api.post(`/bookings/${refNumber}/payment-intent`, { payment_method: paymentPlan === "advance" ? "ADVANCE" : "ONLINE", payment_gateway: "razorpay", advance_amount: advanceAmount })
         if (cancelled) return
-        const orderId = response.data?.razorpay_order_id || response.data?.data?.razorpay_order_id || response.data?.order_id || response.data?.data?.order_id
+        // Backend wraps the result as { success, data: { order_id, amount, currency, ... } }
+        const payload = response.data?.data ?? response.data ?? {}
+        const orderId = payload.razorpay_order_id || payload.order_id
         if (!orderId) {
-          setRazorpayState(prev => ({ ...prev, error: "Failed to initialize Razorpay" }))
+          setRazorpayState(prev => ({ ...prev, error: payload.message || "Failed to initialize Razorpay" }))
           return
         }
-        setRazorpayState(prev => ({ ...prev, orderId }))
+        setRazorpayState(prev => ({
+          ...prev,
+          orderId,
+          amount: typeof payload.amount === "number" ? payload.amount : null,
+          currency: typeof payload.currency === "string" ? payload.currency : null,
+        }))
       } catch (err: unknown) {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : "Failed to initialize Razorpay"
+        const data = (err as { response?: { data?: { message?: string; detail?: string | { detail?: string } } } })?.response?.data
+        const serverMsg = typeof data?.detail === "string" ? data.detail : data?.detail?.detail
+        const msg = data?.message || serverMsg || (err instanceof Error ? err.message : "Failed to initialize Razorpay")
         setRazorpayState(prev => ({ ...prev, error: msg }))
       } finally {
         if (!cancelled) setRazorpayState(prev => ({ ...prev, loading: false }))
@@ -195,14 +243,22 @@ export default function ReservePage() {
 
   const handleRazorpayPaymentRef = useRef<(options?: RazorpayPayOptions) => void>(() => {})
 
-  // Auto-open official Razorpay checkout once order is created and SDK is loaded
+  // Open the Razorpay checkout modal as soon as the tab is clicked and both
+  // the order and the SDK are ready. Re-fires on every tab click (via
+  // razorpayOpenRequests) so a dismissed modal can be reopened.
   useEffect(() => {
-    if (selectedPayment !== "razorpay" || !razorpayLoaded || !razorpayState.orderId || razorpayState.response || razorpayState.loading) return
+    if (selectedPayment !== "razorpay" || razorpayOpenRequests === 0) return
+    if (!razorpayLoaded || !razorpayState.orderId || razorpayState.response || razorpayState.loading) return
+    if (razorpayModalOpenRef.current) return
     handleRazorpayPaymentRef.current({ type: 'card' })
-  }, [selectedPayment, razorpayLoaded, razorpayState.orderId, razorpayState.response, razorpayState.loading])
+  }, [selectedPayment, razorpayOpenRequests, razorpayLoaded, razorpayState.orderId, razorpayState.response, razorpayState.loading])
 
   useEffect(() => {
     if (selectedPayment !== "stripe" || !refNumber) return
+    if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+      setStripeState(prev => ({ ...prev, loading: false, error: "Stripe key missing: set VITE_STRIPE_PUBLISHABLE_KEY in my-react-app/.env and restart the dev server." }))
+      return
+    }
     let cancelled = false
     const createStripeIntent = async () => {
       setStripeState(prev => ({ ...prev, loading: true, error: null, clientSecret: null }))
@@ -217,7 +273,9 @@ export default function ReservePage() {
         setStripeState(prev => ({ ...prev, clientSecret: secret }))
       } catch (err: unknown) {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : "Failed to initialize Stripe"
+        const data = (err as { response?: { data?: { message?: string; detail?: string | { detail?: string } } } })?.response?.data
+        const serverMsg = typeof data?.detail === "string" ? data.detail : data?.detail?.detail
+        const msg = data?.message || serverMsg || (err instanceof Error ? err.message : "Failed to initialize Stripe")
         setStripeState(prev => ({ ...prev, error: msg }))
       } finally {
         if (!cancelled) setStripeState(prev => ({ ...prev, loading: false }))
@@ -225,7 +283,7 @@ export default function ReservePage() {
     }
     createStripeIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, stripeRetryCount, advanceAmount])
+  }, [selectedPayment, refNumber, stripeRetryCount, advanceAmount, paymentPlan])
 
   useEffect(() => {
     if (selectedPayment !== "khalti" || !refNumber) return
@@ -524,17 +582,38 @@ export default function ReservePage() {
   }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaConfirmData, esewaRetryCount, advanceAmount])
 
   const handleRazorpayPayment = async (options?: RazorpayPayOptions) => {
-    if (!razorpayState.orderId) { toast.error("Razorpay not ready"); return }
+    if (!razorpayState.orderId) { setRazorpayCheckoutOpening(false); toast.error("Razorpay not ready"); return }
+    if (!window.Razorpay) { setRazorpayCheckoutOpening(false); toast.error("Razorpay is still loading. Please try again in a moment."); return }
+    if (razorpayModalOpenRef.current) { setRazorpayCheckoutOpening(false); return }
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || ''
+    if (!razorpayKey) {
+      setRazorpayCheckoutOpening(false)
+      setRazorpayState(prev => ({ ...prev, error: "Razorpay key missing: set VITE_RAZORPAY_KEY_ID in my-react-app/.env and restart the dev server." }))
+      return
+    }
     setPaymentLoading(true)
     try {
       const razorpayOptions: RazorpayCheckoutOptions = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
-        amount: Math.max(0, advanceAmount) * 100,
-        currency: "INR",
+        key: razorpayKey,
+        // Must match the order the backend created (backend amount is in the
+        // property's currency, not necessarily INR) — a mismatch makes the
+        // checkout modal fail to open.
+        amount: Math.round((razorpayState.amount ?? Math.max(0, advanceAmount)) * 100),
+        currency: razorpayState.currency || "INR",
         order_id: razorpayState.orderId,
         name: "ServeIQ",
         description: `Booking at ${hotelName}`,
-        handler: (response: RazorpayPaymentResponse) => { setRazorpayState(prev => ({ ...prev, response })) },
+        handler: (response: RazorpayPaymentResponse) => {
+          razorpayModalOpenRef.current = false
+          setRazorpayCheckoutOpening(false)
+          setRazorpayState(prev => ({ ...prev, response }))
+        },
+        modal: {
+          ondismiss: () => {
+            razorpayModalOpenRef.current = false
+            setRazorpayCheckoutOpening(false)
+          },
+        },
         prefill: {
           name: guestName,
           email: guestEmail,
@@ -547,7 +626,10 @@ export default function ReservePage() {
       const razorpay = new window.Razorpay(razorpayOptions)
       razorpay.on('payment.failed', (response: RazorpayFailureResponse) => { toast.error("Payment failed: " + (response.error?.description || "Unknown error")) })
       razorpay.open()
+      razorpayModalOpenRef.current = true
+      setRazorpayCheckoutOpening(false)
     } catch (err: unknown) {
+      setRazorpayCheckoutOpening(false)
       const msg = err instanceof Error ? err.message : "Unknown error"
       if (msg === "Payment cancelled") {
         toast("Payment cancelled. You can retry anytime.", { icon: "ℹ️" })
@@ -769,6 +851,21 @@ export default function ReservePage() {
     couponCode: booking?.coupon_code || null,
   }
 
+  // Checkout-style loading overlay: visible from the moment the Razorpay tab
+  // is clicked until Razorpay's own window opens, an error occurs, or the
+  // payment completes.
+  const razorpayOverlayVisible =
+    razorpayCheckoutOpening &&
+    selectedPayment === "razorpay" &&
+    !razorpayState.response &&
+    !razorpayState.error
+
+  const razorpayLoadingMessage = !razorpayState.orderId
+    ? "Preparing your payment order…"
+    : !razorpayLoaded
+      ? "Loading Razorpay checkout…"
+      : "Opening secure checkout…"
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-jakarta">
       <Navbar />
@@ -793,12 +890,21 @@ export default function ReservePage() {
             <PaymentSection
               total={total}
               currency={currency}
-              advancePercentage={booking?.advance_payment_percentage ?? 30}
-              advanceAmount={booking?.advance_amount}
+              advancePercentage={advancePercentage}
+              minAdvancePercentage={minAdvancePct}
+              maxAdvancePercentage={maxAdvancePct}
+              onAdvancePercentageChange={setChosenAdvancePct}
               allowAdvance={allowAdvance}
               selectedPayment={selectedPayment}
               onSelectPayment={(method) => {
                 setSelectedPayment(method)
+                if (method === "razorpay") {
+                  // Ask for the checkout modal to open — immediately if the
+                  // order/SDK are ready, otherwise as soon as they are.
+                  setRazorpayOpenRequests(count => count + 1)
+                  // Show the loading overlay until the checkout window appears.
+                  setRazorpayCheckoutOpening(true)
+                }
                 if (method === "stripe") {
                   if (refNumber) localStorage.setItem("stripe_ref_number", refNumber)
                   if (propertyId) localStorage.setItem("stripe_property_id", String(propertyId))
@@ -883,6 +989,28 @@ export default function ReservePage() {
 
       <Footer />
 
+      {razorpayOverlayVisible && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading Razorpay checkout"
+        >
+          <div className="w-[min(92vw,440px)] rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <Loader2 className="h-7 w-7 animate-spin text-[#0ea5e9]" aria-hidden="true" />
+              <p className="mt-4 text-sm font-bold text-slate-900">{razorpayLoadingMessage}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                The secure Razorpay payment window is about to open — please don't close this page.
+              </p>
+              <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-[#0ea5e9]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedPayment === "stripe" && !stripeState.paymentIntentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 sm:px-6">
           <div className="absolute inset-0 bg-black/50" onClick={() => { setSelectedPayment(null); setStripeState({ paymentIntentId: null, clientSecret: null, loading: false, error: null, transactionTime: null }) }} />
@@ -903,7 +1031,17 @@ export default function ReservePage() {
               clientSecret={stripeState.clientSecret}
               intentLoading={stripeState.loading}
               intentError={stripeState.error}
+              paymentPlan={paymentPlan}
               onRetry={() => setStripeRetryCount(c => c + 1)}
+              onPaymentIntentConfirmed={(paymentIntentId) => {
+                setStripeState(prev => ({
+                  ...prev,
+                  paymentIntentId,
+                  clientSecret: null,
+                  error: null,
+                  transactionTime: Math.floor(Date.now() / 1000),
+                }))
+              }}
             />
           </div>
         </div>

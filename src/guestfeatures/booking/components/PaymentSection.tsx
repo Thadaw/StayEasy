@@ -1,4 +1,4 @@
-import { useMemo, type KeyboardEvent } from "react"
+import { useMemo, useState, type KeyboardEvent } from "react"
 import {
   Banknote,
   CalendarClock,
@@ -23,6 +23,9 @@ interface PaymentSectionProps {
   total: number
   currency: string
   advancePercentage: number
+  minAdvancePercentage?: number
+  maxAdvancePercentage?: number
+  onAdvancePercentageChange?: (pct: number) => void
   advanceAmount?: number | null
   allowAdvance?: boolean
   selectedPayment: PaymentMethod | null
@@ -40,6 +43,7 @@ interface PaymentSectionProps {
   onApplyPromo: () => void
   onRemovePromo: () => void
   onKeyDown: (e: React.KeyboardEvent) => void
+  paymentCompleted?: boolean
 }
 
 interface PaymentOption {
@@ -121,6 +125,9 @@ export default function PaymentSection({
   total,
   currency,
   advancePercentage,
+  minAdvancePercentage,
+  maxAdvancePercentage,
+  onAdvancePercentageChange,
   advanceAmount: backendAdvanceAmount,
   allowAdvance = true,
   selectedPayment,
@@ -134,9 +141,24 @@ export default function PaymentSection({
   onApplyPromo,
   onRemovePromo,
   onKeyDown,
+  paymentCompleted = false,
 }: PaymentSectionProps) {
   const safeTotal = Math.max(0, Number(total) || 0)
   const safeAdvancePercentage = Math.min(100, Math.max(1, Number(advancePercentage) || 30))
+
+  // Property-configured advance range (falls back to the backend defaults).
+  const toPct = (value: number | undefined, fallback: number) =>
+    typeof value === "number" && Number.isFinite(value) ? value : fallback
+  const safeMinAdvancePercentage = Math.min(100, Math.max(0, Math.round(toPct(minAdvancePercentage, 10))))
+  const safeMaxAdvancePercentage = Math.min(100, Math.max(safeMinAdvancePercentage, Math.round(toPct(maxAdvancePercentage, 50))))
+
+  // Increase/decrease bounds — the % can never leave [min, max]
+  // (e.g. 30%–50%: you can't pay below 30% or above 50%).
+  const clampAllowedPct = (value: number) =>
+    Math.min(safeMaxAdvancePercentage, Math.max(safeMinAdvancePercentage, Math.round(value)))
+  const [pctDraft, setPctDraft] = useState<string | null>(null)
+  const atMinAllowed = safeAdvancePercentage <= safeMinAdvancePercentage
+  const atMaxAllowed = safeAdvancePercentage >= safeMaxAdvancePercentage
 
   const advanceAmount = useMemo(() => {
     if (backendAdvanceAmount != null && backendAdvanceAmount > 0) return roundAmount(backendAdvanceAmount)
@@ -210,14 +232,17 @@ export default function PaymentSection({
                 type="button"
                 role="radio"
                 aria-checked={isSelected}
-                onClick={() => onSelectPlan(plan)}
+                onClick={() => !paymentCompleted && onSelectPlan(plan)}
                 onKeyDown={(event) =>
-                  handleKeyDown(event, () => onSelectPlan(plan))
+                  !paymentCompleted && handleKeyDown(event, () => onSelectPlan(plan))
                 }
+                disabled={paymentCompleted}
                 className={`relative rounded-xl border p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                   isSelected
                     ? "border-blue-600 bg-blue-50/70 shadow-[0_0_0_2px_rgba(37,99,235,0.12)]"
-                    : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                    : paymentCompleted
+                      ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                      : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -255,6 +280,85 @@ export default function PaymentSection({
             )
           })}
         </div>
+
+        {paymentPlan === "advance" && onAdvancePercentageChange && (
+          <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-800">Choose your advance percentage</p>
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+                  Allowed range: {safeMinAdvancePercentage}%–{safeMaxAdvancePercentage}% of the booking total — you can&rsquo;t pay
+                  less than {safeMinAdvancePercentage}% or more than {safeMaxAdvancePercentage}%.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Decrease advance percentage"
+                  disabled={paymentCompleted || atMinAllowed}
+                  onClick={() => {
+                    setPctDraft(null)
+                    onAdvancePercentageChange(clampAllowedPct(safeAdvancePercentage - 1))
+                  }}
+                  className="h-10 w-10 rounded-lg border border-blue-200 bg-white text-lg font-bold leading-none text-slate-700 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  &minus;
+                </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={safeMinAdvancePercentage}
+                  max={safeMaxAdvancePercentage}
+                  step={1}
+                  value={pctDraft ?? String(safeAdvancePercentage)}
+                  disabled={paymentCompleted}
+                  onChange={(event) => {
+                    const raw = event.target.value
+                    setPctDraft(raw)
+                    if (raw === "" || raw === "-") return
+                    const parsed = Number(raw)
+                    // Commit only in-range values while typing; anything out of
+                    // range is snapped back to the nearest allowed bound on blur.
+                    if (Number.isFinite(parsed) && parsed >= safeMinAdvancePercentage && parsed <= safeMaxAdvancePercentage) {
+                      onAdvancePercentageChange(Math.round(parsed))
+                    }
+                  }}
+                  onBlur={() => {
+                    if (pctDraft !== null && pctDraft !== "") {
+                      const parsed = Number(pctDraft)
+                      if (Number.isFinite(parsed)) onAdvancePercentageChange(clampAllowedPct(parsed))
+                    }
+                    setPctDraft(null)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur()
+                  }}
+                  aria-label="Advance percentage"
+                  className="h-10 w-20 rounded-lg border border-blue-200 bg-white px-2 text-center text-sm font-extrabold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <span className="text-sm font-bold text-slate-600">%</span>
+                <button
+                  type="button"
+                  aria-label="Increase advance percentage"
+                  disabled={paymentCompleted || atMaxAllowed}
+                  onClick={() => {
+                    setPctDraft(null)
+                    onAdvancePercentageChange(clampAllowedPct(safeAdvancePercentage + 1))
+                  }}
+                  className="h-10 w-10 rounded-lg border border-blue-200 bg-white text-lg font-bold leading-none text-slate-700 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-blue-700">
+              You pay {formatMoney(roundAmount((safeTotal * safeAdvancePercentage) / 100), currency)} today
+              {safeAdvancePercentage < 100
+                ? ` — ${formatMoney(roundAmount(safeTotal - (safeTotal * safeAdvancePercentage) / 100), currency)} balance due at check-in.`
+                : " in full."}
+            </p>
+          </div>
+        )}
 
         <div className="mt-4 grid grid-cols-1 gap-0 rounded-xl border border-blue-100 bg-white p-4 sm:grid-cols-3 sm:gap-0">
           <div className="sm:border-r sm:border-slate-100 sm:pr-4">
@@ -444,14 +548,17 @@ export default function PaymentSection({
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    onClick={() => onSelectPayment(option.key)}
+                    onClick={() => !paymentCompleted && onSelectPayment(option.key)}
                     onKeyDown={(event) =>
-                      handleKeyDown(event, () => onSelectPayment(option.key))
+                      !paymentCompleted && handleKeyDown(event, () => onSelectPayment(option.key))
                     }
+                    disabled={paymentCompleted}
                     className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                       isSelected
                         ? "border-blue-600 bg-blue-50/60 shadow-[0_0_0_2px_rgba(37,99,235,0.1)]"
-                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                        : paymentCompleted
+                          ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     <img

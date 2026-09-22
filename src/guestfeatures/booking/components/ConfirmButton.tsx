@@ -39,18 +39,6 @@ export function ConfirmButton({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <label className="flex items-start gap-3 cursor-pointer mb-5">
-        <input
-          type="checkbox"
-          checked={marketingOptIn}
-          onChange={e => onSetMarketingOptIn(e.target.checked)}
-          className="mt-0.5 w-4 h-4 accent-[#1A3C5E] cursor-pointer"
-        />
-        <span className="text-sm text-gray-600 leading-relaxed">
-          I agree to receiving marketing emails from ServeIQ.com, including promotions, personalized recommendations, rewards, travel experiences, and updates about ServeIQ.com's products and services.
-        </span>
-      </label>
-
       <button
         disabled={isDisabled}
         onClick={onConfirm}
