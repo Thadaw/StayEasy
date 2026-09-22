@@ -42,6 +42,8 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
   const [roomsError, setRoomsError] = useState("")
   const [selectedRooms, setSelectedRooms] = useState<string[]>([])
   const [submitError, setSubmitError] = useState("")
+  const [docFront, setDocFront] = useState<string | null>(null)
+  const [docBack, setDocBack] = useState<string | null>(null)
 
   const {
     register,
@@ -76,6 +78,15 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
       selectedRooms: [],
     },
   })
+
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: string | null) => void) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setter(reader.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ""
+  }
 
   const stayDetails = watch("stay")
   const guestInfo = watch("guest")
@@ -517,9 +528,21 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
                 </select>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   {...register("guest.phone")}
+                  onKeyDown={(e) => {
+                    if (e.key.length === 1 && !/\d/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault()
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text")
+                    if (!/^\d+$/.test(pasted)) e.preventDefault()
+                  }}
                   className={`flex-1 px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.guest?.phone ? "border-red-400" : "border-gray-200"}`}
                   placeholder="e.g. 9841234567"
+                  maxLength={15}
                 />
               </div>
               {errors.guest?.phone && <p className="text-xs text-red-500 mt-1">{errors.guest.phone.message}</p>}
@@ -541,21 +564,57 @@ export function NewBookingForm({ onComplete, onCancel, formatAmount = (n: number
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Verification Document</label>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div>
+                <div className="min-h-[120px]">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Front</p>
-                  <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
-                    <Upload size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-600">Upload front</span>
-                    <input type="file" accept="image/*" className="hidden" />
-                  </label>
+                  {docFront ? (
+                    <div className="relative border border-gray-200 rounded-lg overflow-hidden h-[120px]">
+                      <img src={docFront} alt="Document front" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setDocFront(null)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-1.5 h-[120px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                      <Upload size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-600">Upload front</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleDocUpload(e, setDocFront)}
+                      />
+                    </label>
+                  )}
                 </div>
-                <div>
+                <div className="min-h-[120px]">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Back</p>
-                  <label className="flex flex-col items-center gap-1.5 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
-                    <Upload size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-600">Upload back</span>
-                    <input type="file" accept="image/*" className="hidden" />
-                  </label>
+                  {docBack ? (
+                    <div className="relative border border-gray-200 rounded-lg overflow-hidden h-[120px]">
+                      <img src={docBack} alt="Document back" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setDocBack(null)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-1.5 h-[120px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                      <Upload size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-600">Upload back</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleDocUpload(e, setDocBack)}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

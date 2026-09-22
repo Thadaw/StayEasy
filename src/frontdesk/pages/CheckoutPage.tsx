@@ -261,7 +261,8 @@ export default function CheckoutPage() {
   const subtotal = computedSubtotal || (Number(folioData?.subtotal) || Number(booking.folio?.subtotal) || Number(booking.total_amount) || 0)
   const folioTax = Number(folioData?.tax) || Number(booking.folio?.tax) || 0
   const folioDiscount = Number(folioData?.discount) || Number(booking.folio?.discount) || 0
-  const total = (computedSubtotal + folioTax - folioDiscount) || (Number(folioData?.total) || Number(booking.folio?.total) || Number(booking.total_amount) || 0)
+  const apiTotal = Number(folioData?.total) || Number(booking.folio?.total) || 0
+  const total = apiTotal || ((computedSubtotal + folioTax - folioDiscount) || Number(booking.total_amount) || 0)
   const advancePaid = Number(booking.amount_paid) || 0
   const remainingBalance = booking.folio?.remaining_balance ?? Math.max(0, total - advancePaid)
 
@@ -638,7 +639,7 @@ export default function CheckoutPage() {
             Cancel
           </button>
           <button
-            onClick={() => window.open(`/frontdesk/checkout/${id}/receipt`, "_blank", "noopener,noreferrer")}
+            onClick={() => navigate(`/frontdesk/checkout/${id}/receipt`)}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <FileText size={16} />

@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
@@ -54,6 +54,7 @@ interface Booking {
 
 export default function CheckoutReceiptPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { currentPropertyId } = usePropertyStore()
 
   const { data: property } = useQuery({
@@ -61,7 +62,7 @@ export default function CheckoutReceiptPage() {
     queryFn: async () => {
       if (!currentPropertyId) return null
       try {
-        const { data } = await api.get(`/properties/${currentPropertyId}`)
+        const { data } = await api.get(`/properties/${currentPropertyId}`, { skipAuthRedirect: true } as any)
         return data?.data || data
       } catch {
         return null
@@ -76,7 +77,8 @@ export default function CheckoutReceiptPage() {
       if (!currentPropertyId || !id) return null
       try {
         const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
+          `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`,
+          { skipAuthRedirect: true } as any
         )
         const wrapped = result as { data?: Booking }
         return (wrapped?.data ?? result) as Booking
@@ -145,6 +147,7 @@ export default function CheckoutReceiptPage() {
       invoiceDate={booking.checkout_date}
       title="INVOICE"
       printLabel="Print Receipt"
+      onClose={() => navigate(-1)}
       guestInfo={{
         name: booking.guest_name || "—",
         email: booking.guest_email || "—",

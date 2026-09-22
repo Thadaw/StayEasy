@@ -459,14 +459,15 @@ export default function FrontDeskFoliosPage() {
           const computedSubtotal = mappedCharges.reduce((sum, c) => sum + c.amount, 0)
           const tax = Number(d.tax) || 0
           const discount = Number(d.discount) || 0
+          const apiTotal = Number(d.total) || 0
           return {
             ...selected,
             subtotal: computedSubtotal,
             tax,
             discount,
-            total: computedSubtotal + tax - discount,
+            total: apiTotal || (computedSubtotal + tax - discount),
             amount_paid: d.amount_paid ?? 0,
-            remaining_balance: d.remaining_balance ?? (computedSubtotal + tax - discount),
+            remaining_balance: d.remaining_balance ?? Math.max(0, (apiTotal || (computedSubtotal + tax - discount)) - (d.amount_paid ?? 0)),
             status: d.status?.toUpperCase() as FolioStatus,
             settled_at: d.settled_at,
             settledAt: d.settled_at,
@@ -1099,9 +1100,9 @@ export default function FrontDeskFoliosPage() {
                 {/* Balance Card */}
                 {(() => {
                   const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: Charge) => sum + (Number(c.amount) || 0), 0) ?? 0
-                  const computedTotal = computedSubtotal + (displaySelected.tax || 0) - (displaySelected.discount || 0)
+                  const computedTotal = displaySelected.total || computedSubtotal + (displaySelected.tax || 0) - (displaySelected.discount || 0)
                   const amountPaid = displaySelected.amount_paid ?? 0
-                  const remaining = displaySelected.remaining_balance ?? computedTotal
+                  const remaining = displaySelected.remaining_balance ?? Math.max(0, computedTotal - amountPaid)
                   const status = displaySelected.status?.toUpperCase()
                   return (
                     <div className={`border rounded-2xl p-6 ${
@@ -1147,7 +1148,7 @@ export default function FrontDeskFoliosPage() {
                     {displaySelected.status?.toUpperCase() === "SETTLED" ? "Settled" : "Payment"}
                   </button>
                   <button
-                    onClick={() => window.open(`/frontdesk/folio/${displaySelected.booking_number || displaySelected.id}/invoice`, "_blank", "noopener,noreferrer")}
+                    onClick={() => navigate(`/frontdesk/folio/${displaySelected.booking_number || displaySelected.id}/invoice`)}
                     className="flex items-center justify-center gap-2 px-4 py-3.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <FileText size={18} />
@@ -1226,9 +1227,9 @@ export default function FrontDeskFoliosPage() {
                   const computedSubtotal = displaySelected.charges?.reduce((sum: number, c: Charge) => sum + (Number(c.amount) || 0), 0) ?? 0
                   const tax = displaySelected.tax || 0
                   const discount = displaySelected.discount || 0
-                  const computedTotal = computedSubtotal + tax - discount
+                  const computedTotal = displaySelected.total || computedSubtotal + tax - discount
                   const amountPaid = displaySelected.amount_paid ?? 0
-                  const remaining = displaySelected.remaining_balance ?? computedTotal
+                  const remaining = displaySelected.remaining_balance ?? Math.max(0, computedTotal - amountPaid)
                   const status = displaySelected.status?.toUpperCase()
                   return (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">

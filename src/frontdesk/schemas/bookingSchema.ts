@@ -14,7 +14,11 @@ export const createBookingSchema = z.object({
   guest: z.object({
     fullName: z.string().min(1, "Full name is required"),
     email: z.string().min(1, "Email is required").email("Invalid email format"),
-    phone: z.string().min(1, "Phone number is required"),
+    phone: z
+      .string()
+      .min(1, "Phone number is required")
+      .regex(/^\d+$/, "Phone number must contain only digits")
+      .refine((val) => val.length >= 7 && val.length <= 15, "Phone number must be between 7 and 15 digits"),
     countryCode: z.string().default("+977"),
     country: z.string().min(1, "Country is required"),
   }),

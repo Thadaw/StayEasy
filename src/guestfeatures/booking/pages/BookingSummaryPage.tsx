@@ -131,8 +131,9 @@ export default function BookingDetailsView() {
   useEffect(() => {
     if (qrCanvasRef.current) {
       QRCodeLib.toCanvas(qrCanvasRef.current, qrData || refNumber, {
-        width: 180,
+        width: 260,
         margin: 2,
+        errorCorrectionLevel: "L",
         color: { dark: "#000000", light: "#FFFFFF" },
       })
     }
@@ -359,7 +360,7 @@ export default function BookingDetailsView() {
               <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
                 <canvas
                   ref={qrCanvasRef}
-                  className="w-[180px] h-[180px] mx-auto rounded-lg"
+                  className="w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] mx-auto rounded-lg"
                 />
                 <p className="text-xs text-gray-400 text-center mt-3">Scan to view booking details.</p>
               </div>

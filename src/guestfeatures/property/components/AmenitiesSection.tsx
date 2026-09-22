@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Wifi, Car, Utensils, Waves, Mountain, Dumbbell } from "lucide-react";
+import { Wifi, Car, Utensils, Waves, Mountain, Dumbbell, MapPin } from "lucide-react";
 import { Hotel } from "../../../data/hotels";
-import { buildMapEmbedUrl } from "../../../shared/utils/map";
+import { buildMapEmbedUrl, buildMapDirectionsUrl } from "../../../shared/utils/map";
 
 const amenityIcons: Record<string, typeof Wifi> = {
   "Free WiFi": Wifi,
@@ -22,8 +22,9 @@ export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
   const mapUrl = buildMapEmbedUrl({
     lat: hotel.lat,
     lng: hotel.lng,
-    address: `${hotel.location}, ${hotel.city}, ${hotel.country}`,
+    address: hotel.location,
   });
+  const directionsUrl = buildMapDirectionsUrl({ lat: hotel.lat, lng: hotel.lng, address: hotel.location });
 
   return (
     <div className="md:grid md:grid-cols-[2fr_1fr] md:gap-8 pb-6 border-b border-border mb-6">
@@ -66,9 +67,15 @@ export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
               referrerPolicy="no-referrer-when-downgrade"
             />
           ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Map unavailable for this property</p>
-            </div>
+            <a
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors"
+            >
+              <MapPin size={24} className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">View on Google Maps</p>
+            </a>
           )}
         </div>
       </div>

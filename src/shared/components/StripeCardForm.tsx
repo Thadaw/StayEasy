@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
-import { Loader2, AlertTriangle, Lock } from "lucide-react"
+import { Loader2, AlertTriangle, Lock, CreditCard } from "lucide-react"
 import toast from "react-hot-toast"
 import { stripePromise } from "../../lib/stripe"
 import type { StripeCardFormProps } from "../types/stripe"
@@ -18,13 +18,14 @@ function StripePaymentFormInner({
   clientSecret: externalSecret,
   intentError,
   onRetry,
+  paymentPlan,
+  onPaymentIntentConfirmed,
 }: StripeCardFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [loading, setLoading] = useState(false)
   const [intentExpired, setIntentExpired] = useState(false)
   const [intentExpiringSoon, setIntentExpiringSoon] = useState(false)
-  const intentCreatedAtRef = useRef<number>(Date.now())
 
   const CUR = currency || "USD"
   const cancelledRef = useRef(false)
@@ -36,7 +37,6 @@ function StripePaymentFormInner({
 
   useEffect(() => {
     if (!resolvedSecret) return
-    intentCreatedAtRef.current = Date.now()
     setIntentExpired(false)
     setIntentExpiringSoon(false)
     const warningTimer = setTimeout(() => {
@@ -55,7 +55,10 @@ function StripePaymentFormInner({
   }, [resolvedSecret])
 
   const handleConfirmPayment = async () => {
-    if (!stripe || !elements || !resolvedSecret) return
+    if (!stripe || !elements || !resolvedSecret) {
+      toast.error("Payment is still loading. Please wait a moment and try again.")
+      return
+    }
     if (intentExpired) {
       toast.error("Payment session expired. Please retry.")
       return
@@ -70,8 +73,22 @@ function StripePaymentFormInner({
       })
       if (error) {
         toast.error(error.message || "Payment failed. Please check your payment details and try again.")
+      } else {
+        // No error means the payment completed in place (no 3D Secure / bank
+        // redirect). Retrieve the intent to learn its id and status — without
+        // this ReservePage would never get the payment_intent id and the
+        // booking would be unconfirmable.
+        const retrieved = await stripe.retrievePaymentIntent(resolvedSecret)
+        const intent = retrieved.paymentIntent
+        if (retrieved.error) {
+          toast.error(retrieved.error.message || "Could not verify payment. Please try again.")
+        } else if (intent?.status === "succeeded" && intent.id) {
+          onPaymentIntentConfirmed?.(intent.id)
+          toast.success("Payment successful! Click \"Complete booking\" below to finish.")
+        } else if (intent?.status) {
+          toast(`Payment status: ${intent.status}. Please wait a moment, then try confirming.`, { icon: "ℹ️" })
+        }
       }
-      // On success, Stripe redirects to return_url — no need to call onSuccess here.
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment failed"
       toast.error(msg)
@@ -82,17 +99,17 @@ function StripePaymentFormInner({
 
   if (intentExpired) {
     return (
-      <div className="text-center py-4">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <AlertTriangle size={16} className="text-amber-500" />
+      <div className="text-center py-8">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <AlertTriangle size={20} className="text-amber-500" />
           <p className="text-sm font-semibold text-amber-700">Payment session expired</p>
         </div>
-        <p className="text-xs text-gray-500 mb-3">The payment session has timed out. Please retry to start a new session.</p>
+        <p className="text-xs text-gray-500 mb-4">The payment session has timed out. Please retry.</p>
         <button
           onClick={() => onRetry?.()}
-          className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
+          className="px-5 py-2.5 bg-[#635bff] text-white text-sm font-semibold rounded-lg hover:bg-[#5046e4] transition-colors cursor-pointer"
         >
-          Retry
+          Retry Payment
         </button>
       </div>
     )
@@ -100,13 +117,13 @@ function StripePaymentFormInner({
 
   if (resolvedError) {
     return (
-      <div className="text-center py-4">
-        <p className="text-sm text-red-500 mb-2">{resolvedError}</p>
+      <div className="text-center py-8">
+        <p className="text-sm text-red-500 mb-3">{resolvedError}</p>
         <button
           onClick={() => onRetry?.()}
-          className="text-sm text-[#0071c2] font-semibold hover:underline cursor-pointer"
+          className="px-5 py-2.5 bg-[#635bff] text-white text-sm font-semibold rounded-lg hover:bg-[#5046e4] transition-colors cursor-pointer"
         >
-          Retry
+          Retry Payment
         </button>
       </div>
     )
@@ -115,110 +132,92 @@ function StripePaymentFormInner({
   if (!resolvedSecret) return null
 
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200">
-      {intentExpiringSoon && (
-        <div className="flex items-center gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2">
-          <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-          <p className="text-xs text-amber-700">Payment session will expire soon. Please complete your payment.</p>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row">
-        {/* Left Panel - Summary */}
-        <div className="w-full md:w-[42%] bg-[#0a2540] text-white p-6 md:p-8 flex flex-col">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-7 h-7 bg-white rounded-md flex items-center justify-center">
-              <span className="text-[#0a2540] font-bold text-xs">S</span>
-            </div>
-            <span className="font-semibold text-sm">ServeIQ</span>
+    <div className="flex flex-col md:flex-row min-h-[500px]">
+      {/* Left Panel - Summary */}
+      <div className="w-full md:w-[40%] bg-[#0a2540] text-white p-6 md:p-8 flex flex-col">
+        <div className="flex items-center gap-2.5 mb-8">
+          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+            <span className="text-[#0a2540] font-bold text-sm">S</span>
           </div>
+          <span className="font-semibold text-sm">ServeIQ</span>
+        </div>
 
+        <div className="mb-6">
           <p className="text-sm text-gray-300 mb-1">Pay {hotelName || "ServeIQ"}</p>
-          <p className="text-3xl font-bold mb-6">{CUR} {Math.max(0, amount).toFixed(2)}</p>
+          <p className="text-3xl font-bold">{CUR} {Math.max(0, amount).toFixed(2)}</p>
+        </div>
 
-          <div className="border-t border-gray-600 pt-4 mt-auto space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-300">Subtotal</span>
-              <span>{CUR} {Math.max(0, amount).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-semibold pt-2 border-t border-gray-600">
+        <div className="border-t border-gray-600 pt-4 mt-auto space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-300">Subtotal</span>
+            <span>{CUR} {Math.max(0, amount).toFixed(2)}</span>
+          </div>
+          {paymentPlan !== "full" && (
+            <div className="flex justify-between text-sm font-semibold pt-3 border-t border-gray-600">
               <span>Total due</span>
               <span>{CUR} {Math.max(0, amount).toFixed(2)}</span>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Right Panel - Payment Element */}
-        <div className="w-full md:w-[58%] bg-white p-6 md:p-8">
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Payment details</h3>
-            <p className="text-xs text-gray-500">Complete your payment securely via Stripe.</p>
+        <div className="mt-6 flex items-center gap-2 text-xs text-gray-400">
+          <Lock size={12} />
+          <span>Secured by Stripe</span>
+        </div>
+      </div>
+
+      {/* Right Panel - Payment Element */}
+      <div className="w-full md:w-[60%] bg-white p-6 md:p-8">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <CreditCard size={18} className="text-[#635bff]" />
+            <h3 className="text-base font-semibold text-gray-900">Payment details</h3>
           </div>
+          <p className="text-xs text-gray-500">Complete your payment securely via Stripe.</p>
+        </div>
 
-          {/* Guest info */}
-          {(guestName || guestEmail) && (
-            <div className="mb-5 space-y-3">
-              {guestName && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Name</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={guestName}
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 focus:outline-none"
-                  />
-                </div>
-              )}
-              {guestEmail && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Email</label>
-                  <input
-                    type="email"
-                    readOnly
-                    value={guestEmail}
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 focus:outline-none"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Stripe PaymentElement — handles all payment methods automatically */}
-          <div className="mb-5">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Payment method</label>
-            <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:border-[#0071c2] focus-within:ring-1 focus-within:ring-[#0071c2]">
-              <PaymentElement
-                options={{
-                  layout: "tabs",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Pay Button */}
-          <button
-            disabled={loading || !stripe || !elements}
-            onClick={handleConfirmPayment}
-            className="w-full py-3 rounded-lg bg-[#0a2540] text-white text-sm font-semibold hover:bg-[#1a3a5c] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <><Loader2 size={14} className="animate-spin" /> Processing payment...</>
-            ) : (
-              <>
-                <Lock size={13} />
-                Pay {CUR} {Math.max(0, amount).toFixed(2)}
-              </>
+        {/* Guest info */}
+        {(guestName || guestEmail) && (
+          <div className="mb-5 p-3 bg-gray-50 rounded-lg space-y-2">
+            {guestName && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Name</span>
+                <span className="font-medium text-gray-900">{guestName}</span>
+              </div>
             )}
-          </button>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
-            <span className="text-[11px] text-gray-400">Powered by Stripe</span>
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Terms</span>
-              <span className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Privacy</span>
-            </div>
+            {guestEmail && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Email</span>
+                <span className="font-medium text-gray-900">{guestEmail}</span>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Stripe PaymentElement */}
+        <div className="mb-5">
+          <PaymentElement options={{ layout: "tabs" }} />
+        </div>
+
+        {/* Pay Button */}
+        <button
+          disabled={loading}
+          onClick={handleConfirmPayment}
+          className="w-full py-3.5 rounded-lg bg-[#635bff] text-white text-sm font-semibold hover:bg-[#5046e4] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <><Loader2 size={16} className="animate-spin" /> Processing payment...</>
+          ) : (
+            <>
+              <Lock size={14} />
+              Pay {CUR} {Math.max(0, amount).toFixed(2)}
+            </>
+          )}
+        </button>
+
+        {/* Footer */}
+        <div className="flex items-center justify-center mt-5 pt-4 border-t border-gray-100">
+          <span className="text-[11px] text-gray-400">Powered by <span className="font-semibold text-gray-500">Stripe</span></span>
         </div>
       </div>
     </div>
@@ -228,9 +227,43 @@ function StripePaymentFormInner({
 export default function StripeCardForm(props: StripeCardFormProps) {
   if (props.intentLoading || !props.clientSecret) {
     return (
-      <div className="flex items-center justify-center gap-2 py-6">
-        <Loader2 size={16} className="animate-spin text-[#0071c2]" />
-        <span className="text-sm text-gray-500">Initializing payment...</span>
+      <div className="flex flex-col md:flex-row min-h-[500px]">
+        <div className="w-full md:w-[40%] bg-[#0a2540] text-white p-6 md:p-8 flex flex-col">
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <span className="text-[#0a2540] font-bold text-sm">S</span>
+            </div>
+            <span className="font-semibold text-sm">ServeIQ</span>
+          </div>
+          <div className="mb-6">
+            <p className="text-sm text-gray-300 mb-1">Pay {props.hotelName || "ServeIQ"}</p>
+            <p className="text-3xl font-bold">{props.currency || "USD"} {Math.max(0, props.amount).toFixed(2)}</p>
+          </div>
+          <div className="border-t border-gray-600 pt-4 mt-auto space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-300">Subtotal</span>
+              <span>{props.currency || "USD"} {Math.max(0, props.amount).toFixed(2)}</span>
+            </div>
+            {props.paymentPlan !== "full" && (
+              <div className="flex justify-between text-sm font-semibold pt-3 border-t border-gray-600">
+                <span>Total due</span>
+                <span>{props.currency || "USD"} {Math.max(0, props.amount).toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-6 flex items-center gap-2 text-xs text-gray-400">
+            <Lock size={12} />
+            <span>Secured by Stripe</span>
+          </div>
+        </div>
+        <div className="w-full md:w-[60%] bg-white p-6 md:p-8 flex flex-col items-center justify-center">
+          <div className="relative mb-4">
+            <div className="w-12 h-12 border-4 border-gray-100 rounded-full" />
+            <div className="absolute inset-0 w-12 h-12 border-4 border-[#635bff] border-t-transparent rounded-full animate-spin" />
+          </div>
+          <p className="text-sm font-medium text-gray-700">Initializing secure payment...</p>
+          <p className="mt-1 text-xs text-gray-400">Connecting to Stripe</p>
+        </div>
       </div>
     )
   }
@@ -238,9 +271,8 @@ export default function StripeCardForm(props: StripeCardFormProps) {
   return (
     <Elements
       stripe={stripePromise}
-      options={{
-        clientSecret: props.clientSecret,
-      }}
+      options={{ clientSecret: props.clientSecret }}
+      key={props.clientSecret}
     >
       <StripePaymentFormInner {...props} />
     </Elements>
