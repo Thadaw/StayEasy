@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import { decodeTokenExp } from './services/axios'
 
 export interface AuthRequestConfig extends AxiosRequestConfig {
   skipAuthRedirect?: boolean
@@ -22,9 +23,18 @@ function storageGet(key: string): string | null {
   return localStorage.getItem(key) || sessionStorage.getItem(key)
 }
 
+// Persist to the store the session lives in (rememberMe) and keep the expiry
+// marker in sync — the old "only if a token already exists" check lost
+// refreshed tokens after an expiry cleanup, breaking the session later.
+function sessionStore(): Storage {
+  return localStorage.getItem('rememberMe') !== 'false' ? localStorage : sessionStorage
+}
+
 function updateAccessToken(token: string) {
-  if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, token)
-  else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(TOKEN_KEY, token)
+  const store = sessionStore()
+  store.setItem(TOKEN_KEY, token)
+  const exp = decodeTokenExp(token)
+  store.setItem(EXPIRY_KEY, String(exp ? exp * 1000 : Date.now() + 24 * 60 * 60 * 1000))
 }
 
 api.interceptors.request.use((config) => {
@@ -50,9 +60,24 @@ async function refreshAccessToken(): Promise<string> {
 
 function redirectToLogin() {
   const role = storageGet(ROLE_KEY)
-  if (role === 'guest') window.location.href = '/login'
-  else if (role === 'staff') window.location.href = '/staff/login'
-  else window.location.href = '/host/login'
+  // Staff log in through the host section — /staff/login is a guest-mode
+  // form that can never authenticate users-table staff credentials.
+  let loginPath = '/host/login'
+  if (role === 'guest') loginPath = '/login'
+
+  // Clear the dead session BEFORE redirecting (parity with services/axios):
+  // stale tokens must not survive, or the next load ping-pongs between the
+  // dashboard and the login page.
+  const keys = [TOKEN_KEY, REFRESH_KEY, ROLE_KEY, EXPIRY_KEY]
+  keys.forEach((k) => {
+    localStorage.removeItem(k)
+    sessionStorage.removeItem(k)
+  })
+
+  if (window.location.pathname !== loginPath) {
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+    window.location.href = `${loginPath}?redirect=${redirect}`
+  }
 }
 
 api.interceptors.response.use(

@@ -63,7 +63,9 @@ export default function ChangePassword() {
   const handleLogout = () => {
     clearMustChangePassword()
     logout()
-    navigate('/staff/login')
+    // Staff log in through the host section — /staff/login is a guest-mode
+    // form that can never authenticate users-table staff credentials.
+    navigate('/host/login')
   }
 
   return (

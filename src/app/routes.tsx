@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '../shared/components/ProtectedRoute'
 import { StaffRedirect } from '../shared/components/StaffRedirect'
+import { RedirectIfLoggedIn } from '../shared/components/RedirectIfLoggedIn'
 
 const LandingPage = lazy(() => import('../guestfeatures/landing/pages/LandingPage'))
 const LoginPage = lazy(() => import('../auth/Login'))
@@ -74,14 +75,17 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<StaffRedirect><LandingPage /></StaffRedirect>} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/host/login" element={<LoginPage />} />
-      <Route path="/host/signup" element={<SignupPage />} />
-      <Route path="/staff/login" element={<LoginPage />} />
-      <Route path="/staff/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/host/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/login" element={<RedirectIfLoggedIn><LoginPage /></RedirectIfLoggedIn>} />
+      <Route path="/signup" element={<RedirectIfLoggedIn><SignupPage /></RedirectIfLoggedIn>} />
+      <Route path="/host/login" element={<RedirectIfLoggedIn><LoginPage /></RedirectIfLoggedIn>} />
+      <Route path="/host/signup" element={<RedirectIfLoggedIn><SignupPage /></RedirectIfLoggedIn>} />
+      {/* /staff/* auth pages are a trap: Login/Signup treat any non-/host path
+          as guest mode (posts ?role=guest) and can never authenticate
+          users-table staff. Redirect them to the host section instead. */}
+      <Route path="/staff/login" element={<Navigate to="/host/login" replace />} />
+      <Route path="/staff/signup" element={<Navigate to="/host/signup" replace />} />
+      <Route path="/forgot-password" element={<RedirectIfLoggedIn><ForgotPasswordPage /></RedirectIfLoggedIn>} />
+      <Route path="/host/forgot-password" element={<RedirectIfLoggedIn><ForgotPasswordPage /></RedirectIfLoggedIn>} />
       <Route path="/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/profile" element={<ProtectedRoute allowedRoles={['host']}><HostProfilePage /></ProtectedRoute>} />

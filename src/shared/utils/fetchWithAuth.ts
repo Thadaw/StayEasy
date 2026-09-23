@@ -13,26 +13,36 @@ function storageGet(key: string): string | null {
   return localStorage.getItem(key) || sessionStorage.getItem(key)
 }
 
+// Persist to the store the session lives in (rememberMe flag) — the old
+// "only if a token already exists" check lost refreshed tokens entirely
+// after an expiry cleanup, breaking the session on the next tab/reload.
+function sessionStore(): Storage {
+  return localStorage.getItem('rememberMe') !== 'false' ? localStorage : sessionStorage
+}
+
 function updateAccessToken(token: string) {
-  if (localStorage.getItem('token')) localStorage.setItem('token', token)
-  else if (sessionStorage.getItem('token')) sessionStorage.setItem('token', token)
+  sessionStore().setItem('token', token)
 }
 
 function updateRefreshToken(token: string) {
-  if (localStorage.getItem('refreshToken')) localStorage.setItem('refreshToken', token)
-  else if (sessionStorage.getItem('refreshToken')) sessionStorage.setItem('refreshToken', token)
+  sessionStore().setItem('refreshToken', token)
 }
 
 const clearAuthAndRedirect = () => {
+  // Read the role BEFORE clearing storage — otherwise every failed refresh
+  // used to bounce hosts/staff to the guest /login page.
+  const isHost = localStorage.getItem('authRole') === 'host' || sessionStorage.getItem('authRole') === 'host'
+  const isStaff = localStorage.getItem('authRole') === 'staff' || sessionStorage.getItem('authRole') === 'staff'
+
   const keys = ['token', 'refreshToken', 'authRole', 'tokenExpiry']
   keys.forEach((k) => {
     localStorage.removeItem(k)
     sessionStorage.removeItem(k)
   })
 
-  const isHost = localStorage.getItem('authRole') === 'host' || sessionStorage.getItem('authRole') === 'host'
-  const isStaff = localStorage.getItem('authRole') === 'staff' || sessionStorage.getItem('authRole') === 'staff'
-  const loginPath = isHost ? '/host/login' : isStaff ? '/staff/login' : '/login'
+  // Staff log in through the host section — /staff/login is guest-mode and
+  // can never authenticate staff (users-table) credentials.
+  const loginPath = isHost || isStaff ? '/host/login' : '/login'
 
   if (window.location.pathname !== loginPath) {
     const redirect = encodeURIComponent(window.location.pathname + window.location.search)

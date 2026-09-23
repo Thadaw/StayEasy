@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api, { type AuthRequestConfig, startTokenRefreshTimer, refreshAccessToken } from '../services/axios'
+import api, { type AuthRequestConfig, startTokenRefreshTimer, refreshAccessToken, decodeTokenExp } from '../services/axios'
 import type { User } from './types'
 
 type AuthRole = 'host' | 'guest' | 'staff'
@@ -76,7 +76,7 @@ function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken
   store.setItem(TOKEN_KEY, token)
   store.setItem(ROLE_KEY, role)
   if (refreshToken) store.setItem(REFRESH_KEY, refreshToken)
-  store.setItem(EXPIRY_KEY, (Date.now() + EXPIRY_MS).toString())
+  store.setItem(EXPIRY_KEY, expiryMarker(token))
 }
 
 function clearAuth() {
@@ -86,6 +86,36 @@ function clearAuth() {
     sessionStorage.removeItem(k)
   })
 }
+
+// Expiry marker mirrors the JWT's own `exp` (fallback: 24h). Keeping it in
+// lockstep stops readToken() from yanking a token that a refresh already
+// renewed — that premature removal used to fire logout ripples in other tabs.
+function expiryMarker(token: string): string {
+  const exp = decodeTokenExp(token)
+  return String(exp ? exp * 1000 : Date.now() + EXPIRY_MS)
+}
+
+// One-time migration: sessions created before the shared-session fix may
+// live in sessionStorage, which is per-tab — so a new tab opened logged out.
+// Move them to localStorage so the session survives new tabs for every role.
+function migrateSharedSession() {
+  try {
+    if (localStorage.getItem(TOKEN_KEY)) return
+    const role = localStorage.getItem(ROLE_KEY) || sessionStorage.getItem(ROLE_KEY)
+    if (role !== 'host' && role !== 'staff' && role !== 'guest') return
+    const token = sessionStorage.getItem(TOKEN_KEY)
+    if (!token) return
+    localStorage.setItem(REMEMBER_KEY, 'true')
+    localStorage.setItem(TOKEN_KEY, token)
+    const refresh = sessionStorage.getItem(REFRESH_KEY)
+    if (refresh) localStorage.setItem(REFRESH_KEY, refresh)
+    localStorage.setItem(EXPIRY_KEY, expiryMarker(token))
+    localStorage.setItem(ROLE_KEY, role)
+  } catch {
+    // Ignore storage access errors
+  }
+}
+migrateSharedSession()
 
 // Normalize the API response so the UI always receives the same user shape.
 // The backend returns inconsistent field naming (snake_case vs camelCase) and
@@ -171,14 +201,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the storage event fires here and we clear auth state in this tab too.
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === TOKEN_KEY && !e.newValue) {
+      if (e.key !== TOKEN_KEY || e.newValue) return
+      // Another tab removed the access token. If the refresh token is gone
+      // too, that tab really logged out — end the session here as well.
+      // Otherwise only drop the access token and let the token effect
+      // silently refresh it WITHOUT wiping role/user — hosts/staff stay
+      // in-session instead of bouncing to a login page.
+      if (storageGet(REFRESH_KEY)) {
         setToken(null)
-        setUser(null)
-        setRole('host')
-        setLoading(false)
-        setMustChangePassword(false)
-        setTempPassword(null)
+        return
       }
+      setToken(null)
+      setUser(null)
+      setRole('host')
+      setLoading(false)
+      setMustChangePassword(false)
+      setTempPassword(null)
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
@@ -207,7 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       params.append('grant_type', 'password')
       params.append('username', email)
       params.append('password', password)
-      const response = await api.post('auth/login', params, {
+      // role=user: this is the host portal login — never fall through to the
+      // backend's guest fallback, or a guest-only email would return a guest
+      // token while we hardcode the local role as 'host' (401 loop on /me).
+      const response = await api.post('auth/login?role=user', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       await login(response.data.access_token, true, 'host', response.data.refresh_token)
