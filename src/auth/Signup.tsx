@@ -9,6 +9,10 @@ import bgImage from '../assets/background.png'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Backend (Pydantic): phone = exactly 10 digits, digits only
+const PHONE_RE = /^\d{10}$/
+// Backend (Pydantic): nationality validated with str.isalpha(), 2–50 chars — letters only, no spaces
+const NATIONALITY_RE = /^\p{L}{2,50}$/u
 
 function extractError(err: unknown, fallback = 'Could not create account. Please check your details and try again.'): string {
   if (err instanceof AxiosError && err.response?.data) {
@@ -16,6 +20,22 @@ function extractError(err: unknown, fallback = 'Could not create account. Please
     if (typeof data.detail === 'string') return data.detail
     if (typeof data.message === 'string') return data.message
     if (Array.isArray(data.errors) && data.errors[0]?.msg) return data.errors[0].msg
+    // FastAPI 422: `detail` is an array of { loc, msg, type } objects —
+    // show the first field error instead of the generic fallback.
+    if (Array.isArray(data.detail)) {
+      const first = data.detail[0] as { loc?: unknown[]; msg?: string } | undefined
+      if (first?.msg) {
+        const loc = Array.isArray(first.loc) ? first.loc : []
+        const field = loc.length > 1 ? String(loc[loc.length - 1]) : ''
+        return field ? `${field.replace(/_/g, ' ')}: ${first.msg}` : first.msg
+      }
+    }
+    // Custom exception handlers may serialize `detail` as an object.
+    if (data.detail && typeof data.detail === 'object') {
+      const obj = data.detail as Record<string, unknown>
+      if (typeof obj.message === 'string') return obj.message
+      if (typeof obj.detail === 'string') return obj.detail
+    }
   }
   return fallback
 }
@@ -55,8 +75,20 @@ export default function Signup() {
     setError('')
 
     if (!fullName.trim()) { setError('Full name is required.'); return }
-    if (!phone.trim()) { setError('Phone number is required.'); return }
-    if (!isHost && !nationality.trim()) { setError('Nationality is required.'); return }
+
+    // Normalize phone before validating: strip everything except digits,
+    // then drop a leading country code ("+977" / "977") when present.
+    const rawDigits = phone.replace(/[^\d]/g, '')
+    const normalizedPhone = rawDigits.length > 10 && rawDigits.startsWith('977') ? rawDigits.slice(3) : rawDigits
+    if (!PHONE_RE.test(normalizedPhone)) { setError('Phone must be exactly 10 digits (e.g. 98XXXXXXXX).'); return }
+
+    // Match the backend's str.isalpha() rule so we fail fast with a clear
+    // message instead of an opaque 422.
+    if (!isHost) {
+      const nat = nationality.trim()
+      if (!nat) { setError('Nationality is required.'); return }
+      if (!NATIONALITY_RE.test(nat)) { setError('Nationality must be 2–50 letters only (no spaces or symbols).'); return }
+    }
     if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); return }
     if (!PASSWORD_RE.test(password)) { setError('Password must be 8+ characters with a number and a special character.'); return }
     setLoading(true)
@@ -64,8 +96,10 @@ export default function Signup() {
       await api.post(isHost ? '/auth/users/register' : '/auth/guests/register', {
         full_name: fullName,
         email,
-        phone,
-        nationality,
+        phone: normalizedPhone,
+        // Hosts have no nationality field — backend rejects empty string (min_length=2),
+        // so send null (schema allows Optional[str]) instead of "".
+        nationality: isHost ? null : nationality.trim(),
         password,
       })
       toast.success('Verification code sent to your email')

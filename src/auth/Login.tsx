@@ -47,7 +47,7 @@ export default function Login() {
       params.append('grant_type', 'password')
       params.append('username', email)
       params.append('password', password)
-      const res = await api.post('/auth/login', params, {
+      const res = await api.post(`/auth/login?role=${isHost ? 'user' : 'guest'}`, params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
 
@@ -55,7 +55,10 @@ export default function Login() {
       const isStaff = responseRole === 'front_desk'
       const userRole = isStaff ? 'staff' : isHost ? 'host' : 'guest'
 
-      await authLogin(res.data.access_token, isStaff ? true : remember, userRole, res.data.refresh_token, res.data.must_change_password, res.data.temp_password)
+      // Every session persists to localStorage (shared by every tab), so a
+      // new tab stays logged in until an explicit logout — guests, hosts and
+      // frontdesk alike. (The "Remember me" checkbox no longer gates storage.)
+      await authLogin(res.data.access_token, true, userRole, res.data.refresh_token, res.data.must_change_password, res.data.temp_password)
 
       if (isStaff && res.data.property?.id) {
         setCurrentPropertyId(res.data.property.id)
@@ -69,7 +72,9 @@ export default function Login() {
         && !redirectTo.startsWith('//')
         && !redirectTo.includes('://')
         && !isAuthPage
-        && (redirectTo.startsWith('/host') === isHost)
+        // Staff refresh-failure redirects arrive here from /frontdesk/* pages
+        // while on /host/login — allow those deep links through.
+        && (redirectTo.startsWith('/host') === isHost || redirectTo.startsWith('/frontdesk'))
       if (isValidRedirect) {
         setTimeout(() => navigate(redirectTo), 800)
         return

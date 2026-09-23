@@ -202,7 +202,7 @@ export default function PaymentSection({
               Secure payment
             </div>
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
-              Choose how to pay
+              Choose your payment plan
             </h2>
             <p className="mt-1 text-sm leading-6 text-slate-500">
               Choose a payment plan, then select your preferred payment method.
