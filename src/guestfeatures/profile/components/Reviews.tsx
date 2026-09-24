@@ -115,22 +115,28 @@ export default function Reviews() {
 
         <div className="p-4 sm:p-6">
           {loading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="rounded-xl border border-brand-card-border p-4 animate-pulse">
-                  <div className="flex gap-1 mb-3">
+                  <div className="flex gap-1 mb-2">
                     {[1, 2, 3, 4, 5].map(s => (
-                      <div key={s} className="w-4 h-4 rounded bg-gray-200" />
+                      <div key={s} className="w-3.5 h-3.5 rounded bg-gray-200" />
                     ))}
                   </div>
-                  <div className="h-3 bg-gray-200 rounded w-full mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-4" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gray-200" />
-                    <div className="space-y-1.5">
-                      <div className="h-3 bg-gray-200 rounded w-24" />
-                      <div className="h-2 bg-gray-200 rounded w-16" />
-                    </div>
+                  {/* property thumbnail + name */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-gray-200 shrink-0" />
+                    <div className="h-3.5 bg-gray-200 rounded w-40" />
+                  </div>
+                  {/* location */}
+                  <div className="h-2.5 bg-gray-200 rounded w-28 mb-2" />
+                  {/* comment */}
+                  <div className="h-3 bg-gray-200 rounded w-full mb-1.5" />
+                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-3" />
+                  {/* date + edit */}
+                  <div className="flex items-center justify-between">
+                    <div className="h-2.5 bg-gray-200 rounded w-20" />
+                    <div className="h-3 bg-gray-200 rounded w-12" />
                   </div>
                 </div>
               ))}

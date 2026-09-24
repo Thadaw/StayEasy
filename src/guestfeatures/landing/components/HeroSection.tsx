@@ -216,6 +216,7 @@ export function HeroSection() {
                 fallbackName={heroHotels[0].location}
                 fallbackLocation={heroHotels[0].location}
                 fallbackPrice={heroHotels[0].price}
+                fallbackSearchQuery={heroHotels[0].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 0 ? 'z-50' : 'z-20'}`}
                 style={getCardStyle(0, 4)}
               />
@@ -243,6 +244,7 @@ export function HeroSection() {
                 fallbackName={heroHotels[1].location}
                 fallbackLocation={heroHotels[1].location}
                 fallbackPrice={heroHotels[1].price}
+                fallbackSearchQuery={heroHotels[1].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 1 ? 'z-50' : 'z-10'}`}
                 style={getCardStyle(1, -3)}
               />
@@ -270,6 +272,7 @@ export function HeroSection() {
                 fallbackName={heroHotels[2].location}
                 fallbackLocation={heroHotels[2].location}
                 fallbackPrice={heroHotels[2].price}
+                fallbackSearchQuery={heroHotels[2].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 2 ? 'z-50' : 'z-15'}`}
                 style={getCardStyle(2, 2)}
               />
