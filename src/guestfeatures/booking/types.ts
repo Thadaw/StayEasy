@@ -25,8 +25,8 @@ export interface ApiBooking {
   check_in: string
   check_out: string
   nights: number
-  adults: number
-  children: number
+  adults?: number
+  children?: number
   total_guests: number
   payment_gateway: string | null
   payment_status: string | null

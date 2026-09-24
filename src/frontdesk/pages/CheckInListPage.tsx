@@ -203,7 +203,10 @@ export default function CheckInListPage() {
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {isLoading ? (
-              <FrontdeskTableSkeleton columns={7} />
+              <FrontdeskTableSkeleton
+                columns={7}
+                headerLabels={["Guest", "Room", "Stay", "Guests", "Amount", "Status", "Action"]}
+              />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

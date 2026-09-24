@@ -18,7 +18,6 @@ import { ThingsToKnow } from "../components/ThingsToKnow";
 import { RoomDetailModal } from "../components/RoomDetailModal";
 
 import { usePropertyDetails } from "../hooks/usePropertyDetails";
-import { useBookingCreation } from "../../booking/hooks/useBookingCreation";
 import { PropertyDetailSkeleton } from "../components/PropertyDetailSkeleton";
 
 export default function PropertyDetailPage() {
@@ -50,8 +49,6 @@ export default function PropertyDetailPage() {
     handleQtyChange,
     handleSelectRoom,
   } = usePropertyDetails(id);
-
-  const { createBooking, isCreating } = useBookingCreation();
 
   const liked = isFavorite(id ?? "");
 
@@ -130,7 +127,7 @@ export default function PropertyDetailPage() {
     handleSelectRoom(roomId);
   };
 
-  const handleReserve = async () => {
+  const handleReserve = () => {
     const selected = Object.entries(roomQuantities).filter(([, q]) => q > 0);
     if (selected.length === 0) return;
 
@@ -146,28 +143,6 @@ export default function PropertyDetailPage() {
       return;
     }
 
-    const roomIds = selected.flatMap(([roomId, qty]) => Array(qty).fill(roomId));
-
-    let refNumber = '';
-    try {
-      refNumber = await createBooking({
-        property_id: id!,
-        room_ids: roomIds,
-        check_in: checkIn,
-        check_out: checkOut,
-        adults: guests.adults,
-        children: guests.children,
-      });
-    } catch {
-      toast.error('Could not create booking. Please try again.');
-      return;
-    }
-
-    if (!refNumber) {
-      toast.error('Could not create booking. Please try again.');
-      return;
-    }
-
     const params = new URLSearchParams();
     if (checkIn) params.set('checkIn', checkIn);
     if (checkOut) params.set('checkOut', checkOut);
@@ -177,7 +152,6 @@ export default function PropertyDetailPage() {
     ));
     params.set('adults', String(guests.adults));
     params.set('children', String(guests.children));
-    if (refNumber) params.set('ref', refNumber);
     navigate('/booking-details/' + id + '?' + params.toString());
   };
 
@@ -276,7 +250,6 @@ export default function PropertyDetailPage() {
           currency={currency}
           capacityError={capacityError}
           user={user}
-          isCreating={isCreating}
         />
 
         <ReviewSection hotel={hotel} propertyId={id!} />

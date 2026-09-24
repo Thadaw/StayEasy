@@ -4,7 +4,6 @@ import {
   Search,
   ChevronDown,
   Eye,
-  X,
 } from "lucide-react"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
@@ -12,12 +11,13 @@ import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
 import { ExportButton } from "../components/ExportButton"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskGridSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { getPaymentGateways, getPaymentMethods, getPaymentStatuses } from "../../services/pmsApi"
 import { FrontDeskPagination } from "../components/FrontDeskPagination"
+import { BookingReceipt } from "../components/BookingReceipt"
 
 interface Booking {
   id: string
@@ -218,7 +218,6 @@ export default function FrontDeskPaymentsPage() {
   const transactions = transactionsData?.data ?? EMPTY_TRANSACTIONS
   const totalTransactions = transactionsData?.total ?? transactions.length
   const totalRefunds = transactions.filter((t) => t.type === "refund" || t.status === "refunded").length
-  const hasMore = transactionsData?.has_more ?? false
   const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE))
 
   const handleReset = () => {
@@ -446,7 +445,19 @@ export default function FrontDeskPaymentsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <FrontdeskRowSkeleton columns={7} />
+              <FrontdeskGridSkeleton
+                template="1.5fr 1.5fr 0.8fr 1fr 1fr 0.8fr 0.8fr"
+                header={["Transaction / Date", "Guest / Booking", "Room", "Method", "Amount", "Status", "Actions"]}
+                columns={[
+                  { kind: "title" },
+                  { kind: "title" },
+                  { kind: "text" },
+                  { kind: "tag" },
+                  { kind: "text", align: "right" },
+                  { kind: "badge" },
+                  { kind: "button", align: "right" },
+                ]}
+              />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
@@ -636,156 +647,16 @@ export default function FrontDeskPaymentsPage() {
     </div>
 
     {selectedTxn && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedTxn(null)}>
-        <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          {/* Header with amount */}
-          <div className="p-6 pb-4">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Transaction</p>
-                <h3 className="text-lg font-bold text-gray-900">{selectedTxn.reference_number}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{formatDate(selectedTxn.created_at)} at {formatTime(selectedTxn.created_at)}</p>
-              </div>
-              <button onClick={() => setSelectedTxn(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X size={18} className="text-gray-500" />
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <p className={`text-2xl font-bold ${selectedTxn.type === "refund" ? "text-red-600" : "text-green-600"}`}>
-                {selectedTxn.type === "refund" ? "− " : "+ "}{formatAmount(selectedTxn.amount)}
-              </p>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStatusStyle(selectedTxn.status)}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(selectedTxn.status)}`} />
-                {selectedTxn.status?.charAt(0).toUpperCase() + selectedTxn.status?.slice(1).toLowerCase()}
-              </span>
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                selectedTxn.type === "refund" ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
-              }`}>
-                {selectedTxn.type === "refund" ? "Refund" : "Payment"}
-              </span>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Guest Info */}
-          <div className="px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700">
-                {selectedTxn.guest_name?.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{selectedTxn.guest_name}</p>
-                <p className="text-xs text-gray-500">{selectedTxn.guest_email}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Payment Method & Gateway - prominent section */}
-          <div className="px-6 py-4">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3">Payment Method</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                <p className="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Method</p>
-                <p className="text-sm font-bold text-blue-900">{selectedTxn.payment_method}</p>
-              </div>
-              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-                <p className="text-[10px] text-purple-500 uppercase tracking-wider mb-1">Gateway</p>
-                <p className="text-sm font-bold text-purple-900">{selectedTxn.payment_gateway}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Booking Details */}
-          <div className="px-6 py-4">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3">Booking Details</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-amber-700">#</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">Booking Ref</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedTxn.booking_number}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-green-700">R</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">Room</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedTxn.room_number}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-blue-700">T</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">Type</p>
-                  <p className="text-sm font-semibold text-gray-900 capitalize">{selectedTxn.booking_type}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-purple-700">C</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">Check-in</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedTxn.checkin_date}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-orange-700">O</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">Check-out</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedTxn.checkout_date}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Financial Summary */}
-          <div className="px-6 py-4">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3">Financial Summary</p>
-            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium text-gray-900">{formatAmount(selectedTxn.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Total Amount</span>
-                <span className="font-medium text-gray-900">{formatAmount(selectedTxn.total_amount)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Amount Paid</span>
-                <span className="font-medium text-green-600">{formatAmount(selectedTxn.amount_paid)}</span>
-              </div>
-              {selectedTxn.amount_due > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Amount Due</span>
-                  <span className="font-medium text-red-600">{formatAmount(selectedTxn.amount_due)}</span>
-                </div>
-              )}
-              <div className="border-t border-gray-200 pt-2 mt-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-semibold text-gray-700">This Transaction</span>
-                  <span className={`text-sm font-bold ${selectedTxn.type === "refund" ? "text-red-600" : "text-green-600"}`}>
-                    {selectedTxn.type === "refund" ? "− " : "+ "}{formatAmount(selectedTxn.amount)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedTxn(null)}>
+        <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <BookingReceipt
+            bookingId={selectedTxn.booking_number || selectedTxn.id}
+            title="INVOICE"
+            printLabel="Print Receipt"
+            summaryTitle="Payment Summary"
+            onClose={() => setSelectedTxn(null)}
+            embedded
+          />
         </div>
       </div>
     )}

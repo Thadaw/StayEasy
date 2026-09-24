@@ -35,8 +35,6 @@ export function ConfirmButton({
     (selectedPayment === "khalti" && !khaltiPaymentIntentId) ||
     (selectedPayment === "esewa" && !esewaConfirmData)
 
-  const gatewayName = selectedPayment === "stripe" ? "Stripe" : selectedPayment === "khalti" ? "Khalti" : selectedPayment === "esewa" ? "eSewa" : selectedPayment === "arrival" ? "Pay at Arrival" : "Razorpay"
-
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <button
@@ -61,9 +59,11 @@ export function ConfirmButton({
           )
         )}
       </button>
-      <p className="text-center text-xs text-gray-400 mt-3">
-        {paymentLoading ? "Please do not close this page" : isArrival ? "No payment required now" : `Secure payment via ${gatewayName}`}
-      </p>
+      {paymentLoading || isArrival ? (
+        <p className="text-center text-xs text-gray-400 mt-3">
+          {paymentLoading ? "Please do not close this page" : "No payment required now"}
+        </p>
+      ) : null}
     </div>
   )
 }

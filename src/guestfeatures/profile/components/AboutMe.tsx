@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../../auth/AuthContext'
 import { useUserProfile } from '../hooks/useUserProfile'
-import { Camera, Pencil, Check, X, Star, Calendar, Shield, Mail, Phone, User, MapPin } from 'lucide-react'
+import { Camera, X, Star, Calendar, Shield, Mail, Phone, User, MapPin } from 'lucide-react'
 import { StatBadge } from '../../../shared/components/StatBadge'
 
 export default function AboutMe() {
@@ -13,14 +13,12 @@ export default function AboutMe() {
     fileInputRef, cameraInputRef,
   } = useUserProfile()
   const [editingProfile, setEditingProfile] = useState(false)
-  const [editingBio, setEditingBio] = useState(false)
-  const [aboutText, setAboutText] = useState(user?.aboutMe || '')
   const [saving, setSaving] = useState(false)
 
   const [editForm, setEditForm] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    fullName: user?.full_name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || '',
     phone: user?.phone || '',
+    nationality: user?.nationality || '',
   })
 
   const createdAt = (user as any)?.created_at || (user as any)?.createdAt
@@ -28,23 +26,11 @@ export default function AboutMe() {
     ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
     : 0
 
-  useEffect(() => {
-    setAboutText(user?.aboutMe || '')
-  }, [user?.aboutMe])
-
+  const fullNameFallback = user?.full_name || `${firstName} ${lastName}`.trim() || ''
   const handleSaveProfile = async () => {
     setSaving(true)
-    const first = editForm.firstName.trim()
-    const last = editForm.lastName.trim()
-    await updateProfile({ first_name: first || firstName, last_name: last || lastName, phone: editForm.phone })
+    await updateProfile({ full_name: editForm.fullName.trim() || fullNameFallback, phone: editForm.phone, nationality: editForm.nationality })
     setEditingProfile(false)
-    setSaving(false)
-  }
-
-  const handleSaveBio = async () => {
-    setSaving(true)
-    await updateProfile({ aboutMe: aboutText })
-    setEditingBio(false)
     setSaving(false)
   }
 
@@ -125,22 +111,14 @@ export default function AboutMe() {
                   <User size={15} className="text-brand-text-secondary shrink-0" />
                   <span className="w-16 text-brand-text-secondary">Name</span>
                   {editingProfile ? (
-                    <div className="flex gap-2 flex-1">
-                      <input
-                        value={editForm.firstName}
-                        onChange={e => setEditForm(prev => ({ ...prev, firstName: e.target.value }))}
-                        placeholder="First name"
-                        className="flex-1 px-3 py-1.5 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading"
-                      />
-                      <input
-                        value={editForm.lastName}
-                        onChange={e => setEditForm(prev => ({ ...prev, lastName: e.target.value }))}
-                        placeholder="Last name"
-                        className="flex-1 px-3 py-1.5 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading"
-                      />
-                    </div>
+                    <input
+                      value={editForm.fullName}
+                      onChange={e => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
+                      placeholder="Full name"
+                      className="flex-1 max-w-[280px] px-3 py-1.5 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading"
+                    />
                   ) : (
-                    <span className="text-brand-heading font-medium">{user?.full_name || firstName} {lastName}</span>
+                    <span className="text-brand-heading font-medium">{user?.full_name || `${firstName} ${lastName}`.trim()}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-sm">
@@ -165,7 +143,16 @@ export default function AboutMe() {
                 <div className="flex items-center gap-3 text-sm">
                   <MapPin size={15} className="text-brand-text-secondary shrink-0" />
                   <span className="w-16 text-brand-text-secondary">Nationality</span>
-                  <span className="text-brand-heading">Nepali</span>
+                  {editingProfile ? (
+                    <input
+                      value={editForm.nationality}
+                      onChange={e => setEditForm(prev => ({ ...prev, nationality: e.target.value }))}
+                      placeholder="e.g. Nepali"
+                      className="flex-1 max-w-[220px] px-3 py-1.5 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading"
+                    />
+                  ) : (
+                    <span className="text-brand-heading">{user?.nationality || <span className="text-brand-placeholder italic">Not provided</span>}</span>
+                  )}
                 </div>
               </div>
 
@@ -173,7 +160,7 @@ export default function AboutMe() {
                 {editingProfile ? (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => { setEditingProfile(false); setEditForm({ firstName, lastName, phone: user?.phone || '' }) }}
+                      onClick={() => { setEditingProfile(false); setEditForm({ fullName: fullNameFallback, phone: user?.phone || '', nationality: user?.nationality || '' }) }}
                       className="px-5 py-2 text-sm font-semibold rounded-lg border border-brand-card-border bg-white text-brand-text-secondary hover:bg-brand-secondary-surface transition-colors cursor-pointer"
                     >
                       Cancel
@@ -188,7 +175,7 @@ export default function AboutMe() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => { setEditForm({ firstName, lastName, phone: user?.phone || '' }); setEditingProfile(true) }}
+                    onClick={() => { setEditForm({ fullName: fullNameFallback, phone: user?.phone || '', nationality: user?.nationality || '' }); setEditingProfile(true) }}
                     className="px-5 py-2 text-sm font-semibold rounded-lg border border-brand-card-border bg-white text-brand-heading hover:bg-brand-secondary-surface transition-colors cursor-pointer"
                   >
                     Edit Profile
@@ -197,62 +184,6 @@ export default function AboutMe() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border">
-          <div className="flex items-center gap-2">
-            <Pencil size={15} className="text-brand-text-secondary" />
-            <h2 className="text-base font-semibold text-brand-heading">About Me</h2>
-          </div>
-          {!editingBio && (
-            <button
-              onClick={() => { setAboutText(user?.aboutMe || ''); setEditingBio(true) }}
-              className="text-sm font-semibold border-none bg-transparent cursor-pointer text-brand-accent hover:text-brand-accent-hover transition-colors"
-            >
-              {user?.aboutMe ? 'Edit' : 'Add bio'}
-            </button>
-          )}
-        </div>
-        <div className="px-4 sm:px-6 py-4 sm:py-5">
-          {editingBio ? (
-            <div>
-              <textarea
-                value={aboutText}
-                onChange={e => setAboutText(e.target.value)}
-                placeholder="Tell guests about yourself..."
-                maxLength={500}
-                className="w-full min-h-[120px] px-4 py-3 text-sm border border-brand-card-border rounded-lg outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent text-brand-heading resize-y"
-              />
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-xs text-brand-placeholder">{aboutText.length}/500</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setEditingBio(false); setAboutText(user?.aboutMe || '') }}
-                    className="px-4 py-2 text-sm font-semibold rounded-lg border border-brand-card-border bg-white text-brand-text-secondary hover:bg-brand-secondary-surface transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <X size={14} /> Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveBio}
-                    disabled={saving}
-                    className="px-4 py-2 text-sm font-semibold rounded-lg border-none text-white bg-brand-accent hover:bg-brand-accent-hover transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Check size={14} /> {saving ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div>
-              {user?.aboutMe ? (
-                <p className="text-sm text-brand-heading leading-relaxed whitespace-pre-wrap">{user.aboutMe}</p>
-              ) : (
-                <p className="text-sm text-brand-placeholder italic">No bio added yet. Share a bit about yourself.</p>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

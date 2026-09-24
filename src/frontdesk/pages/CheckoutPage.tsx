@@ -95,14 +95,12 @@ export default function CheckoutPage() {
     resolver: zodResolver(checkoutPaymentSchema) as any,
     defaultValues: {
       paymentGateway: "CASH",
-      discount: "",
       paymentAmount: "",
       roomStatus: "needs_cleaning",
     },
   })
 
   const watchedPaymentGateway = watch("paymentGateway")
-  const watchedDiscount = watch("discount")
   const watchedPaymentAmount = watch("paymentAmount")
   const watchedRoomStatus = watch("roomStatus")
 
@@ -158,11 +156,11 @@ export default function CheckoutPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const checkOutMutation = useMutation({
-    mutationFn: async ({ refNumber, paymentAmount, paymentGateway, discount }: { refNumber: string; paymentAmount: number; paymentGateway: string; discount: number }) => {
+    mutationFn: async ({ refNumber, paymentAmount, paymentGateway }: { refNumber: string; paymentAmount: number; paymentGateway: string }) => {
       await checkOutGuest(refNumber, paymentAmount, paymentGateway)
-      return { refNumber, paymentAmount, paymentGateway, discount }
+      return { refNumber, paymentAmount, paymentGateway }
     },
-    onSuccess: async (_data, { refNumber, paymentAmount, paymentGateway, discount }) => {
+    onSuccess: async (_data, { refNumber, paymentAmount, paymentGateway }) => {
       checkOut(id || "")
       setIsCheckedOut(true)
       setCheckoutError(null)
@@ -177,7 +175,7 @@ export default function CheckoutPage() {
             `/staff/properties/${currentPropertyId}/bookings/${refNumber}/folio`,
             {
               tax: "0.00",
-              discount: String(discount || "0.00"),
+              discount: "0.00",
               payment_amount: String(paymentAmount),
               payment_method: paymentGateway || "CASH",
               idempotency_key: crypto.randomUUID(),
@@ -282,13 +280,11 @@ export default function CheckoutPage() {
 
   const onFormSubmit = (data: CheckoutPaymentFormData) => {
     const paymentAmount = Number(data.paymentAmount) || 0
-    const discount = Number(data.discount) || 0
-    const amount = paymentAmount > 0 ? paymentAmount : Math.max(0, remainingBalance - discount)
+    const amount = paymentAmount > 0 ? paymentAmount : Math.max(0, remainingBalance)
     checkOutMutation.mutate({
       refNumber: booking.ref_number,
       paymentAmount: amount,
       paymentGateway: data.paymentGateway,
-      discount,
     })
   }
 
@@ -539,41 +535,21 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField label="Payment Gateway" error={errors.paymentGateway?.message} required htmlFor="paymentGateway">
-                  <select
-                    id="paymentGateway"
-                    {...register("paymentGateway")}
-                    value={watchedPaymentGateway}
-                    onChange={(e) => setValue("paymentGateway", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="CASH">Cash</option>
-                    <option value="KHALTI">Khalti</option>
-                    <option value="STRIPE">Stripe</option>
-                    <option value="ESWA">eSewa</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                  </select>
-                </FormField>
-
-                <FormField label="Discount" error={errors.discount?.message} htmlFor="discount">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currency}</span>
-                    <input
-                      type="number"
-                      id="discount"
-                      {...register("discount")}
-                      min="0"
-                      max={remainingBalance}
-                      step="0.01"
-                      value={watchedDiscount}
-                      onChange={(e) => setValue("discount", e.target.value)}
-                      placeholder="0.00"
-                      className="w-full pl-12 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </FormField>
-              </div>
+              <FormField label="Payment Gateway" error={errors.paymentGateway?.message} required htmlFor="paymentGateway">
+                <select
+                  id="paymentGateway"
+                  {...register("paymentGateway")}
+                  value={watchedPaymentGateway}
+                  onChange={(e) => setValue("paymentGateway", e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="KHALTI">Khalti</option>
+                  <option value="STRIPE">Stripe</option>
+                  <option value="ESWA">eSewa</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                </select>
+              </FormField>
 
               {remainingBalance > 0 && (
               <FormField label="Amount" error={errors.paymentAmount?.message} required={remainingBalance > 0} htmlFor="paymentAmount">
@@ -584,28 +560,15 @@ export default function CheckoutPage() {
                     id="paymentAmount"
                     {...register("paymentAmount")}
                     min="0"
-                    max={remainingBalance - Number(watchedDiscount || 0)}
+                    max={remainingBalance}
                     step="0.01"
                     value={watchedPaymentAmount}
                     onChange={(e) => setValue("paymentAmount", e.target.value)}
-                    placeholder={String(Math.max(0, remainingBalance - Number(watchedDiscount || 0)))}
+                    placeholder={String(Math.max(0, remainingBalance))}
                     className="w-full pl-12 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </FormField>
-              )}
-
-              {Number(watchedDiscount) > 0 && (
-                <div className="bg-green-50 rounded-lg p-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Discount Applied</span>
-                    <span className="font-semibold text-green-600">-{formatAmount(Number(watchedDiscount))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="font-semibold text-gray-900">Final Amount</span>
-                    <span className="font-bold text-gray-900">{formatAmount(Math.max(0, remainingBalance - Number(watchedDiscount)))}</span>
-                  </div>
-                </div>
               )}
             </div>
           </div>

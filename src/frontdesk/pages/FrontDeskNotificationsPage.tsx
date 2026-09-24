@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskItemSkeleton } from "../components/FrontdeskTableSkeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -203,7 +203,7 @@ export default function FrontDeskNotificationsPage() {
           {/* Notifications List */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <FrontdeskRowSkeleton rows={6} columns={4} />
+              <FrontdeskItemSkeleton rows={6} trailing="chevron" />
             ) : isError ? (
               <div className="text-center py-16">
                 <Bell size={48} className="mx-auto text-gray-300 mb-4" />

@@ -7,7 +7,7 @@ import {
 import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskGridSkeleton } from "../components/FrontdeskTableSkeleton"
 import { useQuery } from "@tanstack/react-query"
 import api from "../../services/axios"
 import { usePropertyCurrency } from "../hooks/usePropertyCurrency"
@@ -337,7 +337,17 @@ export default function FrontDeskGuestsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <FrontdeskRowSkeleton columns={5} />
+              <FrontdeskGridSkeleton
+                template="2fr 1.2fr 0.8fr 1.5fr 1.2fr"
+                header={["Guest Profile", "Stays & Recency", "Total Spent", "Preferences & Stay Notes", "Current Status"]}
+                columns={[
+                  { kind: "avatar" },
+                  { kind: "title" },
+                  { kind: "text" },
+                  { kind: "text" },
+                  { kind: "badge" },
+                ]}
+              />
             ) : isError ? (
               <div className="text-center py-16">
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">
