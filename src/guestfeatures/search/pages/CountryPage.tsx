@@ -263,11 +263,16 @@ export default function CountryPage() {
             {loading ? (
               [1, 2, 3, 4].map((i) => (
                 <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
-                  <div className="h-[180px] bg-gray-200" />
-                  <div className="px-4 py-3 space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-3/4" />
-                    <div className="h-2 bg-gray-200 rounded w-1/2" />
-                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                  <div className="relative h-[180px] bg-gray-200">
+                    {/* property type badge */}
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/70 rounded-full h-3.5 w-10" />
+                    {/* favourite (star) button */}
+                    <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/70" />
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-1.5" />
+                    <div className="h-2.5 bg-gray-200 rounded w-1/2 mb-2" />
+                    <div className="h-3.5 bg-gray-200 rounded w-2/3" />
                   </div>
                 </div>
               ))

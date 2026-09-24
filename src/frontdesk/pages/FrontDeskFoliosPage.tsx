@@ -21,7 +21,7 @@ import {
 import toast from "react-hot-toast"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ExportButton } from "../components/ExportButton"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskItemSkeleton } from "../components/FrontdeskTableSkeleton"
 import { Skeleton } from "../../shared/ui/Skeleton"
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -934,7 +934,7 @@ export default function FrontDeskFoliosPage() {
                 </div>
                 <div className="overflow-y-auto">
                   {isLoading ? (
-                    <FrontdeskRowSkeleton rows={6} columns={4} />
+                    <FrontdeskItemSkeleton rows={6} iconClass="h-11 w-11 rounded-full" trailing="amount" />
                   ) : (
                     <>
                       {filteredFolios.map((folio) => (

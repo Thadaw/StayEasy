@@ -29,7 +29,7 @@ export default function Login() {
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(true)
+  const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

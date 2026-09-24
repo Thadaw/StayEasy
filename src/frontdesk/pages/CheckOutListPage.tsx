@@ -105,7 +105,10 @@ export default function CheckOutListPage() {
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {isLoading ? (
-              <FrontdeskTableSkeleton columns={7} />
+              <FrontdeskTableSkeleton
+                columns={7}
+                headerLabels={["Guest", "Room", "Stay", "Guests", "Balance", "Status", "Action"]}
+              />
             ) : isError ? (
               <div className="p-8 text-center text-red-500 text-sm">
                 Failed to load departures. Please try again later.

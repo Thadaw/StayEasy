@@ -25,7 +25,7 @@ import { usePropertyStore } from "../../stores/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ResetButton } from "../components/ResetButton"
 import { ExportButton } from "../components/ExportButton"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskGridSkeleton } from "../components/FrontdeskTableSkeleton"
 import { useBookingCheckInStore } from "../stores/bookingCheckInStore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
@@ -752,7 +752,20 @@ export default function FrontdeskBookingsPage() {
             </div>
 
             {isLoading ? (
-              <FrontdeskRowSkeleton columns={8} />
+              <FrontdeskGridSkeleton
+                template="2fr 1.5fr 1.2fr 1fr 0.8fr 1fr 0.8fr 0.8fr"
+                header={["Guest", "Stay", "Room", "Booking ID", "Type", "Payment", "Status", "Action"]}
+                columns={[
+                  { kind: "avatar" },
+                  { kind: "title" },
+                  { kind: "lines" },
+                  { kind: "text" },
+                  { kind: "badge" },
+                  { kind: "badge" },
+                  { kind: "badge" },
+                  { kind: "button", align: "right" },
+                ]}
+              />
             ) : isBookingsError ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">

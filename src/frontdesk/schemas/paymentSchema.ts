@@ -2,7 +2,6 @@ import { z } from "zod"
 
 export const checkoutPaymentSchema = z.object({
   paymentGateway: z.string().min(1, "Payment method is required"),
-  discount: z.string().optional(),
   paymentAmount: z.string().optional(),
   roomStatus: z.string().default("needs_cleaning"),
 })

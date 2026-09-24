@@ -131,7 +131,11 @@ export default function InHousePage() {
 
             {/* Content */}
             {isLoading ? (
-              <FrontdeskTableSkeleton columns={9} />
+              <FrontdeskTableSkeleton
+                  columns={9}
+                  headerLabels={["Guest", "Email", "Phone", "Check-in", "Check-out", "Nights", "Ref", "Status", "Action"]}
+                  centerColumns={[7, 8]}
+                />
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

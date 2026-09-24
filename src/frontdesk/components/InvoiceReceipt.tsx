@@ -55,6 +55,7 @@ export interface InvoiceReceiptProps {
   footerSubMessage?: string
   onPrint?: () => void
   onClose?: () => void
+  embedded?: boolean
 }
 
 export function InvoiceReceipt({
@@ -75,6 +76,7 @@ export function InvoiceReceipt({
   footerSubMessage = "We hope to see you again soon.",
   onPrint,
   onClose,
+  embedded = false,
 }: InvoiceReceiptProps) {
   const { formatAmount } = usePropertyCurrency()
 
@@ -94,26 +96,8 @@ export function InvoiceReceipt({
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="print:hidden flex justify-center gap-3 py-4">
-        <button
-          onClick={handlePrint}
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <Printer size={16} />
-          {printLabel}
-        </button>
-        <button
-          onClick={handleClose}
-          className="px-3 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-6 pb-10">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8" id="receipt-content">
+  const receiptCard = (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8" id="receipt-content">
           {/* Header */}
           <div className="flex items-start justify-between mb-8">
             <div className="flex items-center gap-2">
@@ -264,8 +248,48 @@ export function InvoiceReceipt({
             <p className="font-bold text-gray-900 text-sm">{footerMessage}</p>
             <p className="text-sm text-gray-500">{footerSubMessage}</p>
           </div>
-        </div>
+    </div>
+  )
+
+  const actionButtons = (
+    <>
+      <button
+        onClick={handlePrint}
+        className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+      >
+        <Printer size={16} />
+        {printLabel}
+      </button>
+      <button
+        onClick={handleClose}
+        className="px-3 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+      >
+        <X size={16} />
+      </button>
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="bg-gray-50 rounded-2xl">
+        <style>{`
+          @media print {
+            body * { visibility: hidden !important; }
+            #receipt-content, #receipt-content * { visibility: visible !important; }
+            #receipt-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; border-radius: 0 !important; }
+          }
+        `}</style>
+        <div className="print:hidden flex justify-end gap-3 p-4">{actionButtons}</div>
+        <div className="max-w-2xl mx-auto px-6 pb-8">{receiptCard}</div>
       </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="print:hidden flex justify-center gap-3 py-4">{actionButtons}</div>
+
+      <div className="max-w-2xl mx-auto px-6 pb-10">{receiptCard}</div>
     </div>
   )
 }

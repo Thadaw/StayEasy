@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom"
 import { ChevronRight, Star, ArrowLeft, BedDouble, Phone, Mail } from "lucide-react"
 import type { RoomType } from "../../../data/hotels"
@@ -18,6 +18,7 @@ import { getDefaultDates } from "../../../shared/utils/date"
 import { allCountries } from "../../../data/countries"
 import { calculateNights } from "../../../shared/utils/time"
 import api from "../../../services/axios"
+import toast from "react-hot-toast"
 
 const HOTEL_IMAGE_HEIGHT = "h-44 sm:h-56"
 const MAX_AMENITIES_DISPLAY = 5
@@ -43,6 +44,9 @@ export default function BookingDetailsPage() {
   }
 
   const [refNumber, setRefNumber] = useState(refParam)
+  const [creatingBooking, setCreatingBooking] = useState(false)
+  const [creationError, setCreationError] = useState("")
+  const creationStartedRef = useRef(false)
   const selectedRooms: Record<string, number> = parseJSON(roomsParam, {})
   const guestAllocation: Record<string, number> = parseJSON(guestCountsParam, {})
 
@@ -68,7 +72,11 @@ export default function BookingDetailsPage() {
     ? { adults: bookingData.number_of_adults || 0, children: bookingData.number_of_children || 0 }
     : null
 
-  const loading = (refNumber ? bookingLoading : false) || propertyLoading
+  // Keep the skeleton up until the reservation actually exists (ref received
+  // and its data loaded) — or until creation fails, so we never render the
+  // guest form against a half-created booking.
+  const awaitingCreation = !!id && !refNumber && !creationError
+  const loading = creatingBooking || awaitingCreation || (refNumber ? bookingLoading : false) || propertyLoading
 
   const totalGuests = (bookingGuests ? bookingGuests.adults + bookingGuests.children : null)
     || Object.values(guestAllocation).reduce((s, c) => s + c, 0)
@@ -120,7 +128,7 @@ export default function BookingDetailsPage() {
   const { createBooking } = useBookingCreation()
 
   useEffect(() => {
-    if (!id || refNumber) return
+    if (!id || refNumber || creationStartedRef.current) return
     const { today, tomorrow } = getDefaultDates()
     const rooms: Record<string, number> = parseJSON(roomsParam, {})
     const roomIds = Object.entries(rooms)
@@ -128,6 +136,14 @@ export default function BookingDetailsPage() {
       .flatMap(([roomId, qty]) => Array(qty).fill(roomId))
     const adults = bookingParams.adults
     const children = bookingParams.children
+    if (roomIds.length === 0) {
+      setCreationError("No rooms selected. Please go back and choose a room to reserve.")
+      toast.error("No rooms selected. Please go back and choose a room to reserve.")
+      return
+    }
+    creationStartedRef.current = true
+    setCreatingBooking(true)
+    setCreationError("")
     createBooking({
       property_id: id,
       room_ids: roomIds,
@@ -138,7 +154,11 @@ export default function BookingDetailsPage() {
     }).then(ref => {
       if (ref) setRefNumber(ref)
     }).catch(() => {
-      // error handled by hook
+      creationStartedRef.current = false
+      setCreationError("Could not create your reservation. Please go back and try again.")
+      toast.error("Could not create your reservation. Please go back and try again.")
+    }).finally(() => {
+      setCreatingBooking(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, refNumber, roomsParam, checkIn, checkOut])
@@ -204,6 +224,10 @@ export default function BookingDetailsPage() {
   const total = bookingData?.total_amount || subtotal
 
   const handleNext = async () => {
+    if (!refNumber) {
+      toast.error("Your reservation is still being created. Please wait a moment.")
+      return
+    }
     if (specialRequest.trim() && refNumber) {
       try {
         await api.patch(`/bookings/${refNumber}/special-requests`, {
@@ -473,11 +497,21 @@ export default function BookingDetailsPage() {
 
             <button
               onClick={handleNext}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
+              disabled={creatingBooking || !refNumber}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#1A3C5E]"
             >
-              Next: Final details
-              <ChevronRight size={16} />
+              {creatingBooking ? (
+                "Creating your reservation…"
+              ) : (
+                <>
+                  Next: Final details
+                  <ChevronRight size={16} />
+                </>
+              )}
             </button>
+            {creationError && (
+              <p className="text-xs text-red-500 mt-2 text-center">{creationError}</p>
+            )}
             <p className="text-center text-xs text-gray-400 mt-2">
               Don't worry — you won't be charged yet
             </p>

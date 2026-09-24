@@ -9,7 +9,7 @@ import {
 import * as XLSX from "xlsx"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "../components/FrontDeskSidebar"
 import { ExportButton } from "../components/ExportButton"
-import { FrontdeskRowSkeleton } from "../components/FrontdeskTableSkeleton"
+import { FrontdeskGridSkeleton } from "../components/FrontdeskTableSkeleton"
 
 import { usePropertyStore } from "../../stores/propertyStore"
 import { useQuery } from "@tanstack/react-query"
@@ -220,7 +220,18 @@ export default function FrontDeskActivitiesPage() {
           </div>
 
           {isLoading ? (
-            <FrontdeskRowSkeleton rows={6} columns={5} />
+            <FrontdeskGridSkeleton
+              rows={6}
+              template="1.5fr 1fr 1.5fr 1fr 0.7fr"
+              header={["Booking / Activity", "Type", "Description", "Staff", "Time"]}
+              columns={[
+                { kind: "title" },
+                { kind: "tag" },
+                { kind: "text" },
+                { kind: "avatar" },
+                { kind: "text", align: "right" },
+              ]}
+            />
           ) : isError ? (
             <div className="text-center py-16">
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 inline-block">

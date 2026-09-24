@@ -28,6 +28,9 @@ import { parseJSON } from "../../../shared/utils/helpers"
 import { calculateNights } from "../../../shared/utils/time"
 import api from "../../../services/axios"
 import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "../hooks/useBookingQueries"
+import { useBookingCreation } from "../hooks/useBookingCreation"
+import { useSoftLockCountdown } from "../hooks/useSoftLockCountdown"
+import { HoldCountdownBanner } from "../components/HoldCountdownBanner"
 import { promoCodeSchema, type PromoCodeFormData } from "../schemas/bookingSchemas"
 import type { PaymentMethod } from "../types"
 
@@ -142,6 +145,52 @@ export default function ReservePage() {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan>("full")
   const [khaltiCompleted, setKhaltiCompleted] = useState(false)
 
+  const { createBooking, isCreating } = useBookingCreation()
+
+  const countdown = useSoftLockCountdown({
+    expiresAt: booking?.soft_lock_expires_at,
+    createdAt: booking?.created_at,
+    status: booking?.status,
+  })
+  const expired = countdown.expired
+
+  // Re-creates the reservation (fresh 10-min hold) and lands back on the same
+  // payment page so the guest only re-confirms payment — without re-entering
+  // any guest details (Plan A).
+  const handleReserveAgain = async () => {
+    if (!booking || !booking.property?.id || !booking.rooms?.length) return
+    try {
+      const guestNameParam = searchParams.get('guestName')
+      const guestEmailParam = searchParams.get('guestEmail')
+      const guestPhoneParam = searchParams.get('guestPhone')
+      const newRef = await createBooking({
+        property_id: booking.property.id,
+        room_ids: booking.rooms.map(r => r.room_id),
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        adults: bookingAdults,
+        children: bookingChildren,
+        ...(guestNameParam ? { guest_full_name: guestNameParam } : {}),
+        ...(guestEmailParam ? { guest_email: guestEmailParam } : {}),
+        ...(guestPhoneParam ? { guest_phone: guestPhoneParam } : {}),
+      })
+      if (!newRef) {
+        toast.error('Could not start a new reservation. Please try again.')
+        return
+      }
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('ref', newRef)
+      navigate(`/reserve/${booking.property.id}?${params.toString()}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not start a new reservation.'
+      if (/no rooms|unavailable|allocation/i.test(msg)) {
+        toast.error('Rooms are no longer available. Please search again.')
+      } else {
+        toast.error(msg)
+      }
+    }
+  }
+
   const { isLoaded: razorpayLoaded, error: razorpaySdkError } = useRazorpay(selectedPayment === "razorpay")
 
   // Surface checkout.js load failures (e.g. blocked by CSP/network) instead of
@@ -168,8 +217,8 @@ export default function ReservePage() {
   }, [booking])
 
   const total = booking?.total_amount ?? 0
-  const minAdvancePct = booking?.min_advance_percentage ?? 10
-  const maxAdvancePct = booking?.max_advance_percentage ?? 50
+  const minAdvancePct = Math.max(30, Math.round(booking?.min_advance_percentage ?? 10))
+  const maxAdvancePct = Math.min(100, Math.max(50, Math.round(booking?.max_advance_percentage ?? 100)))
   const allowAdvance = (booking?.min_advance_amount != null && booking.min_advance_amount > 0) || (booking?.advance_payment_percentage != null && booking.advance_payment_percentage > 0)
   // Default advance %: the server-stored advance expressed as a percentage,
   // otherwise the preferred 30% — always clamped into the property's allowed
@@ -203,7 +252,7 @@ export default function ReservePage() {
   }, [allowAdvance, paymentPlan])
 
   useEffect(() => {
-    if (selectedPayment !== "razorpay") return
+    if (expired || selectedPayment !== "razorpay") return
     if (!refNumber) {
       setRazorpayState(prev => ({ ...prev, loading: false, error: "Missing booking reference — unable to start Razorpay checkout. Please reload the page." }))
       return
@@ -239,7 +288,7 @@ export default function ReservePage() {
     }
     createOrder()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, razorpayRetryCount, advanceAmount])
+  }, [selectedPayment, refNumber, razorpayRetryCount, advanceAmount, expired])
 
   const handleRazorpayPaymentRef = useRef<(options?: RazorpayPayOptions) => void>(() => {})
 
@@ -254,7 +303,7 @@ export default function ReservePage() {
   }, [selectedPayment, razorpayOpenRequests, razorpayLoaded, razorpayState.orderId, razorpayState.response, razorpayState.loading])
 
   useEffect(() => {
-    if (selectedPayment !== "stripe" || !refNumber) return
+    if (expired || selectedPayment !== "stripe" || !refNumber) return
     if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
       setStripeState(prev => ({ ...prev, loading: false, error: "Stripe key missing: set VITE_STRIPE_PUBLISHABLE_KEY in my-react-app/.env and restart the dev server." }))
       return
@@ -283,10 +332,10 @@ export default function ReservePage() {
     }
     createStripeIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, stripeRetryCount, advanceAmount, paymentPlan])
+  }, [selectedPayment, refNumber, stripeRetryCount, advanceAmount, paymentPlan, expired])
 
   useEffect(() => {
-    if (selectedPayment !== "khalti" || !refNumber) return
+    if (expired || selectedPayment !== "khalti" || !refNumber) return
     if (khaltiState.paymentIntentId) return
     let cancelled = false
     const createKhaltiIntent = async () => {
@@ -323,7 +372,7 @@ export default function ReservePage() {
     }
     createKhaltiIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId, khaltiRetryCount, advanceAmount])
+  }, [selectedPayment, refNumber, id, khaltiState.paymentIntentId, khaltiRetryCount, advanceAmount, expired])
 
   useEffect(() => {
     const rawQuery = window.location.search
@@ -525,7 +574,7 @@ export default function ReservePage() {
   }
 
   useEffect(() => {
-    if (selectedPayment !== "esewa" || !refNumber) return
+    if (expired || selectedPayment !== "esewa" || !refNumber) return
     if (esewaState.paymentIntentId || esewaConfirmData) return
     if (searchParams.get('data') || searchParams.get('esewa_status')) return
     let cancelled = false
@@ -579,9 +628,10 @@ export default function ReservePage() {
     }
     createEsewaIntent()
     return () => { cancelled = true }
-  }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaConfirmData, esewaRetryCount, advanceAmount])
+  }, [selectedPayment, refNumber, id, esewaState.paymentIntentId, esewaConfirmData, esewaRetryCount, advanceAmount, expired])
 
   const handleRazorpayPayment = async (options?: RazorpayPayOptions) => {
+    if (expired) { setRazorpayCheckoutOpening(false); toast.error("Your reservation hold has expired. Please reserve again."); return }
     if (!razorpayState.orderId) { setRazorpayCheckoutOpening(false); toast.error("Razorpay not ready"); return }
     if (!window.Razorpay) { setRazorpayCheckoutOpening(false); toast.error("Razorpay is still loading. Please try again in a moment."); return }
     if (razorpayModalOpenRef.current) { setRazorpayCheckoutOpening(false); return }
@@ -641,6 +691,10 @@ export default function ReservePage() {
   handleRazorpayPaymentRef.current = handleRazorpayPayment
 
   const handleConfirmBooking = async () => {
+    if (expired) {
+      toast.error("Your reservation hold has expired. Please reserve again.")
+      return
+    }
     if (!selectedPayment || confirmingBooking) return
 
     if (selectedPayment === "stripe" && !stripeState.paymentIntentId) {
@@ -887,7 +941,23 @@ export default function ReservePage() {
         }
         rightColumn={
           <>
-            <PaymentSection
+            <HoldCountdownBanner
+              expiresAt={booking?.soft_lock_expires_at}
+              createdAt={booking?.created_at}
+              status={booking?.status}
+              canReserveAgain={!!(booking?.rooms?.length && booking?.property?.id)}
+              reserving={isCreating}
+              onReserveAgain={handleReserveAgain}
+            />
+            {expired ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center">
+                <p className="text-sm font-medium text-gray-600">
+                  Payment is unavailable while the hold is expired. Use "Reserve again" above to start a fresh reservation.
+                </p>
+              </div>
+            ) : (
+              <>
+              <PaymentSection
               total={total}
               currency={currency}
               advancePercentage={advancePercentage}
@@ -983,6 +1053,8 @@ export default function ReservePage() {
               onSetMarketingOptIn={setMarketingOptIn}
               onConfirm={handleConfirmBooking}
             />
+              </>
+            )}
           </>
         }
       />
