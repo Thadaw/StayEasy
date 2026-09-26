@@ -4,77 +4,21 @@ import { useTranslation } from "react-i18next";
 import { SearchBar } from "../../../shared/components/SearchBar";
 import { heroHotels } from "../../../data/heroHotels";
 import { useNearbyProperties } from "../../search/hooks/useNearbyProperties";
+import { useLocation } from "../../../context/LocationContext";
 import { HeroCard } from "../../../shared/components/HeroCard";
 
 export function HeroSection() {
   const { t } = useTranslation();
-  const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-  const [locationDenied, setLocationDenied] = useState(() => localStorage.getItem("locationDenied") === "true");
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { shouldPrompt, isRequesting, requestLocation, dismissPrompt } = useLocation();
 
-  const { data: nearbyData = [] } = useNearbyProperties(3);
+  const { properties: nearbyData = [] } = useNearbyProperties(3);
 
   const nearbyProperties = nearbyData
     .filter((p) => p.lowest_rate != null)
     .sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity))
     .slice(0, 3);
-
-  useEffect(() => {
-    const hasSeenPopup = localStorage.getItem("locationPopupSeen");
-    const isDenied = localStorage.getItem("locationDenied") === "true";
-    if (!hasSeenPopup || isDenied) {
-      setShowLocationPopup(true);
-    }
-  }, []);
-
-  const handleAllowLocation = async () => {
-    if (navigator.geolocation) {
-      if (navigator.permissions && navigator.permissions.query) {
-        try {
-          const status = await navigator.permissions.query({ name: "geolocation" });
-          if (status.state === "granted") {
-            localStorage.removeItem("locationDenied");
-            localStorage.setItem("locationPopupSeen", "true");
-            setShowLocationPopup(false);
-            window.location.reload();
-            return;
-          }
-        } catch {
-          // fall through to getCurrentPosition
-        }
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          localStorage.setItem("nearbyLocation", `Nearby (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`);
-          localStorage.removeItem("locationDenied");
-          localStorage.setItem("locationPopupSeen", "true");
-          setShowLocationPopup(false);
-          window.location.reload();
-        },
-        () => {
-          localStorage.setItem("nearbyLocation", "Nearby");
-          localStorage.setItem("locationDenied", "true");
-          setLocationDenied(true);
-          localStorage.setItem("locationPopupSeen", "true");
-          setShowLocationPopup(false);
-        },
-        { timeout: 15000 }
-      );
-    } else {
-      localStorage.setItem("nearbyLocation", "Nearby");
-      localStorage.setItem("locationDenied", "true");
-      setLocationDenied(true);
-      localStorage.setItem("locationPopupSeen", "true");
-      setShowLocationPopup(false);
-    }
-  };
-
-  const handleSkipLocation = () => {
-    localStorage.setItem("locationPopupSeen", "true");
-    setShowLocationPopup(false);
-  };
 
   const handleCardEnter = (index: number) => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -113,7 +57,7 @@ export function HeroSection() {
   };
 
   const heroCardData = nearbyProperties.length > 0
-    ? nearbyProperties.slice(0, 3).map((p) => ({
+    ? nearbyProperties.map((p) => ({
         id: p.property_id,
         name: p.name,
         city: p.city || "",
@@ -181,7 +125,6 @@ export function HeroSection() {
           </div>
         </div>
 
-        {!locationDenied && (
         <div
           className="hidden lg:flex relative w-[380px] h-[340px] xl:w-[480px] xl:h-[430px] shrink-0 items-center justify-center mx-auto"
         >
@@ -279,14 +222,13 @@ export function HeroSection() {
             )}
           </div>
         </div>
-        )}
       </div>
 
-      {showLocationPopup && (
+      {shouldPrompt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in">
             <button
-              onClick={handleSkipLocation}
+              onClick={dismissPrompt}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
             >
               <X size={16} className="text-gray-600" />
@@ -296,24 +238,25 @@ export function HeroSection() {
                 <MapPin size={28} className="text-brand-accent" />
               </div>
               <h3 className="text-lg font-bold mb-2" style={{ color: "var(--brand-heading)" }}>
-                Find stays nearby
+                {t("nearbyPromptTitle")}
               </h3>
               <p className="text-sm mb-6" style={{ color: "var(--brand-text-secondary)" }}>
-                Allow location access to discover properties close to you automatically.
+                {t("nearbyPromptBody")}
               </p>
               <div className="flex gap-3 w-full">
                 <button
-                  onClick={handleSkipLocation}
+                  onClick={dismissPrompt}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition-colors"
                   style={{ color: "var(--brand-heading)" }}
                 >
-                  Skip
+                  {t("skip")}
                 </button>
                 <button
-                  onClick={handleAllowLocation}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-accent hover:bg-brand-accent-hover transition-colors"
+                  onClick={requestLocation}
+                  disabled={isRequesting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-accent hover:bg-brand-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Allow location
+                  {isRequesting ? t("locating") : t("allowLocation")}
                 </button>
               </div>
             </div>

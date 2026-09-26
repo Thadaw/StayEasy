@@ -10,6 +10,8 @@ interface HeroCardData {
   price: number;
   currency: string;
   image: string;
+  /** Distance from the visitor, in km. Only set for real nearby properties. */
+  distance?: number;
 }
 
 interface HeroCardProps {
@@ -42,6 +44,12 @@ export function HeroCard({
   const location = data.city ? `${data.city}, ${data.country}` : fallbackLocation;
   const price = data.price || fallbackPrice;
   const liked = isFavorite(data.id);
+  const distanceLabel =
+    typeof data.distance === "number" && Number.isFinite(data.distance)
+      ? data.distance < 1
+        ? `${Math.round(data.distance * 1000)} m away`
+        : `${data.distance.toFixed(1)} km away`
+      : null;
 
   return (
     <div
@@ -86,6 +94,7 @@ export function HeroCard({
         <h3 className="text-[11px] xl:text-[13px] font-bold leading-tight line-clamp-1 text-brand-heading">{name}</h3>
         <p className="text-[9px] xl:text-[10px] flex items-center gap-0.5 mb-1 text-brand-text-secondary">
           <MapPin size={9} /> {location}
+          {distanceLabel && <span className="ml-1 text-brand-accent font-semibold">· {distanceLabel}</span>}
         </p>
         <p className="text-xs xl:text-[13px] font-bold leading-tight text-right text-brand-heading">
           <span className="text-[9px] font-medium text-brand-text-secondary">Starting from </span>

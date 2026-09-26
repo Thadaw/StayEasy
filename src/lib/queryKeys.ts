@@ -40,3 +40,30 @@ export const bookingKeys = {
   byProperty: (propertyId: string) => ['bookings', propertyId] as const,
   detail: (refNumber: string) => ['bookings', 'detail', refNumber] as const,
 }
+
+export interface NearbyKeyParams {
+  lat: number
+  lng: number
+  checkIn: string
+  checkOut: string
+  adults: number
+  children: number
+  rooms: number
+}
+
+// The coordinates are part of the key on purpose: a visitor who moves city must
+// not keep reading the previous cache entry for an hour.
+export const nearbyKeys = {
+  all: ['nearbyProperties'] as const,
+  list: (p: NearbyKeyParams) =>
+    [
+      'nearbyProperties',
+      p.lat,
+      p.lng,
+      p.checkIn,
+      p.checkOut,
+      p.adults,
+      p.children,
+      p.rooms,
+    ] as const,
+}

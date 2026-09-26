@@ -47,16 +47,22 @@ export function PropertyCard({ property, showDistance }: PropertyCardProps) {
         <p className="text-[9px] md:text-[10px] flex items-center gap-0.5 mb-1 text-brand-text-secondary">
           <MapPin size={9} /> {location}
         </p>
-        {showDistance && property.distance_km != null ? (
-          <div className="flex items-end justify-between">
-            <span className="text-[9px] text-brand-text-secondary">{property.distance_km} km</span>
-            <div>
-              <p className="text-xs md:text-sm font-bold leading-tight text-brand-heading"><span className="text-[9px] font-medium text-brand-text-secondary">Starting from</span> {property.currency} {property.lowest_rate ?? property.total_price} <span className="text-[9px] font-normal text-brand-text-secondary">/ night</span></p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs md:text-sm font-bold leading-tight text-right text-brand-heading"><span className="text-[9px] font-medium text-brand-text-secondary">Starting from</span> {property.currency} {property.lowest_rate ?? property.total_price} <span className="text-[9px] font-normal text-brand-text-secondary">/ night</span></p>
-        )}
+        <div className="flex items-end justify-between gap-2">
+          {showDistance && property.distance_km != null ? (
+            <span className="text-[9px] font-medium text-brand-accent shrink-0">
+              {property.distance_km < 1
+                ? `${Math.round(property.distance_km * 1000)} m away`
+                : `${property.distance_km.toFixed(1)} km away`}
+            </span>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs md:text-sm font-bold leading-tight text-right text-brand-heading">
+            <span className="text-[9px] font-medium text-brand-text-secondary">Starting from</span>{" "}
+            {property.currency} {property.lowest_rate ?? property.total_price}{" "}
+            <span className="text-[9px] font-normal text-brand-text-secondary">/ night</span>
+          </p>
+        </div>
       </div>
     </div>
   );
