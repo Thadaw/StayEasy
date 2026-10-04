@@ -1,8 +1,10 @@
 ﻿import { useNavigate } from 'react-router-dom'
 import { Home } from 'lucide-react'
+import { useAuth } from '../../auth/AuthContext'
 
 export default function ExpandPortfolio() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   return (
     <div style={{
       background: '#fff', borderRadius: 12, border: '2px dashed var(--border)',
@@ -19,7 +21,13 @@ export default function ExpandPortfolio() {
       <p style={{ fontSize: 13, color: 'var(--muted-foreground)', margin: '0 0 16px', maxWidth: 200 }}>
         You have 2 slots remaining on your current Pro plan.
       </p>
-      <button onClick={() => navigate('/host/portal')} style={{
+      <button onClick={() => {
+        try {
+          const draftKey = `serveIQDraft_${user?.id || user?.email || 'anon'}`
+          localStorage.removeItem(draftKey)
+        } catch {}
+        navigate('/host/portal')
+      }} style={{
         padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border)',
         background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600,
         color: 'var(--foreground)',

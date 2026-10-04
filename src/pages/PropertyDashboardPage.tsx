@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
@@ -15,6 +15,7 @@ import RestaurantOverview from '../components/dashboard/RestaurantOverview'
 import QuickActions from '../components/dashboard/QuickActions'
 import { getAllProperties, getRooms, getPropertyBookings } from '../services/pmsApi'
 import { propertyKeys, roomKeys, bookingKeys } from '../lib/queryKeys'
+import { useDateRangeStore, isWithinRange } from '../stores/dateRangeStore'
 import { Wallet, Bed, Calendar, TrendingUp, BarChart, ArrowLeft } from 'lucide-react'
 import type { GeneralInfoResponse } from '../types/pms'
 
@@ -24,6 +25,9 @@ export default function PropertyDashboardPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const setCurrentPropertyId = usePropertyStore((s) => s.setCurrentPropertyId)
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dateRangeLabel = useDateRangeStore((s) => s.label)
 
   useEffect(() => {
     if (propertyId) {
@@ -48,12 +52,16 @@ export default function PropertyDashboardPage() {
     select: (data) => Array.isArray(data) ? data : [],
   })
 
-  const { data: bookings = [] } = useQuery({
+  const { data: allBookings = [] } = useQuery({
     queryKey: bookingKeys.byProperty(propertyId!),
     queryFn: () => getPropertyBookings(propertyId!),
     enabled: !!propertyId,
     select: (data) => Array.isArray(data) ? data : [],
   })
+  const bookings = useMemo(
+    () => allBookings.filter((b) => isWithinRange(b.created_at, dateFrom, dateTo)),
+    [allBookings, dateFrom, dateTo],
+  )
 
   const loading = loadingProperty || loadingRooms
 
@@ -146,7 +154,7 @@ export default function PropertyDashboardPage() {
               label="Total Revenue"
               value={`NPR ${totalRevenue.toLocaleString()}`}
               change="12.1%"
-              changeLabel="vs May 1 - May 31"
+              changeLabel={`vs ${dateRangeLabel}`}
               positive={true}
             />
             <StatCard
@@ -155,7 +163,7 @@ export default function PropertyDashboardPage() {
               label="Occupancy Rate"
               value={`${occupancyRate}%`}
               change="3.2%"
-              changeLabel="vs May 1 - May 31"
+              changeLabel={`vs ${dateRangeLabel}`}
               positive={occupancyRate > 50}
             />
             <StatCard
@@ -164,7 +172,7 @@ export default function PropertyDashboardPage() {
               label="Total Bookings"
               value={String(occupiedRooms + availableRooms)}
               change="13.7%"
-              changeLabel="vs May 1 - May 31"
+              changeLabel={`vs ${dateRangeLabel}`}
               positive={false}
             />
             <StatCard
@@ -173,7 +181,7 @@ export default function PropertyDashboardPage() {
               label="ADR (Avg. Room Rate)"
               value={`NPR ${adr.toLocaleString()}`}
               change="1.2%"
-              changeLabel="vs May 1 - May 31"
+              changeLabel={`vs ${dateRangeLabel}`}
               positive={true}
             />
             <StatCard
@@ -182,7 +190,7 @@ export default function PropertyDashboardPage() {
               label="RevPAR"
               value={`NPR ${revpar.toLocaleString()}`}
               change="20.4%"
-              changeLabel="vs May 1 - May 31"
+              changeLabel={`vs ${dateRangeLabel}`}
               positive={revpar > 0}
             />
           </div>

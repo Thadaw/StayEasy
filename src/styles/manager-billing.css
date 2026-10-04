@@ -1,0 +1,133 @@
+/* Manager > Billing & Payments — responsive layout helpers */
+
+.b-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.b-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.b-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.b-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.b-main {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+
+.b-side-col {
+  display: grid;
+  gap: 16px;
+}
+
+.b-analytics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  container-type: inline-size;
+}
+
+.b-analytics-panel {
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.b-analytics-panel + .b-analytics-panel {
+  border-left: 1px solid #f3f4f6;
+  padding-left: 24px;
+}
+
+.b-analytics-panel:first-child {
+  padding-right: 24px;
+}
+
+.b-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.b-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.b-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.b-tab {
+  border: none;
+  background: none;
+  padding: 0 0 10px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+@media (max-width: 1100px) {
+  .b-main,
+  .b-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Panels stack when the chart container itself gets narrow (any viewport) */
+@container (max-width: 599px) {
+  .b-analytics-panel + .b-analytics-panel {
+    border-left: none;
+    border-top: 1px solid #f3f4f6;
+    padding-left: 0;
+    padding-top: 20px;
+    margin-top: 8px;
+  }
+
+  .b-analytics-panel:first-child {
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .b-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .b-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .b-toolbar-actions button {
+    flex: 1;
+  }
+}

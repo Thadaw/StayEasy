@@ -1,9 +1,10 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
+const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'https://stay-easy-sizw.onrender.com/api/v1',
@@ -20,6 +21,17 @@ function storageGet(key: string): string | null {
 function updateAccessToken(token: string) {
   if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, token)
   else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(TOKEN_KEY, token)
+}
+
+function updateRefreshToken(token: string) {
+  if (localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, token)
+  else if (sessionStorage.getItem(REFRESH_KEY)) sessionStorage.setItem(REFRESH_KEY, token)
+}
+
+function updateTokenExpiry() {
+  const deadline = (Date.now() + EXPIRY_MS).toString()
+  if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(EXPIRY_KEY, deadline)
+  else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(EXPIRY_KEY, deadline)
 }
 
 function clearAuthStorage() {
@@ -48,6 +60,8 @@ async function refreshAccessToken(): Promise<string> {
     refresh_token: refreshToken,
   })
   updateAccessToken(data.access_token)
+  if (data.refresh_token) updateRefreshToken(data.refresh_token)
+  updateTokenExpiry()
   return data.access_token
 }
 
@@ -72,8 +86,12 @@ api.interceptors.response.use(
         const newToken = await refreshPromise
         original.headers.Authorization = `Bearer ${newToken}`
         return api(original)
-      } catch {
-        redirectToLogin()
+      } catch (err) {
+        // Only a definitive 401 (refused refresh token) ends the session.
+        // Transient network/5xx refresh failures are retried on the next request.
+        if (err instanceof AxiosError && err.response?.status === 401) {
+          redirectToLogin()
+        }
       }
     }
     return Promise.reject(error)

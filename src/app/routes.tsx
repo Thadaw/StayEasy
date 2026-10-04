@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '../shared/components/ProtectedRoute'
+import { ManagerRoute } from '../shared/components/ManagerRoute'
 
 const LandingPage = lazy(() => import('../guestfeatures/landing/pages/LandingPage'))
 const LoginPage = lazy(() => import('../auth/Login'))
@@ -32,6 +33,20 @@ const IntegrationsPage = lazy(() => import('../pages/IntegrationsPage'))
 const HostNotificationsPage = lazy(() => import('../pages/HostNotificationsPage'))
 const ActivityLogsPage = lazy(() => import('../pages/ActivityLogsPage'))
 const SupportPage = lazy(() => import('../pages/SupportPage'))
+const ManagerDashboardPage = lazy(() => import('../pages/manager/ManagerDashboardPage'))
+const ManagerBookingsPage = lazy(() => import('../pages/manager/ManagerBookingsPage'))
+const ManagerNewBookingPage = lazy(() => import('../pages/manager/ManagerNewBookingPage'))
+const ManagerBookingDetailPage = lazy(() => import('../pages/manager/ManagerBookingDetailPage'))
+const ManagerRoomsPage = lazy(() => import('../pages/manager/ManagerRoomsPage'))
+const ManagerGuestsPage = lazy(() => import('../pages/manager/ManagerGuestsPage'))
+const ManagerStaffPage = lazy(() => import('../pages/manager/ManagerStaffPage'))
+const ManagerStaffApprovalsPage = lazy(() => import('../pages/manager/ManagerStaffApprovalsPage'))
+const ManagerHousekeepingPage = lazy(() => import('../pages/manager/ManagerHousekeepingPage'))
+const ManagerBillingPage = lazy(() => import('../pages/manager/ManagerBillingPage'))
+const ManagerReportsPage = lazy(() => import('../pages/manager/ManagerReportsPage'))
+const ManagerFeedbackPage = lazy(() => import('../pages/manager/ManagerFeedbackPage'))
+const ManagerNotificationsPage = lazy(() => import('../pages/manager/ManagerNotificationsPage'))
+const ManagerSettingsPage = lazy(() => import('../pages/manager/ManagerSettingsPage'))
 const CountryPage = lazy(() => import('../guestfeatures/search/pages/CountryPage'))
 const PropertyDetailPage = lazy(() => import('../guestfeatures/property/pages/PropertyDetailPage'))
 const SearchResultsPage = lazy(() => import('../guestfeatures/search/pages/SearchResultsPage'))
@@ -88,6 +103,24 @@ export function AppRoutes() {
       <Route path="/host/notifications" element={<ProtectedRoute><HostNotificationsPage /></ProtectedRoute>} />
       <Route path="/host/activity" element={<ProtectedRoute><ActivityLogsPage /></ProtectedRoute>} />
       <Route path="/host/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
+      <Route path="/manager/login" element={<LoginPage />} />
+      <Route path="/manager/dashboard" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
+      <Route path="/manager/bookings" element={<ManagerRoute><ManagerBookingsPage /></ManagerRoute>} />
+      <Route path="/manager/bookings/new" element={<ManagerRoute><ManagerNewBookingPage /></ManagerRoute>} />
+      <Route path="/manager/bookings/:id" element={<ManagerRoute><ManagerBookingDetailPage /></ManagerRoute>} />
+      <Route path="/manager/rooms" element={<ManagerRoute><ManagerRoomsPage /></ManagerRoute>} />
+      <Route path="/manager/guests" element={<ManagerRoute><ManagerGuestsPage /></ManagerRoute>} />
+      <Route path="/manager/staff" element={<ManagerRoute><ManagerStaffPage /></ManagerRoute>} />
+      <Route path="/manager/staff/approvals" element={<ManagerRoute><ManagerStaffApprovalsPage /></ManagerRoute>} />
+      <Route path="/manager/housekeeping" element={<ManagerRoute><ManagerHousekeepingPage /></ManagerRoute>} />
+      <Route path="/manager/billing" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/billing/payments" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/billing/refunds" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/reports" element={<ManagerRoute><ManagerReportsPage /></ManagerRoute>} />
+      <Route path="/manager/feedback" element={<ManagerRoute><ManagerFeedbackPage /></ManagerRoute>} />
+      <Route path="/manager/notifications" element={<ManagerRoute><ManagerNotificationsPage /></ManagerRoute>} />
+      <Route path="/manager/settings" element={<ManagerRoute><ManagerSettingsPage /></ManagerRoute>} />
+      <Route path="/manager/*" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
       <Route path="/country/:code" element={<CountryPage />} />
       <Route path="/hotel/:id" element={<PropertyDetailPage />} />
       <Route path="/search" element={<SearchResultsPage />} />

@@ -12,13 +12,11 @@ interface StaffTableProps {
 
 const roleBadgeColors: Record<string, { bg: string; text: string }> = {
   Manager: { bg: '#EDE9FE', text: '#6D28D9' },
-  Receptionist: { bg: '#D1FAE5', text: '#065F46' },
-  'Housekeeping Staff': { bg: '#D1FAE5', text: '#065F46' },
-  'Housekeeping Supervisor': { bg: '#D1FAE5', text: '#065F46' },
-  Chef: { bg: '#DBEAFE', text: '#1E40AF' },
+  'Front Desk': { bg: '#D1FAE5', text: '#065F46' },
+  Housekeeping: { bg: '#D1FAE5', text: '#065F46' },
   Waiter: { bg: '#D1FAE5', text: '#065F46' },
-  Cashier: { bg: '#FEE2E2', text: '#991B1B' },
-  'Maintenance Staff': { bg: '#D1FAE5', text: '#065F46' },
+  Kitchen: { bg: '#DBEAFE', text: '#1E40AF' },
+  Maintenance: { bg: '#FEE2E2', text: '#991B1B' },
 }
 
 const statusBadgeColors: Record<string, { bg: string; text: string }> = {

@@ -11,10 +11,14 @@ import QuickActions from '../components/dashboard/QuickActions'
 import ArrivalsDepartures from '../components/dashboard/ArrivalsDepartures'
 import { getAllProperties, getRooms, getPropertyBookings } from '../services/pmsApi'
 import { propertyKeys, roomKeys, bookingKeys } from '../lib/queryKeys'
+import { useDateRangeStore, isWithinRange } from '../stores/dateRangeStore'
 import { Wallet, Bed, Calendar, TrendingUp, BarChart } from 'lucide-react'
 import type { RoomResponse, PropertyBooking, GeneralInfoResponse } from '../types/pms'
 
 export default function OverallDashboardPage() {
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+
   // Fetch all properties
   const { data: allProperties = [], isLoading: loadingProperties } = useQuery<GeneralInfoResponse[]>({
     queryKey: propertyKeys.all,
@@ -35,7 +39,7 @@ export default function OverallDashboardPage() {
     queries: activePropertyIds.map((id: string) => ({
       queryKey: roomKeys.byProperty(id),
       queryFn: () => getRooms(id),
-      select: (data: any) => (Array.isArray(data) ? data : []),
+      select: (data: unknown) => (Array.isArray(data) ? data : []),
       enabled: activePropertyIds.length > 0,
     })),
   })
@@ -45,7 +49,7 @@ export default function OverallDashboardPage() {
     queries: activePropertyIds.map((id: string) => ({
       queryKey: bookingKeys.byProperty(id),
       queryFn: () => getPropertyBookings(id),
-      select: (data: any) => (Array.isArray(data) ? data : []),
+      select: (data: unknown) => (Array.isArray(data) ? data : []),
       enabled: activePropertyIds.length > 0,
     })),
   })
@@ -58,10 +62,13 @@ export default function OverallDashboardPage() {
     [roomQueries]
   )
 
-  // Aggregate all bookings
+  // Aggregate all bookings, limited to the selected header date range
   const allBookings: PropertyBooking[] = useMemo(
-    () => bookingQueries.flatMap((q) => (q.data ? (q.data as PropertyBooking[]) : [])),
-    [bookingQueries]
+    () =>
+      bookingQueries
+        .flatMap((q) => (q.data ? (q.data as PropertyBooking[]) : []))
+        .filter((b) => isWithinRange(b.created_at, dateFrom, dateTo)),
+    [bookingQueries, dateFrom, dateTo],
   )
 
   // Compute aggregated stats

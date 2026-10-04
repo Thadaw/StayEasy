@@ -39,8 +39,10 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
             <label className="form-label">Total Rooms</label>
             <input
               type="number"
+              min="1"
+              max="10000"
               value={data.totalRooms || ''}
-              onChange={e => onChange({ totalRooms: parseInt(e.target.value) || 0 })}
+              onChange={e => onChange({ totalRooms: Math.max(1, parseInt(e.target.value) || 1) })}
               placeholder="eg.100"
               className="form-input"
             />
@@ -51,7 +53,7 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
               <button
                 type="button"
                 className="counter-btn"
-                onClick={() => onChange({ floors: Math.max(0, data.floors - 1) })}
+                onClick={() => onChange({ floors: Math.max(1, data.floors - 1) })}
               >
                 -
               </button>
@@ -69,8 +71,10 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
             <label className="form-label">Year Built</label>
             <input
               type="number"
+              min="1800"
+              max="2100"
               value={data.yearBuilt || ''}
-              onChange={e => onChange({ yearBuilt: parseInt(e.target.value) || 0 })}
+              onChange={e => onChange({ yearBuilt: parseInt(e.target.value) || 1800 })}
               placeholder="eg.2018"
               className="form-input"
             />
@@ -102,9 +106,10 @@ export default function Step1PropertyDetails({ data, onChange }: Step1Props) {
               <Phone size={14} className="input-icon" />
               <input
                 type="tel"
+                maxLength={10}
                 value={data.phone}
-                onChange={e => onChange({ phone: e.target.value })}
-                placeholder="+1 (555) 000-0000"
+                onChange={e => onChange({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                placeholder="5550000000"
                 className="form-input no-border"
               />
             </div>

@@ -1,0 +1,69 @@
+import { useNavigate } from 'react-router-dom'
+
+interface ManagerStatCardProps {
+  icon: React.ReactNode
+  iconBg: string
+  label: string
+  value: string | number
+  change: string
+  positive: boolean
+  path?: string
+}
+
+export default function ManagerStatCard({ icon, iconBg, label, value, change, positive, path }: ManagerStatCardProps) {
+  const navigate = useNavigate()
+  return (
+    <div
+      onClick={() => path && navigate(path)}
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        border: '1px solid #e5e7eb',
+        padding: 20,
+        cursor: path ? 'pointer' : 'default',
+        transition: 'box-shadow 0.15s, transform 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        if (path) {
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: iconBg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {icon}
+        </div>
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 6 }}>{value}</div>
+      <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 2,
+          padding: '2px 8px',
+          borderRadius: 6,
+          background: positive ? '#dcfce7' : '#fee2e2',
+          color: positive ? '#16a34a' : '#dc2626',
+          fontWeight: 600,
+        }}>
+          {positive ? '↑' : '↓'} {change}
+        </span>
+        <span style={{ color: '#9ca3af' }}>vs yesterday</span>
+      </div>
+    </div>
+  )
+}

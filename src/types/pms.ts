@@ -1,3 +1,49 @@
+export interface CreatePropertyPayload {
+  general_information: {
+    name: string
+    type: string
+    description: string
+    total_rooms: number
+    year_built: number
+    number_of_floors: number
+    phone_number: string
+    email: string
+  }
+  location: {
+    country: string
+    state: string
+    city: string
+    zip_code: string
+    address: string
+    latitude: number | null
+    longitude: number | null
+  }
+  photos_and_amenities: {
+    photos: { cover: string; gallery: string[] }
+    amenities: {
+      system_amenity_ids: string[]
+      custom_amenities: { name: string; icon: string }[]
+    }
+  }
+  localization: {
+    currency: string
+    timezone: string
+    language: string
+    check_in_time: string | null
+    check_out_time: string | null
+    check_in_grace_period: number
+    check_out_grace_period: number
+    always_allow_check_in_out: boolean
+    allow_pay_on_arrival: boolean
+    min_advance_percentage: number
+    max_advance_percentage: number
+  }
+  brand_visual: {
+    brand_logo_url: string | null
+    brand_color: string
+  }
+}
+
 export interface GeneralInfoPayload {
   name: string
   type: string
@@ -84,6 +130,18 @@ export interface RoomTypeResponse {
 export interface BedTypeResponse {
   id: string
   property_id: string
+  bed_name: string
+  is_default: boolean
+}
+
+export interface SystemRoomTypeItem {
+  id: string
+  room_type_name: string
+  is_default: boolean
+}
+
+export interface SystemBedTypeItem {
+  id: string
   bed_name: string
   is_default: boolean
 }
@@ -208,6 +266,8 @@ export interface PropertyBooking {
   total_amount: string
   created_at: string
 }
+
+export type CancellationPolicyEnum = 'FLEXIBLE' | 'MODERATE' | 'STRICT' | 'NON_REFUNDABLE' | 'CUSTOM'
 
 export interface BookingCreatePayload {
   idempotency_key: string

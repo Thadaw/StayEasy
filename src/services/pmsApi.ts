@@ -1,11 +1,7 @@
 import api from '../api'
 import type {
-  GeneralInfoPayload,
+  CreatePropertyPayload,
   GeneralInfoResponse,
-  LocationPayload,
-  PhotosAmenitiesPayload,
-  LocalizationPayload,
-  BrandVisualPayload,
   RoomBase,
   RoomBulkCreateRequest,
   RoomResponse,
@@ -20,7 +16,14 @@ import type {
   TenantResponse,
   PropertyBooking,
   BookingCreatePayload,
+  SystemRoomTypeItem,
+  SystemBedTypeItem,
 } from '../types/pms'
+import type {
+  ApiStaff,
+  CreateStaffPayload,
+  UpdateStaffPayload,
+} from '../types/staff'
 
 // The backend wraps every JSON response in a StandardResponse envelope:
 //   { success: true, data: <payload>, meta: ... }
@@ -33,25 +36,9 @@ function unwrapBody<T>(body: unknown): T {
 
 // ─── Properties ──────────────────────────────────────────────
 
-export const createGeneralInfo = async (data: GeneralInfoPayload): Promise<GeneralInfoResponse> => {
-  const { data: result } = await api.post('/properties/general-information', data)
+export const createProperty = async (data: CreatePropertyPayload): Promise<GeneralInfoResponse> => {
+  const { data: result } = await api.post('/properties', data)
   return unwrapBody<GeneralInfoResponse>(result)
-}
-
-export const createLocation = async (propertyId: string, data: LocationPayload): Promise<void> => {
-  await api.post(`/properties/${propertyId}/create-location`, data)
-}
-
-export const createPhotosAmenities = async (propertyId: string, data: PhotosAmenitiesPayload): Promise<void> => {
-  await api.post(`/properties/${propertyId}/create-photos-and-amenities`, data)
-}
-
-export const createLocalization = async (propertyId: string, data: LocalizationPayload): Promise<void> => {
-  await api.post(`/properties/${propertyId}/create-localization`, data)
-}
-
-export const createBrandVisual = async (propertyId: string, data: BrandVisualPayload): Promise<void> => {
-  await api.post(`/properties/${propertyId}/create-brand-visual`, data)
 }
 
 export const getProperty = async (id: string): Promise<GeneralInfoResponse> => {
@@ -85,14 +72,28 @@ export const updatePropertyActivation = async (id: string): Promise<string> => {
 
 export const getAmenities = async (): Promise<AmenityOption[]> => {
   const { data: result } = await api.get('/properties/amenities')
-  const data = unwrapBody<{ amenities?: AmenityOption[] }>(result)
-  return Array.isArray(data?.amenities) ? data.amenities : []
+  console.log('getAmenities response:', result)
+  const data = unwrapBody<unknown>(result)
+  console.log('getAmenities unwrapped:', data)
+  if (Array.isArray(data)) return data as AmenityOption[]
+  const obj = data as { amenities?: AmenityOption[] }
+  return Array.isArray(obj?.amenities) ? obj.amenities : []
 }
 
 // ─── Images ──────────────────────────────────────────────────
 
+export const uploadSingleImage = async (file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('image', file)
+  const { data: result } = await api.post('/properties/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  const url = typeof result === 'string' ? result : result?.data
+  return typeof url === 'string' ? url : ''
+}
+
 export const uploadPropertyImage = async (propertyId: string, formData: FormData): Promise<string[]> => {
-  const { data: result } = await api.post(`/properties/${propertyId}/images`, formData, {
+  const { data: result } = await api.post('/properties/images', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   const data = unwrapBody<string[]>(result)
@@ -150,11 +151,6 @@ export const getRoomTypes = async (propertyId: string): Promise<RoomTypeResponse
   return Array.isArray(data) ? data : []
 }
 
-export const createRoomType = async (propertyId: string, roomTypeName: string): Promise<RoomTypeResponse> => {
-  const { data: result } = await api.post(`/properties/${propertyId}/rooms/room-type`, { room_type_name: roomTypeName })
-  return unwrapBody<RoomTypeResponse>(result)
-}
-
 // ─── Bed Types ──────────────────────────────────────────────
 
 export const getBedTypes = async (propertyId: string): Promise<BedTypeResponse[]> => {
@@ -163,9 +159,18 @@ export const getBedTypes = async (propertyId: string): Promise<BedTypeResponse[]
   return Array.isArray(data) ? data : []
 }
 
-export const createBedType = async (propertyId: string, bedName: string): Promise<BedTypeResponse> => {
-  const { data: result } = await api.post(`/properties/${propertyId}/rooms/bed-type`, { bed_name: bedName })
-  return unwrapBody<BedTypeResponse>(result)
+// ─── System Room / Bed Types ────────────────────────────────
+
+export const getSystemRoomTypes = async (): Promise<SystemRoomTypeItem[]> => {
+  const { data: result } = await api.get('/search/system-room-types')
+  const data = unwrapBody<SystemRoomTypeItem[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getSystemBedTypes = async (): Promise<SystemBedTypeItem[]> => {
+  const { data: result } = await api.get('/search/system-bed-types')
+  const data = unwrapBody<SystemBedTypeItem[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 // ─── Special Offers ──────────────────────────────────────────
@@ -244,6 +249,112 @@ export const deleteTenant = async (): Promise<void> => {
   await api.delete('/tenants/')
 }
 
+// ─── Housekeeping Rooms ────────────────────────────────────
+
+export const getHousekeepingRooms = async (
+  propertyId: string,
+  params?: { status?: string; search?: string; floor_number?: string }
+): Promise<import('../types/housekeeping').ApiRoomStatus[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/room-status`, { params })
+  const data = unwrapBody<import('../types/housekeeping').ApiRoomStatus[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getRoomStatusSummary = async (propertyId: string): Promise<import('../types/housekeeping').ApiRoomStatusSummary> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/room-status/summary`)
+  return unwrapBody<import('../types/housekeeping').ApiRoomStatusSummary>(result)
+}
+
+// ─── Housekeeping Tasks ────────────────────────────────────
+
+export const getTasks = async (
+  propertyId: string,
+  params?: { search?: string; task_status?: string; priority?: string; skip?: number; limit?: number }
+): Promise<import('../types/housekeeping').ApiTaskListItem[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks`, { params })
+  const data = unwrapBody<import('../types/housekeeping').ApiTaskListItem[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getTask = async (propertyId: string, taskId: string): Promise<import('../types/housekeeping').ApiTaskListItem> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks/${taskId}`)
+  return unwrapBody<import('../types/housekeeping').ApiTaskListItem>(result)
+}
+
+export const createTask = async (
+  propertyId: string,
+  data: import('../types/housekeeping').CreateTaskRequest
+): Promise<import('../types/housekeeping').ApiTaskListItem> => {
+  const { data: result } = await api.post(`/properties/${propertyId}/tasks`, data)
+  return unwrapBody<import('../types/housekeeping').ApiTaskListItem>(result)
+}
+
+export const updateTask = async (
+  propertyId: string,
+  taskId: string,
+  data: import('../types/housekeeping').UpdateTaskRequest
+): Promise<import('../types/housekeeping').ApiTaskListItem> => {
+  const { data: result } = await api.patch(`/properties/${propertyId}/tasks/${taskId}`, data)
+  return unwrapBody<import('../types/housekeeping').ApiTaskListItem>(result)
+}
+
+export const completeTask = async (propertyId: string, taskId: string): Promise<import('../types/housekeeping').ApiTaskListItem> => {
+  const { data: result } = await api.patch(`/properties/${propertyId}/tasks/${taskId}/complete`)
+  return unwrapBody<import('../types/housekeeping').ApiTaskListItem>(result)
+}
+
+export const deleteTask = async (propertyId: string, taskId: string): Promise<void> => {
+  await api.delete(`/properties/${propertyId}/tasks/${taskId}`)
+}
+
+export const bulkAssignTasks = async (
+  propertyId: string,
+  tasks: import('../types/housekeeping').BulkAssignTaskItem[]
+): Promise<{ created_count: number; tasks: import('../types/housekeeping').ApiTaskListItem[] }> => {
+  const { data: result } = await api.post(`/properties/${propertyId}/tasks/bulk-assign`, { tasks })
+  return unwrapBody<{ created_count: number; tasks: import('../types/housekeeping').ApiTaskListItem[] }>(result)
+}
+
+// ─── Housekeeping Dropdowns ────────────────────────────────
+
+export const getHousekeepingStaffOptions = async (propertyId: string): Promise<import('../types/housekeeping').ApiStaffOption[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks/housekeeping-staff`)
+  const wrapped = unwrapBody<unknown>(result)
+  const rawList = Array.isArray(wrapped)
+    ? wrapped
+    : (wrapped as { staff?: unknown[] })?.staff
+      ?? (wrapped as { items?: unknown[] })?.items
+      ?? (wrapped as { housekeeping_staff?: unknown[] })?.housekeeping_staff
+      ?? []
+  return rawList.map(item => {
+    const s = item as Record<string, unknown>
+    const photos = s.photos as Record<string, unknown> | undefined
+    return {
+      id: String(s.id ?? ''),
+      name: String(s.name ?? s.full_name ?? ''),
+      cover_photo: (s.cover_photo as string | null | undefined) ?? (photos?.profile as string | null | undefined) ?? null,
+    }
+  })
+}
+
+export const getTaskRoomOptions = async (propertyId: string): Promise<import('../types/housekeeping').ApiRoomOption[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks/rooms`)
+  const data = unwrapBody<import('../types/housekeeping').ApiRoomOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getStaffWorkSummary = async (propertyId: string): Promise<import('../types/housekeeping').ApiStaffWorkSummary[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks/staff-work-summary`)
+  const data = unwrapBody<import('../types/housekeeping').ApiStaffWorkSummary[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getTaskTypes = async (propertyId: string): Promise<import('../types/housekeeping').ApiTaskTypeOption[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/tasks/task-types`)
+  const data = unwrapBody<import('../types/housekeeping').ApiTaskTypeOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
 // ─── Bookings ───────────────────────────────────────────────
 
 export const getPropertyBookings = async (propertyId: string): Promise<PropertyBooking[]> => {
@@ -269,4 +380,52 @@ export const getBookingByRefNumber = async (refNumber: string): Promise<Property
 export const createBooking = async (data: BookingCreatePayload): Promise<PropertyBooking> => {
   const { data: result } = await api.post('/bookings/', data)
   return unwrapBody<PropertyBooking>(result)
+}
+
+// ─── Staff ────────────────────────────────────────────────
+
+export const getStaffList = async (
+  propertyId: string,
+  params?: { skip?: number; limit?: number }
+): Promise<ApiStaff[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/staffs`, { params })
+  const data = unwrapBody<ApiStaff[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getStaffSummary = async (propertyId: string): Promise<unknown> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/staffs/staffs-summary`)
+  return unwrapBody<unknown>(result)
+}
+
+export const getStaff = async (propertyId: string, staffId: string): Promise<ApiStaff> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/staffs/${staffId}`)
+  return unwrapBody<ApiStaff>(result)
+}
+
+export const createStaff = async (propertyId: string, data: CreateStaffPayload): Promise<ApiStaff> => {
+  const { data: result } = await api.post(`/properties/${propertyId}/staffs`, data)
+  return unwrapBody<ApiStaff>(result)
+}
+
+export const updateStaff = async (
+  propertyId: string,
+  staffId: string,
+  data: UpdateStaffPayload
+): Promise<ApiStaff> => {
+  const { data: result } = await api.patch(`/properties/${propertyId}/staffs/${staffId}`, data)
+  return unwrapBody<ApiStaff>(result)
+}
+
+export const deleteStaff = async (propertyId: string, staffId: string): Promise<void> => {
+  await api.delete(`/properties/${propertyId}/staffs/${staffId}`)
+}
+
+export const uploadStaffImage = async (propertyId: string, file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('image', file)
+  const { data: result } = await api.post(`/properties/${propertyId}/staffs/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return typeof result === 'string' ? result : (result?.data ?? '')
 }

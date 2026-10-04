@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api, { type AuthRequestConfig } from '../services/axios'
+import api, { attemptSessionRefresh, type AuthRequestConfig } from '../services/axios'
 import type { User } from './types'
 
-type AuthRole = 'host' | 'guest'
+type AuthRole = 'host' | 'guest' | 'manager'
 
 interface AuthContextValue {
   user: User | null
@@ -44,7 +44,10 @@ function readToken(): string | null {
 }
 
 function readRole(): AuthRole {
-  return storageGet(ROLE_KEY) === 'guest' ? 'guest' : 'host'
+  const stored = storageGet(ROLE_KEY)
+  if (stored === 'guest') return 'guest'
+  if (stored === 'manager') return 'manager'
+  return 'host'
 }
 
 function saveAuth(token: string, remember: boolean, role: AuthRole, refreshToken?: string) {
@@ -97,6 +100,7 @@ function extractApiError(err: unknown, fallback: string): string {
 }
 
 function getMeEndpoint(currentRole: AuthRole) {
+  if (currentRole === 'manager') return '/auth/users/me'
   return currentRole === 'host' ? '/auth/users/me' : '/auth/guests/me'
 }
 
@@ -132,6 +136,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [token, loadCurrentUser])
+
+  // Proactive sliding refresh: keep the access token fresh before it expires so
+  // the session never lapses between requests. Access tokens last ~10-60 min
+  // while the refresh token lasts 30 days, so this keeps the user signed in
+  // continuously instead of forcing a re-login when the access token dies.
+  useEffect(() => {
+    if (!token) return
+
+    const check = async () => {
+      try {
+        const refreshed = await attemptSessionRefresh()
+        if (refreshed && refreshed !== token) setToken(refreshed)
+      } catch {
+        // attemptSessionRefresh already swallows failures internally.
+      }
+    }
+
+    check()
+
+    const interval = setInterval(check, 60 * 1000)
+    const onFocus = () => check()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [token])
 
   const login = async (newToken: string, remember = true, userType: AuthRole = 'host', refreshToken?: string) => {
     saveAuth(newToken, remember, userType, refreshToken)

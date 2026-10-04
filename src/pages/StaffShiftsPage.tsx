@@ -6,7 +6,6 @@ import AttendanceStats from '../components/staff/AttendanceStats'
 import TodaySummary from '../components/staff/TodaySummary'
 import AttendanceTable from '../components/staff/AttendanceTable'
 import WeeklyTrend from '../components/staff/WeeklyTrend'
-import TimeClock from '../components/staff/TimeClock'
 import RecentAlerts from '../components/staff/RecentAlerts'
 
 export default function StaffShiftsPage() {
@@ -39,9 +38,8 @@ export default function StaffShiftsPage() {
               {activeTab === 'daily' && <WeeklyTrend />}
             </div>
 
-            {/* Right - Time Clock + Alerts */}
+            {/* Right - Alerts */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <TimeClock />
               <RecentAlerts />
             </div>
           </div>

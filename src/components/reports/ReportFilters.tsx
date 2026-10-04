@@ -1,12 +1,14 @@
-import { Calendar, ChevronDown, Filter, Download } from 'lucide-react'
+import { Calendar, Download } from 'lucide-react'
 
 interface ReportFiltersProps {
   dateRange: string
   onDateRangeChange: (value: string) => void
-  property: string
-  onPropertyChange: (value: string) => void
-  department: string
-  onDepartmentChange: (value: string) => void
+  roomType: string
+  onRoomTypeChange: (value: string) => void
+  bookingChannel: string
+  onBookingChannelChange: (value: string) => void
+  onApply: () => void
+  onReset: () => void
   onExport: () => void
 }
 
@@ -15,106 +17,140 @@ const selectStyle: React.CSSProperties = {
   WebkitAppearance: 'none',
   MozAppearance: 'none',
   background: '#fff',
-  border: '1px solid #E5E7EB',
+  border: '1px solid #E2E8F0',
   borderRadius: 8,
-  padding: '9px 32px 9px 12px',
-  fontSize: 14,
-  color: '#374151',
+  padding: '10px 36px 10px 12px',
+  fontSize: 13,
+  color: '#334155',
   fontWeight: 500,
   cursor: 'pointer',
   outline: 'none',
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+  backgroundSize: '14px',
+  backgroundAttachment: 'local',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394A3B8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E")`,
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: '#64748B',
+  marginBottom: 6,
+  display: 'block',
 }
 
 export default function ReportFilters({
   dateRange,
   onDateRangeChange,
-  property,
-  onPropertyChange,
-  department,
-  onDepartmentChange,
+  roomType,
+  onRoomTypeChange,
+  bookingChannel,
+  onBookingChannelChange,
+  onApply,
+  onReset,
   onExport,
 }: ReportFiltersProps) {
   return (
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 20,
+        alignItems: 'flex-end',
+        gap: 16,
+        marginBottom: 24,
         flexWrap: 'wrap',
       }}
     >
-      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-        <Calendar
-          size={16}
-          style={{
-            position: 'absolute',
-            left: 12,
-            pointerEvents: 'none',
-            color: '#9CA3AF',
-          }}
-        />
-        <input
-          type="text"
-          value={dateRange}
-          onChange={e => onDateRangeChange(e.target.value)}
-          style={{
-            padding: '9px 12px 9px 36px',
-            border: '1px solid #E5E7EB',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#374151',
-            outline: 'none',
-            background: '#fff',
-            width: 240,
-          }}
-        />
+      <div>
+        <label style={labelStyle}>Date Range</label>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <Calendar size={15} style={{ position: 'absolute', left: 12, pointerEvents: 'none', color: '#94A3B8' }} />
+          <input
+            type="text"
+            value={dateRange}
+            onChange={e => onDateRangeChange(e.target.value)}
+            style={{
+              padding: '10px 12px 10px 36px',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              fontSize: 13,
+              color: '#334155',
+              outline: 'none',
+              background: '#fff',
+              width: 220,
+              fontWeight: 500,
+            }}
+          />
+        </div>
       </div>
 
-      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-        <select
-          value={property}
-          onChange={e => onPropertyChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option>All Properties</option>
-          <option>Main Hotel</option>
-          <option>Resort</option>
-        </select>
-        <ChevronDown size={14} style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: '#9CA3AF' }} />
+      <div>
+        <label style={labelStyle}>Room Type</label>
+        <div style={{ position: 'relative' }}>
+          <select
+            value={roomType}
+            onChange={e => onRoomTypeChange(e.target.value)}
+            style={selectStyle}
+          >
+            <option>All Room Types</option>
+            <option>Standard</option>
+            <option>Deluxe</option>
+            <option>Suite</option>
+            <option>Premium</option>
+          </select>
+        </div>
       </div>
 
-      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-        <select
-          value={department}
-          onChange={e => onDepartmentChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option>All Departments</option>
-          <option>Rooms</option>
-          <option>Restaurant</option>
-          <option>Housekeeping</option>
-        </select>
-        <ChevronDown size={14} style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: '#9CA3AF' }} />
+      <div>
+        <label style={labelStyle}>Booking Channel</label>
+        <div style={{ position: 'relative' }}>
+          <select
+            value={bookingChannel}
+            onChange={e => onBookingChannelChange(e.target.value)}
+            style={selectStyle}
+          >
+            <option>All Booking Channel</option>
+            <option>Direct</option>
+            <option>OTA</option>
+            <option>Walk-in</option>
+            <option>Phone</option>
+          </select>
+        </div>
       </div>
 
       <button
+        onClick={onApply}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          padding: '9px 14px',
-          border: '1px solid #E5E7EB',
+          padding: '10px 20px',
+          border: 'none',
           borderRadius: 8,
-          background: '#fff',
-          fontSize: 14,
-          fontWeight: 500,
-          color: '#374151',
+          background: '#2E86AB',
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#fff',
           cursor: 'pointer',
         }}
       >
-        <Filter size={16} />
-        More Filters
+        Apply Filters
+      </button>
+
+      <button
+        onClick={onReset}
+        style={{
+          padding: '10px 16px',
+          border: '1px solid #E2E8F0',
+          borderRadius: 8,
+          background: '#fff',
+          fontSize: 13,
+          fontWeight: 500,
+          color: '#64748B',
+          cursor: 'pointer',
+        }}
+      >
+        Reset
       </button>
 
       <button
@@ -123,19 +159,19 @@ export default function ReportFilters({
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          padding: '9px 18px',
-          border: '1px solid var(--primary)',
+          padding: '10px 16px',
+          border: '1px solid #E2E8F0',
           borderRadius: 8,
           background: '#fff',
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 600,
-          color: 'var(--primary)',
+          color: '#334155',
           cursor: 'pointer',
           marginLeft: 'auto',
         }}
       >
-        <Download size={16} />
-        Export Report
+        <Download size={15} />
+        Export
       </button>
     </div>
   )

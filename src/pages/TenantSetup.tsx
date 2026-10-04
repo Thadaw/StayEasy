@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import * as pmsApi from '../services/pmsApi'
+import { useAuth } from '../auth/AuthContext'
 
 export default function TenantSetup() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -60,6 +62,10 @@ export default function TenantSetup() {
 
     try {
       await pmsApi.createTenant(trimmed)
+      try {
+        const draftKey = `serveIQDraft_${user?.id || user?.email || 'anon'}`
+        localStorage.removeItem(draftKey)
+      } catch {}
       navigate('/host/portal', { state: { skipAuth: true } })
     } catch (err) {
       let message = 'Something went wrong. Please try again.'

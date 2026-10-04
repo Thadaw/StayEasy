@@ -8,17 +8,6 @@ interface TaskTableProps {
   onCompleteTask?: (taskId: string) => void
 }
 
-export const allTasks: HousekeepingTask[] = [
-  { id: 'HK-001', room: 'Room 201', taskType: 'Cleaning', priority: 'High', assignedTo: 'Sita Sharma', dueTime: '10:00 AM', status: 'Pending' },
-  { id: 'HK-002', room: 'Room 305', taskType: 'Linen Change', priority: 'Medium', assignedTo: 'Ram Gurung', dueTime: '11:30 AM', status: 'In Progress' },
-  { id: 'HK-003', room: 'Room 108', taskType: 'Deep Cleaning', priority: 'High', assignedTo: null, dueTime: 'Today', status: 'Pending' },
-  { id: 'HK-004', room: 'Room 402', taskType: 'Bathroom Cleaning', priority: 'Low', assignedTo: 'Maya Rai', dueTime: '3:00 PM', status: 'Completed' },
-  { id: 'HK-005', room: 'Room 102', taskType: 'Cleaning', priority: 'Medium', assignedTo: 'Sita Sharma', dueTime: '9:00 AM', status: 'Completed' },
-  { id: 'HK-006', room: 'Room 205', taskType: 'Deep Cleaning', priority: 'High', assignedTo: 'Ram Gurung', dueTime: '1:00 PM', status: 'In Progress' },
-  { id: 'HK-007', room: 'Room 301', taskType: 'Linen Change', priority: 'Low', assignedTo: 'Maya Rai', dueTime: '4:00 PM', status: 'Pending' },
-  { id: 'HK-008', room: 'Room 401', taskType: 'Cleaning', priority: 'Medium', assignedTo: null, dueTime: '2:00 PM', status: 'Pending' },
-]
-
 export const taskStatusColors: Record<string, { bg: string; text: string }> = {
   Pending: { bg: '#FEF3C7', text: '#92400E' },
   'In Progress': { bg: '#EDE9FE', text: '#5B21B6' },

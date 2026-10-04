@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const { data: properties = [], isLoading: loading } = useQuery<GeneralInfoResponse[]>({
     queryKey: propertyKeys.all,
@@ -45,7 +47,13 @@ export default function DashboardPage() {
         <DashboardHeader title="Manage Properties" subtitle="Overview of your real estate portfolio performance and availability." hideControls />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-            <button onClick={() => navigate('/host/portal')} style={{
+            <button onClick={() => {
+              try {
+                const draftKey = `serveIQDraft_${user?.id || user?.email || 'anon'}`
+                localStorage.removeItem(draftKey)
+              } catch {}
+              navigate('/host/portal')
+            }} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 20px', borderRadius: 8, border: 'none',
               background: 'var(--primary)', color: '#fff',
@@ -86,7 +94,7 @@ export default function DashboardPage() {
               <p style={{ fontSize: 14, color: 'var(--muted-foreground)', margin: '0 0 20px', textAlign: 'center' }}>
                 Create your first property to get started.
               </p>
-              <button onClick={() => navigate('/host/portal')} style={{
+            <button onClick={() => navigate('/host/portal', { state: { fresh: true } })} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 24px', borderRadius: 8, border: 'none',
                 background: 'var(--primary)', color: '#fff',

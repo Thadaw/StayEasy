@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import { useAuth } from './AuthContext'
+import { useManagerPropertyStore } from '../stores/managerPropertyStore'
 import loginAni from '../assets/login.mp4'
 import bgImage from '../assets/background.png'
 
@@ -24,12 +25,14 @@ export default function Login() {
   const [searchParams] = useSearchParams()
 
   const { login: authLogin } = useAuth()
+  const setAssignedProperty = useManagerPropertyStore((s) => s.setAssignedProperty)
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
+  const isManager = location.pathname.startsWith('/manager') || searchParams.get('manager') === 'true'
   const [videoReady, setVideoReady] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(true)
-  const [remember, setRemember] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -49,16 +52,44 @@ export default function Login() {
       const res = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      await authLogin(res.data.access_token, remember, isHost ? 'host' : 'guest', res.data.refresh_token)
+
+      const userRole = isManager ? 'manager' : isHost ? 'host' : 'guest'
+      const backendRole = res.data.role
+
+      if (isManager && backendRole !== 'manager') {
+        setError('This account does not have manager access.')
+        setLoading(false)
+        return
+      }
+
+      await authLogin(res.data.access_token, remember, userRole, res.data.refresh_token)
+
+      if (isManager) {
+        const propertyData = res.data.property || (res.data.properties && res.data.properties[0])
+        if (propertyData) {
+          setAssignedProperty(propertyData.id || propertyData.property_id, propertyData.name || null)
+        }
+      }
+
+      if (res.data.must_change_password) {
+        setTimeout(() => navigate('/manager/change-password'), 800)
+        return
+      }
+
       const redirectTo = searchParams.get('redirect')
       const redirectIsHost = !!redirectTo && redirectTo.startsWith('/host')
+      const redirectIsManager = !!redirectTo && redirectTo.startsWith('/manager')
       const isAuthPage =
-        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup'
-      if (redirectTo && !isAuthPage && redirectIsHost === isHost) {
+        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup' || redirectTo === '/manager/login'
+      if (redirectTo && !isAuthPage && (redirectIsHost === isHost || redirectIsManager === isManager)) {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      setTimeout(() => navigate(isHost ? '/host/overall-dashboard' : '/'), 800)
+      setTimeout(() => {
+        if (isManager) navigate('/manager/dashboard')
+        else if (isHost) navigate('/host/overall-dashboard')
+        else navigate('/')
+      }, 800)
     } catch (err) {
       setError(extractError(err))
       setLoading(false)
@@ -167,10 +198,10 @@ export default function Login() {
           </div>
 
           <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 3 }}>
-            {isHost ? 'Welcome Back, Host' : 'Welcome back!'}
+            {isManager ? 'Welcome Back, Manager' : isHost ? 'Welcome Back, Host' : 'Welcome back!'}
           </div>
           <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>
-            {isHost ? 'Manage your properties' : 'Please enter your details'}
+            {isManager ? 'Access your hotel dashboard' : isHost ? 'Manage your properties' : 'Please enter your details'}
           </div>
 
           {/* Email */}

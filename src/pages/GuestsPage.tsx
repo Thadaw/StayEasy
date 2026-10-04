@@ -101,8 +101,8 @@ export default function GuestsPage() {
   const [viewingGuest, setViewingGuest] = useState<Guest | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Guest | null>(null)
   const [form, setForm] = useState(emptyForm)
-  const [overallMode, setOverallMode] = useState(true)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const [overallMode, setOverallMode] = useState(() => currentPropertyId === null)
   const pageSize = 10
   const navigate = useNavigate()
 
@@ -217,7 +217,7 @@ export default function GuestsPage() {
           title="Guests"
           subtitle={overallMode ? 'All properties' : 'Filtering by property'}
           showOverallOption
-          selectedLabel={overallMode ? 'Overall Guests' : 'Property'}
+          selectedLabel={overallMode ? 'Overall Guests' : property?.name || 'Property'}
           onPropertyChange={(id) => setOverallMode(id === null)}
         />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
