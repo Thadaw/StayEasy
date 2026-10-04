@@ -10,7 +10,7 @@ import type { ChangePasswordFormData } from '../schemas/passwordSchema'
 
 export default function ChangePassword() {
   const navigate = useNavigate()
-  const { changePassword, tempPassword, user, clearMustChangePassword, logout } = useAuth()
+  const { changePassword, tempPassword, user, clearMustChangePassword, logout, role } = useAuth()
 
   const {
     register,
@@ -53,7 +53,7 @@ export default function ChangePassword() {
     if (result.success) {
       setSuccess(true)
       navigateTimerRef.current = setTimeout(() => {
-        navigate('/frontdesk')
+        navigate(role === 'manager' ? '/manager/dashboard' : '/frontdesk')
       }, 1500)
     } else {
       setError(result.error || 'Failed to change password. Please try again.')
@@ -65,7 +65,7 @@ export default function ChangePassword() {
     logout()
     // Staff log in through the host section — /staff/login is a guest-mode
     // form that can never authenticate users-table staff credentials.
-    navigate('/host/login')
+    navigate(role === 'manager' ? '/manager/login' : '/host/login')
   }
 
   return (

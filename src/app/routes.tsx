@@ -85,6 +85,7 @@ const FrontDeskNotificationsPage = lazy(() => import('../frontdesk/pages/FrontDe
 const InHousePage = lazy(() => import('../frontdesk/pages/InHousePage'))
 const NotFoundPage = lazy(() => import('../guestfeatures/extraPage/pages/NotFoundPage'))
 const FooterPage = lazy(() => import('../guestfeatures/extraPage/pages/FooterPage'))
+const RestaurantPosPage = lazy(() => import('../pages/RestaurantPosPage'))
 
 export function AppRoutes() {
   return (
@@ -129,6 +130,9 @@ export function AppRoutes() {
       <Route path="/host/activity" element={<ProtectedRoute allowedRoles={['host']}><ActivityLogsPage /></ProtectedRoute>} />
       <Route path="/host/support" element={<ProtectedRoute allowedRoles={['host']}><SupportPage /></ProtectedRoute>} />
       <Route path="/host/admin-profile" element={<ProtectedRoute allowedRoles={['host']}><AdminProfilePage /></ProtectedRoute>} />
+      <Route path="/host/restaurant" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
+      <Route path="/host/restaurant/orders" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
+      <Route path="/host/restaurant/tables" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
       <Route path="/manager/login" element={<LoginPage />} />
       <Route path="/manager/dashboard" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
       <Route path="/manager/bookings" element={<ManagerRoute><ManagerBookingsPage /></ManagerRoute>} />
@@ -146,6 +150,7 @@ export function AppRoutes() {
       <Route path="/manager/feedback" element={<ManagerRoute><ManagerFeedbackPage /></ManagerRoute>} />
       <Route path="/manager/notifications" element={<ManagerRoute><ManagerNotificationsPage /></ManagerRoute>} />
       <Route path="/manager/settings" element={<ManagerRoute><ManagerSettingsPage /></ManagerRoute>} />
+      <Route path="/manager/change-password" element={<ProtectedRoute allowedRoles={['manager']}><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/manager/*" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
       <Route path="/frontdesk" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskPage /></ProtectedRoute>} />
       <Route path="/frontdesk/bookings" element={<ProtectedRoute allowedRoles={['staff']}><FrontdeskBookingsPage /></ProtectedRoute>} />
