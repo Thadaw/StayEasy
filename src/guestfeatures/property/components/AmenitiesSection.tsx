@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Wifi, Car, Utensils, Waves, Mountain, Dumbbell } from "lucide-react";
+import { Wifi, Car, Utensils, Waves, Mountain, Dumbbell, MapPin, Maximize2 } from "lucide-react";
 import { Hotel } from "../../../data/hotels";
-import { buildMapEmbedUrl } from "../../../shared/utils/map";
+import { buildMapEmbedUrl, buildMapDirectionsUrl } from "../../../shared/utils/map";
+import { MapViewModal } from "./MapViewModal";
 
 const amenityIcons: Record<string, typeof Wifi> = {
   "Free WiFi": Wifi,
@@ -18,14 +19,17 @@ interface AmenitiesSectionProps {
 
 export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
   const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const visibleAmenities = showAllAmenities ? hotel.amenities : hotel.amenities.slice(0, 8);
   const mapUrl = buildMapEmbedUrl({
     lat: hotel.lat,
     lng: hotel.lng,
-    address: `${hotel.location}, ${hotel.city}, ${hotel.country}`,
+    address: hotel.location,
   });
+  const directionsUrl = buildMapDirectionsUrl({ lat: hotel.lat, lng: hotel.lng, address: hotel.location });
 
   return (
+    <>
     <div className="md:grid md:grid-cols-[2fr_1fr] md:gap-8 pb-6 border-b border-border mb-6">
       <div className="space-y-6">
         <div>
@@ -52,26 +56,42 @@ export function AmenitiesSection({ hotel }: AmenitiesSectionProps) {
           )}
         </div>
       </div>
-      <div>
-        <h2 className="font-semibold text-foreground mb-4" style={{ fontSize: "1.125rem" }}>Location</h2>
-        <p className="text-sm text-muted-foreground mb-3">{hotel.location}, {hotel.city}, {hotel.country}</p>
-        <div className="rounded-xl overflow-hidden border border-border h-[250px]">
-          {mapUrl ? (
-            <iframe
-              title="Property location"
-              src={mapUrl}
-              className="w-full h-full"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Map unavailable for this property</p>
-            </div>
-          )}
+<div>
+          <h2 className="font-semibold text-foreground mb-4" style={{ fontSize: "1.125rem" }}>Location</h2>
+          <p className="text-sm text-muted-foreground mb-3">{hotel.location}, {hotel.city}, {hotel.country}</p>
+          <div className="rounded-xl overflow-hidden border border-border h-[250px] relative">
+            {mapUrl ? (
+              <iframe
+                title="Property location"
+                src={mapUrl}
+                className="w-full h-full"
+                style={{ border: 0 }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <a
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors"
+              >
+                <MapPin size={24} className="text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">View on Google Maps</p>
+              </a>
+            )}
+            <button
+              onClick={() => setShowMapModal(true)}
+              className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur text-sm font-medium text-foreground shadow-md border border-gray-200 hover:bg-white transition-colors"
+            >
+              <Maximize2 size={14} aria-hidden="true" />
+              View
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showMapModal && <MapViewModal hotel={hotel} onClose={() => setShowMapModal(false)} />}
+    </>
   );
 }

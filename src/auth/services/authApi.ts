@@ -1,12 +1,12 @@
 import api from '../../services/axios'
 import type { User } from '../types'
 
-export async function loginApi(email: string, password: string) {
+export async function loginApi(email: string, password: string, role: 'host' | 'guest' = 'guest') {
   const params = new URLSearchParams()
   params.append('grant_type', 'password')
   params.append('username', email)
   params.append('password', password)
-  const res = await api.post('auth/login', params, {
+  const res = await api.post(`auth/login?role=${role}`, params, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   })
   return res.data.access_token

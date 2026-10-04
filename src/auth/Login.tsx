@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import { useAuth } from './AuthContext'
 import { useManagerPropertyStore } from '../stores/managerPropertyStore'
+import { usePropertyStore } from '../stores/propertyStore'
 import loginAni from '../assets/login.mp4'
 import bgImage from '../assets/background.png'
 
@@ -26,12 +27,12 @@ export default function Login() {
 
   const { login: authLogin } = useAuth()
   const setAssignedProperty = useManagerPropertyStore((s) => s.setAssignedProperty)
+  const { setCurrentPropertyId } = usePropertyStore()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
   const isManager = location.pathname.startsWith('/manager') || searchParams.get('manager') === 'true'
-  const [videoReady, setVideoReady] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(true)
+  const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,20 +50,28 @@ export default function Login() {
       params.append('grant_type', 'password')
       params.append('username', email)
       params.append('password', password)
-      const res = await api.post('/auth/login', params, {
+      const res = await api.post(`/auth/login?role=${isHost ? 'user' : 'guest'}`, params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
 
-      const userRole = isManager ? 'manager' : isHost ? 'host' : 'guest'
-      const backendRole = res.data.role
+      const responseRole = res.data.role
+      const isStaff = responseRole === 'front_desk'
+      const userRole = isManager ? 'manager' : isStaff ? 'staff' : isHost ? 'host' : 'guest'
 
-      if (isManager && backendRole !== 'manager') {
+      if (isManager && responseRole !== 'manager') {
         setError('This account does not have manager access.')
         setLoading(false)
         return
       }
 
-      await authLogin(res.data.access_token, remember, userRole, res.data.refresh_token)
+      await authLogin(
+        res.data.access_token,
+        remember,
+        userRole,
+        res.data.refresh_token,
+        res.data.must_change_password,
+        res.data.temp_password
+      )
 
       if (isManager) {
         const propertyData = res.data.property || (res.data.properties && res.data.properties[0])
@@ -71,24 +80,36 @@ export default function Login() {
         }
       }
 
-      if (res.data.must_change_password) {
+      if (isStaff && res.data.property?.id) {
+        setCurrentPropertyId(res.data.property.id)
+      }
+
+      if (isManager && res.data.must_change_password) {
         setTimeout(() => navigate('/manager/change-password'), 800)
         return
       }
 
       const redirectTo = searchParams.get('redirect')
-      const redirectIsHost = !!redirectTo && redirectTo.startsWith('/host')
-      const redirectIsManager = !!redirectTo && redirectTo.startsWith('/manager')
       const isAuthPage =
         redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup' || redirectTo === '/manager/login'
-      if (redirectTo && !isAuthPage && (redirectIsHost === isHost || redirectIsManager === isManager)) {
+      const isValidRedirect = redirectTo
+        && redirectTo.startsWith('/')
+        && !redirectTo.startsWith('//')
+        && !redirectTo.includes('://')
+        && !isAuthPage
+        // Staff refresh-failure redirects arrive here from /frontdesk/* pages
+        // while on /host/login — allow those deep links through.
+        && (redirectTo.startsWith('/host') === isHost
+          || redirectTo.startsWith('/frontdesk')
+          || (isManager && redirectTo.startsWith('/manager')))
+      if (isValidRedirect) {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
       setTimeout(() => {
         if (isManager) navigate('/manager/dashboard')
-        else if (isHost) navigate('/host/overall-dashboard')
-        else navigate('/')
+        else if (isStaff) navigate('/frontdesk')
+        else navigate(isHost ? '/host/overall-dashboard' : '/')
       }, 800)
     } catch (err) {
       setError(extractError(err))
@@ -103,11 +124,12 @@ export default function Login() {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: "'Segoe UI', sans-serif",
         position: 'relative',
       }}
@@ -124,20 +146,29 @@ export default function Login() {
       />
       <div
         style={{
-          width: 820,
-          height: 470,
+          width: '100%',
+          maxWidth: 820,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
+          flexDirection: 'row',
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
-          visibility: videoReady ? 'visible' : 'hidden',
+          flexWrap: 'wrap',
         }}
       >
-        {/* Animated video panel — on the LEFT for login */}
-        <div style={{ width: '50%', background: '#000', order: 1, flexShrink: 0, overflow: 'hidden' }}>
+        {/* Animated video panel — on the LEFT for login, hidden on mobile */}
+        <div
+          style={{
+            background: '#000',
+            order: 1,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block sm:w-1/2"
+        >
           <video
             src={loginAni}
             autoPlay
@@ -145,24 +176,23 @@ export default function Login() {
             loop
             playsInline
             preload="auto"
-            onLoadedData={() => setVideoReady(true)}
-            onError={() => setVideoReady(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
           />
         </div>
 
         {/* Form panel */}
         <div
           style={{
-            width: '50%',
             background: '#fff',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: '36px 32px 42px',
+            padding: '28px 24px 32px',
             order: 2,
             flexShrink: 0,
+            boxSizing: 'border-box',
           }}
+          className="w-full sm:w-1/2"
         >
           {/* Tabs */}
           <div style={{ display: 'flex', marginBottom: 8 }}>
@@ -234,6 +264,7 @@ export default function Login() {
                 color: '#111',
                 outline: 'none',
                 background: 'transparent',
+                boxSizing: 'border-box',
               }}
             />
           </div>
@@ -268,6 +299,7 @@ export default function Login() {
                 color: '#111',
                 outline: 'none',
                 background: 'transparent',
+                boxSizing: 'border-box',
               }}
             />
             <button

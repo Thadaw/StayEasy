@@ -9,6 +9,10 @@ import bgImage from '../assets/background.png'
 
 const PASSWORD_RE = /^(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Backend (Pydantic): phone = exactly 10 digits, digits only
+const PHONE_RE = /^\d{10}$/
+// Backend (Pydantic): nationality validated with str.isalpha(), 2–50 chars — letters only, no spaces
+const NATIONALITY_RE = /^\p{L}{2,50}$/u
 
 function extractError(err: unknown, fallback = 'Could not create account. Please check your details and try again.'): string {
   if (err instanceof AxiosError && err.response?.data) {
@@ -16,6 +20,22 @@ function extractError(err: unknown, fallback = 'Could not create account. Please
     if (typeof data.detail === 'string') return data.detail
     if (typeof data.message === 'string') return data.message
     if (Array.isArray(data.errors) && data.errors[0]?.msg) return data.errors[0].msg
+    // FastAPI 422: `detail` is an array of { loc, msg, type } objects —
+    // show the first field error instead of the generic fallback.
+    if (Array.isArray(data.detail)) {
+      const first = data.detail[0] as { loc?: unknown[]; msg?: string } | undefined
+      if (first?.msg) {
+        const loc = Array.isArray(first.loc) ? first.loc : []
+        const field = loc.length > 1 ? String(loc[loc.length - 1]) : ''
+        return field ? `${field.replace(/_/g, ' ')}: ${first.msg}` : first.msg
+      }
+    }
+    // Custom exception handlers may serialize `detail` as an object.
+    if (data.detail && typeof data.detail === 'object') {
+      const obj = data.detail as Record<string, unknown>
+      if (typeof obj.message === 'string') return obj.message
+      if (typeof obj.detail === 'string') return obj.detail
+    }
   }
   return fallback
 }
@@ -25,8 +45,6 @@ export default function Signup() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
-
-  const [videoReady, setVideoReady] = useState(false)
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -57,8 +75,20 @@ export default function Signup() {
     setError('')
 
     if (!fullName.trim()) { setError('Full name is required.'); return }
-    if (!phone.trim()) { setError('Phone number is required.'); return }
-    if (!isHost && !nationality.trim()) { setError('Nationality is required.'); return }
+
+    // Normalize phone before validating: strip everything except digits,
+    // then drop a leading country code ("+977" / "977") when present.
+    const rawDigits = phone.replace(/[^\d]/g, '')
+    const normalizedPhone = rawDigits.length > 10 && rawDigits.startsWith('977') ? rawDigits.slice(3) : rawDigits
+    if (!PHONE_RE.test(normalizedPhone)) { setError('Phone must be exactly 10 digits (e.g. 98XXXXXXXX).'); return }
+
+    // Match the backend's str.isalpha() rule so we fail fast with a clear
+    // message instead of an opaque 422.
+    if (!isHost) {
+      const nat = nationality.trim()
+      if (!nat) { setError('Nationality is required.'); return }
+      if (!NATIONALITY_RE.test(nat)) { setError('Nationality must be 2–50 letters only (no spaces or symbols).'); return }
+    }
     if (!EMAIL_RE.test(email)) { setError('Please enter a valid email address.'); return }
     if (!PASSWORD_RE.test(password)) { setError('Password must be 8+ characters with a number and a special character.'); return }
     setLoading(true)
@@ -66,8 +96,10 @@ export default function Signup() {
       await api.post(isHost ? '/auth/users/register' : '/auth/guests/register', {
         full_name: fullName,
         email,
-        phone,
-        nationality,
+        phone: normalizedPhone,
+        // Hosts have no nationality field — backend rejects empty string (min_length=2),
+        // so send null (schema allows Optional[str]) instead of "".
+        nationality: isHost ? null : nationality.trim(),
         password,
       })
       toast.success('Verification code sent to your email')
@@ -114,27 +146,39 @@ export default function Signup() {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: "'Segoe UI', sans-serif",
         position: 'relative',
       }}
     >
       <div
         style={{
-          width: 820,
-          height: 470,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 820,
           background: '#fff',
           borderRadius: 16,
           display: 'flex',
+          flexDirection: 'row',
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           zIndex: 1,
           position: 'relative',
-          visibility: videoReady ? 'visible' : 'hidden',
+          flexWrap: 'wrap',
         }}
       >
         {/* Form panel — on the LEFT for sign up */}
@@ -146,10 +190,11 @@ export default function Signup() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            padding: '22px 32px 28px',
+            padding: '22px 24px 28px',
             order: 1,
             flexShrink: 0,
             overflowY: 'auto',
+            boxSizing: 'border-box',
           }}
         >
           {/* Tabs */}
@@ -214,6 +259,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 4px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -238,6 +284,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -263,6 +310,7 @@ export default function Signup() {
                     style={{
                       width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                       padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -288,6 +336,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -314,6 +363,7 @@ export default function Signup() {
                   style={{
                     width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
                     padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -391,6 +441,7 @@ export default function Signup() {
                         padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
                         letterSpacing: 8,
                         fontWeight: 600,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -450,8 +501,17 @@ export default function Signup() {
           )}
         </div>
 
-        {/* Animated video panel — on the RIGHT for sign up */}
-        <div style={{ width: '50%', background: '#000', order: 2, flexShrink: 0, overflow: 'hidden' }}>
+        {/* Animated video panel — on the RIGHT for sign up, hidden on mobile */}
+        <div
+          style={{
+            width: '50%',
+            background: '#000',
+            order: 2,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block"
+        >
           <video
             src={signupAni}
             autoPlay
@@ -459,9 +519,7 @@ export default function Signup() {
             loop
             playsInline
             preload="auto"
-            onLoadedData={() => setVideoReady(true)}
-            onError={() => setVideoReady(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
           />
         </div>
       </div>

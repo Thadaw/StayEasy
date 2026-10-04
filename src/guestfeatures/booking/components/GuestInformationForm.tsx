@@ -1,18 +1,14 @@
+import { useEffect, useRef } from "react"
+import { useForm, useWatch } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { BedDouble } from "lucide-react"
 import { allCountries } from "../../../data/countries"
 import { phoneCodes } from "../../../data/phoneCodes"
-
-interface GuestFormData {
-  name: string
-  email: string
-  phoneCode: string
-  phone: string
-  country: string
-}
+import { guestInformationSchema, type GuestInformationFormData } from "../schemas/bookingSchemas"
 
 interface GuestInformationFormProps {
-  guest: GuestFormData
-  onGuestChange: (guest: GuestFormData) => void
+  guest: GuestInformationFormData
+  onGuestChange: (guest: GuestInformationFormData) => void
   roomNames: string
 }
 
@@ -21,9 +17,32 @@ export function GuestInformationForm({
   onGuestChange,
   roomNames,
 }: GuestInformationFormProps) {
-  const updateField = (field: keyof GuestFormData, value: string) => {
-    onGuestChange({ ...guest, [field]: value })
-  }
+  const { control, setValue, reset } = useForm<GuestInformationFormData>({
+    resolver: zodResolver(guestInformationSchema),
+    defaultValues: guest,
+  })
+
+  const watched = useWatch({ control })
+
+  const isInitialMount = useRef(true)
+  const isResettingFromParent = useRef(false)
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    if (isResettingFromParent.current) return
+    onGuestChange(watched as GuestInformationFormData)
+  }, [watched, onGuestChange])
+
+  useEffect(() => {
+    isResettingFromParent.current = true
+    reset(guest)
+    requestAnimationFrame(() => {
+      isResettingFromParent.current = false
+    })
+  }, [guest.name, guest.email, guest.phoneCode, guest.phone, guest.country, reset])
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -37,8 +56,8 @@ export function GuestInformationForm({
         </label>
         <input
           type="text"
-          value={guest.name}
-          onChange={e => updateField("name", e.target.value)}
+          value={watched.name}
+          onChange={e => setValue("name", e.target.value, { shouldDirty: true })}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900"
         />
       </div>
@@ -49,8 +68,8 @@ export function GuestInformationForm({
         </label>
         <input
           type="email"
-          value={guest.email}
-          onChange={e => updateField("email", e.target.value)}
+          value={watched.email}
+          onChange={e => setValue("email", e.target.value, { shouldDirty: true })}
           placeholder="Watch out for typos..."
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 placeholder:text-gray-400"
         />
@@ -62,8 +81,8 @@ export function GuestInformationForm({
         </label>
         <div className="flex gap-2">
           <select
-            value={guest.phoneCode}
-            onChange={e => updateField("phoneCode", e.target.value)}
+            value={watched.phoneCode}
+            onChange={e => setValue("phoneCode", e.target.value, { shouldDirty: true })}
             className="w-[120px] border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 bg-white shrink-0"
           >
             {Object.entries(phoneCodes).map(([code, dial]) => (
@@ -74,8 +93,8 @@ export function GuestInformationForm({
           </select>
           <input
             type="tel"
-            value={guest.phone}
-            onChange={e => updateField("phone", e.target.value.replace(/\D/g, ""))}
+            value={watched.phone}
+            onChange={e => setValue("phone", e.target.value.replace(/\D/g, ""), { shouldDirty: true })}
             placeholder="+977"
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900"
           />
@@ -87,8 +106,8 @@ export function GuestInformationForm({
           Country / Region *
         </label>
         <select
-          value={guest.country}
-          onChange={e => updateField("country", e.target.value)}
+          value={watched.country}
+          onChange={e => setValue("country", e.target.value, { shouldDirty: true })}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 bg-white"
         >
           <option value="">Select a country</option>

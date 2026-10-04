@@ -2,12 +2,17 @@ import { useNavigate } from 'react-router-dom'
 import { useFavorites } from '../../../context/FavoritesContext'
 import { Heart, MapPin, Building2 } from 'lucide-react'
 import { FavouriteButton } from '../../../shared/components/FavouriteButton'
+import { FavouritesSkeleton } from './FavouritesSkeleton'
 
 export default function Favourites() {
-  const { favorites, getFavoriteProperties, toggleFavorite, isFavorite } = useFavorites()
+  const { favorites, getFavoriteProperties, toggleFavorite, isFavorite, loading } = useFavorites()
   const navigate = useNavigate()
 
   const properties = getFavoriteProperties()
+
+  if (loading) {
+    return <FavouritesSkeleton />
+  }
 
   if (favorites.size === 0) {
     return (

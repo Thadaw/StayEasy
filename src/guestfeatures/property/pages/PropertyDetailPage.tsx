@@ -16,9 +16,9 @@ import { RoomSelectionPanel } from "../components/RoomSelectionPanel";
 import { ReviewSection } from "../components/ReviewSection";
 import { ThingsToKnow } from "../components/ThingsToKnow";
 import { RoomDetailModal } from "../components/RoomDetailModal";
-import { RecommendedRoom } from "../components/RecommendedRoom";
+
 import { usePropertyDetails } from "../hooks/usePropertyDetails";
-import { useBookingCreation } from "../../booking/hooks/useBookingCreation";
+import { PropertyDetailSkeleton } from "../components/PropertyDetailSkeleton";
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
@@ -41,8 +41,7 @@ export default function PropertyDetailPage() {
     detailRoomId,
     nights,
     capacityError,
-    recommendedRooms,
-    hotelMatchesFilters,
+
     setCheckIn,
     setCheckOut,
     setGuests,
@@ -50,8 +49,6 @@ export default function PropertyDetailPage() {
     handleQtyChange,
     handleSelectRoom,
   } = usePropertyDetails(id);
-
-  const { createBooking, isCreating } = useBookingCreation();
 
   const liked = isFavorite(id ?? "");
 
@@ -93,7 +90,7 @@ export default function PropertyDetailPage() {
   }, [hotel]);
 
   if (isLoading) {
-    return <PageMessage loading title="Loading property..." />;
+    return <PropertyDetailSkeleton />;
   }
 
   if (!hotel) {
@@ -110,10 +107,6 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const guestCount = (() => {
-    const total = guests.adults + guests.children
-    return total > 0 ? total : 2
-  })();
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -134,7 +127,7 @@ export default function PropertyDetailPage() {
     handleSelectRoom(roomId);
   };
 
-  const handleReserve = async () => {
+  const handleReserve = () => {
     const selected = Object.entries(roomQuantities).filter(([, q]) => q > 0);
     if (selected.length === 0) return;
 
@@ -150,28 +143,6 @@ export default function PropertyDetailPage() {
       return;
     }
 
-    const roomIds = selected.flatMap(([roomId, qty]) => Array(qty).fill(roomId));
-
-    let refNumber = '';
-    try {
-      refNumber = await createBooking({
-        property_id: id!,
-        room_ids: roomIds,
-        check_in: checkIn,
-        check_out: checkOut,
-        adults: guests.adults,
-        children: guests.children,
-      });
-    } catch {
-      toast.error('Could not create booking. Please try again.');
-      return;
-    }
-
-    if (!refNumber) {
-      toast.error('Could not create booking. Please try again.');
-      return;
-    }
-
     const params = new URLSearchParams();
     if (checkIn) params.set('checkIn', checkIn);
     if (checkOut) params.set('checkOut', checkOut);
@@ -181,7 +152,6 @@ export default function PropertyDetailPage() {
     ));
     params.set('adults', String(guests.adults));
     params.set('children', String(guests.children));
-    if (refNumber) params.set('ref', refNumber);
     navigate('/booking-details/' + id + '?' + params.toString());
   };
 
@@ -260,18 +230,6 @@ export default function PropertyDetailPage() {
 
         <AmenitiesSection hotel={hotel} />
 
-        {hotelMatchesFilters && recommendedRooms.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-foreground mb-3 font-brand">
-              Recommended for {guestCount} guest{guestCount > 1 ? "s" : ""}
-            </h3>
-            <div className="space-y-3">
-              {recommendedRooms.map((rt) => (
-                <RecommendedRoom key={rt.id} room={rt} onReserve={handleSelectRoom} currency={currency} roomQuantities={roomQuantities} />
-              ))}
-            </div>
-          </div>
-        )}
 
         <RoomSelectionPanel
           hotel={hotel}
@@ -292,10 +250,9 @@ export default function PropertyDetailPage() {
           currency={currency}
           capacityError={capacityError}
           user={user}
-          isCreating={isCreating}
         />
 
-        <ReviewSection hotel={hotel} />
+        <ReviewSection hotel={hotel} propertyId={id!} />
 
         <ThingsToKnow />
       </div>

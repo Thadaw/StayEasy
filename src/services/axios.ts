@@ -10,9 +10,10 @@ const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
 const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
+const REMEMBER_KEY = 'rememberMe'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1/',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://stay-easy-sizw.onrender.com/api/v1/',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json'
@@ -23,14 +24,25 @@ function storageGet(key: string): string | null {
   return localStorage.getItem(key) || sessionStorage.getItem(key)
 }
 
+// Write to the store the session actually lives in (rememberMe flag), instead
+// of "whichever store already has a token" — after an expiry cleanup NEITHER
+// store has one, so refreshed tokens used to be silently lost and the session
+// broke on the next reload/new tab.
+function sessionStore(): Storage {
+  return localStorage.getItem(REMEMBER_KEY) !== 'false' ? localStorage : sessionStorage
+}
+
 function updateAccessToken(token: string) {
-  if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, token)
-  else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(TOKEN_KEY, token)
+  const store = sessionStore()
+  store.setItem(TOKEN_KEY, token)
+  // Keep the expiry marker in lockstep with the new JWT so readToken()
+  // never removes a token that was just refreshed.
+  const exp = decodeTokenExp(token)
+  store.setItem(EXPIRY_KEY, String(exp ? exp * 1000 : Date.now() + 24 * 60 * 60 * 1000))
 }
 
 function updateRefreshToken(token: string) {
-  if (localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, token)
-  else if (sessionStorage.getItem(REFRESH_KEY)) sessionStorage.setItem(REFRESH_KEY, token)
+  sessionStore().setItem(REFRESH_KEY, token)
 }
 
 function updateTokenExpiry() {
@@ -48,8 +60,12 @@ function clearStoredSession() {
 }
 
 function redirectToLogin() {
-  const isHost = storageGet(ROLE_KEY) === 'host'
-  const loginPath = isHost ? '/host/login' : '/login'
+  const role = storageGet(ROLE_KEY)
+  let loginPath = '/login'
+  if (role === 'host') loginPath = '/host/login'
+  // Staff log in through the host section — /staff/login is guest-mode and
+  // can never authenticate staff (users-table) credentials.
+  else if (role === 'staff') loginPath = '/host/login'
   clearStoredSession()
   if (window.location.pathname !== loginPath) {
     const redirect = encodeURIComponent(window.location.pathname + window.location.search)
@@ -74,7 +90,8 @@ async function refreshAccessToken(): Promise<string> {
   if (!refreshToken) throw new Error('No refresh token available')
 
   const role = storageGet(ROLE_KEY) === 'guest' ? 'guests' : 'users'
-  const { data } = await axios.post(`${api.defaults.baseURL}/auth/${role}/refresh`, {
+  const baseURL = (api.defaults.baseURL || '').replace(/\/+$/, '')
+  const { data } = await axios.post(`${baseURL}/auth/${role}/refresh`, {
     refresh_token: refreshToken,
   })
 
@@ -145,5 +162,44 @@ api.interceptors.response.use(
     }
   }
 )
+
+export function decodeTokenExp(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.exp === 'number' ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+export { refreshAccessToken }
+
+export function startTokenRefreshTimer(
+  token: string | null,
+  onRefresh: (newToken: string) => void
+): () => void {
+  if (!token) return () => {}
+
+  const exp = decodeTokenExp(token)
+  if (!exp) return () => {}
+
+  const refreshAt = (exp * 1000) - Date.now() - 60_000
+
+  if (refreshAt <= 0) {
+    refreshAccessToken().then(onRefresh).catch(() => {})
+    return () => {}
+  }
+
+  const timerId = setTimeout(async () => {
+    try {
+      const newToken = await refreshAccessToken()
+      onRefresh(newToken)
+    } catch {
+      // Refresh failed — interceptor will handle 401 on next request
+    }
+  }, refreshAt)
+
+  return () => clearTimeout(timerId)
+}
 
 export default api

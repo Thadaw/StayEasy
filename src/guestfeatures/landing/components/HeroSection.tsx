@@ -3,132 +3,27 @@ import { MapPin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SearchBar } from "../../../shared/components/SearchBar";
 import { heroHotels } from "../../../data/heroHotels";
-import { vibes } from "../../../data/vibes";
-import { getDefaultDates } from "../../../shared/utils/date";
-import api from "../../../services/axios";
+import { useNearbyProperties } from "../../search/hooks/useNearbyProperties";
 import { HeroCard } from "../../../shared/components/HeroCard";
-
-interface NearbyProperty {
-  property_id: string;
-  name: string;
-  city: string;
-  country: string;
-  cover_photo: string;
-  lowest_rate: number;
-  currency: string;
-  distance_km?: number;
-}
-
-const vibeKeyMap: Record<string, string> = {
-  All: "vibeAll",
-  Beach: "vibeBeach",
-  Mountains: "vibeMountains",
-  City: "vibeCity",
-  Countryside: "vibeCountryside",
-  Design: "vibeDesign",
-  Trending: "vibeTrending",
-};
 
 export function HeroSection() {
   const { t } = useTranslation();
-  const [activeVibe, setActiveVibe] = useState("All");
   const [showLocationPopup, setShowLocationPopup] = useState(false);
-  const [nearbyProperties, setNearbyProperties] = useState<NearbyProperty[]>([]);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [locationDenied, setLocationDenied] = useState(() => localStorage.getItem("locationDenied") === "true");
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const { data: nearbyData = [] } = useNearbyProperties(3);
 
-
-  useEffect(() => {
-    const CACHE_KEY = "heroNearbyCache";
-    const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-
-    const loadNearbyProperties = async () => {
-      try {
-        // Check cache first
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_TTL && Array.isArray(data) && data.length > 0) {
-            setNearbyProperties(data);
-            return;
-          }
-        }
-
-        let lat: number | null = null;
-        let lon: number | null = null;
-
-        const stored = localStorage.getItem("nearbyLocation");
-        const match = stored?.match(/([\d.-]+),\s*([\d.-]+)/);
-        if (match) {
-          lat = parseFloat(match[1]);
-          lon = parseFloat(match[2]);
-        } else if (!localStorage.getItem("locationPopupSeen")) {
-          try {
-            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-            });
-            lat = pos.coords.latitude;
-            lon = pos.coords.longitude;
-          } catch {
-            // geolocation not available
-          }
-        }
-
-        const { today, tomorrow } = getDefaultDates();
-
-        let results: NearbyProperty[] = [];
-
-        if (lat != null && lon != null) {
-          const { data } = await api.get("/search/nearby", {
-            params: { lat, lon, limit: 10, check_in: today, check_out: tomorrow, adults: 2, children: 0, rooms: 1 },
-          });
-          const raw: NearbyProperty[] = data?.data || [];
-          results = raw
-            .filter((p) => p.lowest_rate != null)
-            .sort((a, b) => {
-              const distA = a.distance_km ?? Infinity;
-              const distB = b.distance_km ?? Infinity;
-              if (distA !== distB) return distA - distB;
-              return a.lowest_rate - b.lowest_rate;
-            })
-            .slice(0, 3);
-        }
-
-        if (results.length === 0) {
-          const { data } = await api.get("/search", {
-            params: { destination: "Nepal", limit: 3, check_in: today, check_out: tomorrow, adults: 2, children: 0, rooms: 1 },
-          });
-          const rawResults = data?.data?.results || data?.data || data?.results || [];
-          results = rawResults
-            .filter((p: any) => p.total_price != null || p.lowest_rate != null || p.price != null)
-            .map((p: any) => ({
-              property_id: p.property_id || p.id || "",
-              name: p.name || "",
-              city: p.city || "",
-              country: p.country || "",
-              cover_photo: p.cover_photo || p.image || "",
-              lowest_rate: p.lowest_rate || p.total_price || p.price || 0,
-              currency: p.currency || "$",
-              distance_km: p.distance_km,
-            }))
-            .slice(0, 3);
-        }
-
-        if (results.length > 0) {
-          setNearbyProperties(results);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: results, timestamp: Date.now() }));
-        }
-    } catch {
-      // API failure — nearby section stays hidden.
-    }
-  };
-  loadNearbyProperties();
-  }, []);
+  const nearbyProperties = nearbyData
+    .filter((p) => p.lowest_rate != null)
+    .sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity))
+    .slice(0, 3);
 
   useEffect(() => {
     const hasSeenPopup = localStorage.getItem("locationPopupSeen");
-    if (!hasSeenPopup) {
+    const isDenied = localStorage.getItem("locationDenied") === "true";
+    if (!hasSeenPopup || isDenied) {
       setShowLocationPopup(true);
     }
   }, []);
@@ -139,6 +34,7 @@ export function HeroSection() {
         try {
           const status = await navigator.permissions.query({ name: "geolocation" });
           if (status.state === "granted") {
+            localStorage.removeItem("locationDenied");
             localStorage.setItem("locationPopupSeen", "true");
             setShowLocationPopup(false);
             window.location.reload();
@@ -152,12 +48,15 @@ export function HeroSection() {
         (pos) => {
           const { latitude, longitude } = pos.coords;
           localStorage.setItem("nearbyLocation", `Nearby (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`);
+          localStorage.removeItem("locationDenied");
           localStorage.setItem("locationPopupSeen", "true");
           setShowLocationPopup(false);
           window.location.reload();
         },
         () => {
           localStorage.setItem("nearbyLocation", "Nearby");
+          localStorage.setItem("locationDenied", "true");
+          setLocationDenied(true);
           localStorage.setItem("locationPopupSeen", "true");
           setShowLocationPopup(false);
         },
@@ -165,6 +64,8 @@ export function HeroSection() {
       );
     } else {
       localStorage.setItem("nearbyLocation", "Nearby");
+      localStorage.setItem("locationDenied", "true");
+      setLocationDenied(true);
       localStorage.setItem("locationPopupSeen", "true");
       setShowLocationPopup(false);
     }
@@ -217,7 +118,7 @@ export function HeroSection() {
         name: p.name,
         city: p.city || "",
         country: p.country || "",
-        price: Math.round(p.lowest_rate),
+        price: Math.round(p.lowest_rate ?? 0),
         currency: p.currency || "$",
         image: p.cover_photo || "",
         distance: p.distance_km,
@@ -251,7 +152,7 @@ export function HeroSection() {
       <div className="hidden md:block absolute bottom-[50%] left-[20%] w-1.5 h-1.5 rounded-full bg-brand-accent opacity-55" />
 
       <div className="relative z-10 max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6 flex flex-col lg:flex-row items-start lg:items-center gap-5 lg:gap-10 min-h-[240px] md:min-h-[280px] lg:min-h-[320px]">
-        <div className="flex-1 w-full max-w-2xl pt-2 md:pt-4 lg:pt-0">
+        <div className="flex-1 w-full pt-2 md:pt-4 lg:pt-0">
           <h1
             className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] leading-[1.05] tracking-tight mb-4 md:mb-5 font-brand font-extrabold text-brand-heading"
           >
@@ -268,32 +169,8 @@ export function HeroSection() {
             <span className="sm:hidden"> </span>{t("heroSubtext2")}
           </p>
 
-          <div className="relative z-30 mr-0 lg:mr-[-150px] xl:mr-[-57px]">
+          <div className="relative z-30">
             <SearchBar />
-          </div>
-
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-600 mb-3">{t("exploreByVibe")}</p>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide">
-              {vibes.map((vibe) => {
-                const Icon = vibe.icon;
-                const isActive = activeVibe === vibe.label;
-                return (
-                  <button
-                    key={vibe.label}
-                    onClick={() => setActiveVibe(vibe.label)}
-                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border whitespace-nowrap shrink-0 ${
-                      isActive
-                        ? "bg-brand-accent text-white border-brand-accent shadow-md shadow-brand-accent/20"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-brand-accent hover:text-brand-accent hover:bg-brand-accent-light"
-                    }`}
-                  >
-                    <Icon size={14} />
-                    {t(vibeKeyMap[vibe.label] || vibe.label)}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-5 md:mt-6">
@@ -304,6 +181,7 @@ export function HeroSection() {
           </div>
         </div>
 
+        {!locationDenied && (
         <div
           className="hidden lg:flex relative w-[380px] h-[340px] xl:w-[480px] xl:h-[430px] shrink-0 items-center justify-center mx-auto"
         >
@@ -338,6 +216,7 @@ export function HeroSection() {
                 fallbackName={heroHotels[0].location}
                 fallbackLocation={heroHotels[0].location}
                 fallbackPrice={heroHotels[0].price}
+                fallbackSearchQuery={heroHotels[0].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 0 ? 'z-50' : 'z-20'}`}
                 style={getCardStyle(0, 4)}
               />
@@ -365,6 +244,7 @@ export function HeroSection() {
                 fallbackName={heroHotels[1].location}
                 fallbackLocation={heroHotels[1].location}
                 fallbackPrice={heroHotels[1].price}
+                fallbackSearchQuery={heroHotels[1].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 1 ? 'z-50' : 'z-10'}`}
                 style={getCardStyle(1, -3)}
               />
@@ -392,12 +272,14 @@ export function HeroSection() {
                 fallbackName={heroHotels[2].location}
                 fallbackLocation={heroHotels[2].location}
                 fallbackPrice={heroHotels[2].price}
+                fallbackSearchQuery={heroHotels[2].location}
                 className={`transition-all duration-300 ease-out ${hoveredCard === 2 ? 'z-50' : 'z-15'}`}
                 style={getCardStyle(2, 2)}
               />
             )}
           </div>
         </div>
+        )}
       </div>
 
       {showLocationPopup && (

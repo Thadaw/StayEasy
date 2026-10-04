@@ -1,124 +1,64 @@
-import { useState, useEffect } from "react";
-import api from "../../../services/axios";
-import type { SearchProperty } from "../../../shared/types/api";
-import { getDefaultDates } from "../../../shared/utils/date";
-
-const CACHE_KEY = "nearbyPropertiesCache";
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-interface NearbyCache {
-  timestamp: number;
-  limit: number;
-  properties: SearchProperty[];
-}
-
-function readCache(): NearbyCache | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as NearbyCache;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(entry: NearbyCache) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
-  } catch {
-    // localStorage unavailable or full
-  }
-}
+import { useQuery } from "@tanstack/react-query"
+import api from "../../../services/axios"
+import type { SearchProperty } from "../../../shared/types/api"
+import { getDefaultDates } from "../../../shared/utils/date"
 
 function getStoredCoords(): { lat: number; lon: number } | null {
   try {
-    const stored = localStorage.getItem("nearbyLocation");
-    if (!stored) return null;
-    const match = stored.match(/([\d.-]+),\s*([\d.-]+)/);
-    if (!match) return null;
-    return { lat: parseFloat(match[1]), lon: parseFloat(match[2]) };
+    const stored = localStorage.getItem("nearbyLocation")
+    if (!stored) return null
+    const match = stored.match(/([\d.-]+),\s*([\d.-]+)/)
+    if (!match) return null
+    return { lat: parseFloat(match[1]), lon: parseFloat(match[2]) }
   } catch {
-    return null;
+    return null
   }
 }
 
+function getGeolocation(): Promise<{ lat: number; lon: number } | null> {
+  return new Promise((resolve) => {
+    if (localStorage.getItem("locationDenied") === "true") {
+      resolve(null)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 8000 }
+    )
+  })
+}
+
 export function useNearbyProperties(limit = 6) {
-  const [properties, setProperties] = useState<SearchProperty[]>([]);
-  const [loading, setLoading] = useState(true);
+  return useQuery({
+    queryKey: ["nearbyProperties", limit] as const,
+    queryFn: async ({ signal }): Promise<SearchProperty[]> => {
+      const stored = getStoredCoords()
+      let coords = stored
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const cached = readCache();
-    const cacheValid = !!cached && cached.limit === limit && cached.properties.length > 0;
-    const isFresh = cacheValid && Date.now() - cached.timestamp < CACHE_TTL_MS;
-
-    if (cacheValid) {
-      setProperties(cached.properties);
-      setLoading(false);
-    }
-
-    // Fresh cache — skip network + geolocation entirely, render instantly.
-    if (isFresh) return;
-
-    const fetchNearby = async (lat: number, lon: number) => {
-      if (!cacheValid) setLoading(true);
-      try {
-        const { today, tomorrow } = getDefaultDates();
-        const response = await api.get("/search/nearby", {
-          params: {
-            lat,
-            lon,
-            limit,
-            check_in: today,
-            check_out: tomorrow,
-            adults: 2,
-            children: 0,
-            rooms: 1,
-          },
-        });
-        const results: SearchProperty[] = response.data?.data || [];
-        if (!cancelled) {
-          setProperties(results);
-          if (results.length > 0) {
-            writeCache({ timestamp: Date.now(), limit, properties: results });
-          }
-        }
-      } catch {
-        if (!cancelled) setProperties([]);
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!coords) {
+        coords = await getGeolocation()
       }
-    };
 
-    // 1. Use coordinates saved by HeroSection popup (no permission prompt needed).
-    const stored = getStoredCoords();
-    if (stored) {
-      fetchNearby(stored.lat, stored.lon);
-      return () => { cancelled = true; };
-    }
+      if (!coords) return []
 
-    // 2. Fall back to live geolocation.
-    const tryGeolocation = async () => {
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
-        });
-        await fetchNearby(pos.coords.latitude, pos.coords.longitude);
-      } catch {
-        if (!cancelled) {
-          setProperties([]);
-          setLoading(false);
-        }
-      }
-    };
-
-    tryGeolocation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [limit]);
-
-  return { properties, loading };
+      const { today, tomorrow } = getDefaultDates()
+      const response = await api.get("/search/nearby", {
+        params: {
+          lat: coords.lat,
+          lon: coords.lon,
+          limit,
+          check_in: today,
+          check_out: tomorrow,
+          adults: 2,
+          children: 0,
+          rooms: 1,
+        },
+        signal,
+      })
+      return response.data?.data || []
+    },
+    staleTime: 60 * 60_000,
+    gcTime: 60 * 60_000,
+  })
 }

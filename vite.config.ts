@@ -11,20 +11,5 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-
-    proxy: {
-      '/api': {
-        target: 'https://stay-easy-sizw.onrender.com',
-        changeOrigin: true,
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
-            const origin = req.headers.origin
-            if (origin) {
-              proxyReq.setHeader('Origin', origin)
-            }
-          })
-        },
-      },
-    },
   },
 })

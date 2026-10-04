@@ -11,10 +11,12 @@ export interface StripeCardFormProps {
   currency?: string
   guestName?: string
   guestEmail?: string
-  guestPhone?: string
+  hotelName?: string
   clientSecret?: string | null
   intentLoading?: boolean
   intentError?: string | null
   onRetry?: () => void
-  onSuccess: (paymentIntentId: string, clientSecret: string, createdAt: number) => void
+  paymentPlan?: "full" | "advance" | "arrival" | null
+  /** Called when Stripe confirms a payment in-place (no redirect, e.g. plain card payments) */
+  onPaymentIntentConfirmed?: (paymentIntentId: string) => void
 }

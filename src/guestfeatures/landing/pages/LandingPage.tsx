@@ -6,8 +6,7 @@ import { NearbySection } from "../components/NearbySection";
 import { CitySection } from "../components/CitySection";
 import { PopularDestinations } from "../components/PopularDestinations";
 import { TrustBadgesSection } from "../components/TrustBadgesSection";
-import { TestimonialSection } from "../components/TestimonialSection";
-import { NewsletterSection } from "../components/NewsletterSection";
+
 
 export default function LandingPage() {
   return (
@@ -20,8 +19,6 @@ export default function LandingPage() {
       <CitySection city="pokhara" />
       <PopularDestinations />
       <TrustBadgesSection />
-      <TestimonialSection />
-      <NewsletterSection />
       <Footer />
 
     </div>

@@ -2,13 +2,62 @@ import { Globe } from "lucide-react";
 import { Link } from "react-router-dom";
 import logo1 from "../../assets/logo1.png";
 
-const footerLinks = {
-  Support: ["Help Center", "Contact Us", "Booking Help", "Cancellation & Refund", "Payment & Security", "Safety Information", "Accessibility"],
-  Explore: ["Browse Properties", "Popular Destinations", "Hotels & Stays", "Offers & Deals", "Nearby Stays"],
-  Hosting: ["List Your Property", "Host Dashboard", "Hosting Guide", "Host Resources", "Host Safety", "Host Support"],
-  ServeIQ: ["About ServeIQ", "Features", "Careers", "Pricing & Plans", "Contact Us"],
-  Legal: ["Privacy Policy", "Terms of Service", "Cancellation Policy", "Refund Policy", "Cookie Policy", "Sitemap"],
-};
+const footerLinks: { section: string; links: { text: string; to: string }[] }[] = [
+  {
+    section: "Support",
+    links: [
+      { text: "Help Center", to: "/help-center" },
+      { text: "Contact Us", to: "/contact" },
+      { text: "Booking Help", to: "/booking-help" },
+      { text: "Cancellation & Refund", to: "/cancellation-refund" },
+      { text: "Payment & Security", to: "/payment-security" },
+      { text: "Safety Information", to: "/safety" },
+      { text: "Accessibility", to: "/accessibility" },
+    ],
+  },
+  {
+    section: "Explore",
+    links: [
+      { text: "Browse Properties", to: "/search" },
+      { text: "Popular Destinations", to: "/destinations" },
+      { text: "Hotels & Stays", to: "/hotels-stays" },
+      { text: "Offers & Deals", to: "/offers" },
+      { text: "Nearby Stays", to: "/nearby-stays" },
+    ],
+  },
+  {
+    section: "Hosting",
+    links: [
+      { text: "List Your Property", to: "/host/tenant-setup" },
+      { text: "Host Dashboard", to: "/host/portal" },
+      { text: "Hosting Guide", to: "/hosting-guide" },
+      { text: "Host Resources", to: "/host-resources" },
+      { text: "Host Safety", to: "/host-safety" },
+      { text: "Host Support", to: "/host/support" },
+    ],
+  },
+  {
+    section: "ServeIQ",
+    links: [
+      { text: "About ServeIQ", to: "/about" },
+      { text: "Features", to: "/features" },
+      { text: "Careers", to: "/careers" },
+      { text: "Pricing & Plans", to: "/host/pricing" },
+      { text: "Contact Us", to: "/contact" },
+    ],
+  },
+  {
+    section: "Legal",
+    links: [
+      { text: "Privacy Policy", to: "/privacy" },
+      { text: "Terms of Service", to: "/terms" },
+      { text: "Cancellation Policy", to: "/cancellation-policy" },
+      { text: "Refund Policy", to: "/refund-policy" },
+      { text: "Cookie Policy", to: "/cookie-policy" },
+      { text: "Sitemap", to: "/sitemap" },
+    ],
+  },
+];
 
 export function Footer() {
   return (
@@ -24,15 +73,18 @@ export function Footer() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-          {Object.entries(footerLinks).map(([section, links]) => (
+          {footerLinks.map(({ section, links }) => (
             <div key={section}>
               <h4 className="text-sm font-semibold mb-4 text-brand-dark">{section}</h4>
               <ul className="flex flex-col gap-2.5">
                 {links.map(link => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground transition-colors hover:underline hover:text-primary">
-                      {link}
-                    </a>
+                  <li key={link.text}>
+                    <Link
+                      to={link.to}
+                      className="text-sm text-muted-foreground transition-colors hover:underline hover:text-primary"
+                    >
+                      {link.text}
+                    </Link>
                   </li>
                 ))}
               </ul>

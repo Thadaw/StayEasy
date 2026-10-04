@@ -27,7 +27,7 @@ export default function ManagerNewBookingPage() {
 
   const { data: availableRooms = [] } = useQuery({
     queryKey: roomKeys.available(effectivePropertyId, formData.checkIn, formData.checkOut, formData.adults, formData.children, 1),
-    queryFn: () => getAvailableRooms(effectivePropertyId, formData.checkIn, formData.checkOut),
+    queryFn: () => getAvailableRooms(effectivePropertyId, formData.checkIn, formData.checkOut, formData.adults, formData.children),
     enabled: !!effectivePropertyId && !!formData.checkIn && !!formData.checkOut && formData.checkOut > formData.checkIn,
   })
 

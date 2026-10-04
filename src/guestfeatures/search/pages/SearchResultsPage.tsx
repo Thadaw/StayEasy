@@ -1,147 +1,72 @@
-import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { LayoutList, LayoutGrid } from "lucide-react";
-import { Navbar } from "../../../shared/components/Navbar";
-import { SearchBar } from "../../../shared/components/SearchBar";
-import { StickySearchHeader } from "../../../shared/components/StickySearchHeader";
-import { Footer } from "../../../shared/components/Footer";
-import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
-import { useFavorites } from "../../../context/FavoritesContext";
-import { useSearchResults } from "../hooks/useSearchResults";
+import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
+import { LayoutList, LayoutGrid } from "lucide-react"
+import { Navbar } from "../../../shared/components/Navbar"
+import { SearchBar } from "../../../shared/components/SearchBar"
+import { StickySearchHeader } from "../../../shared/components/StickySearchHeader"
+import { Footer } from "../../../shared/components/Footer"
+import { useFavorites } from "../../../context/FavoritesContext"
+import { useSearchResults, PAGE_SIZE } from "../hooks/useSearchResults"
+import { parseSearchParams, buildFilterQueryString } from "../schemas/searchParams"
 
-import { FilterSidebar } from "../components/FilterSidebar";
-import { SearchResultCard } from "../components/SearchResultCard";
-import { SearchResultGridCard } from "../components/SearchResultGridCard";
-import { Pagination } from "../components/Pagination";
-import { EmptySearch } from "../components/EmptySearch";
+import { FilterSidebar } from "../components/FilterSidebar"
+import { SearchResultCard } from "../components/SearchResultCard"
+import { SearchResultGridCard } from "../components/SearchResultGridCard"
+import { SearchResultListSkeleton, SearchResultGridSkeleton } from "../components/SearchResultSkeleton"
+import { Pagination } from "../components/Pagination"
+import { EmptySearch } from "../components/EmptySearch"
 
 export default function SearchResultsPage() {
-  const [searchParams] = useSearchParams();
-  const guests = searchParams.get("guests") || "2 guests";
-  const whereParam = searchParams.get("where") || "";
-  const propertyTypes = searchParams.get("propertyTypes") || "";
-  const checkinParam = searchParams.get("checkin") || "";
-  const checkoutParam = searchParams.get("checkout") || "";
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const [searchParams] = useSearchParams()
+  const { isFavorite, toggleFavorite } = useFavorites()
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const parsed = useMemo(() => parseSearchParams(searchParams), [searchParams])
 
-  const { results, loading, total, pageSize } = useSearchResults(
-    whereParam,
-    propertyTypes,
-    checkinParam,
-    checkoutParam,
-    guests,
-    currentPage
-  );
+  const [currentPage, setCurrentPage] = useState(1)
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchParams])
+
+  const guests = parsed.guests || `${Number(parsed.adults) + Number(parsed.children)} guests`
+
+  const { data, isLoading, isFetching } = useSearchResults({
+    where: parsed.where,
+    propertyTypes: parsed.propertyTypes,
+    checkin: parsed.checkin,
+    checkout: parsed.checkout,
+    adults: parsed.adults,
+    children: parsed.children,
+    rooms: parsed.rooms,
+    page: currentPage,
+    min_price: parsed.min_price,
+    max_price: parsed.max_price,
+    room_type_ids: parsed.room_type_ids,
+    bed_type_ids: parsed.bed_type_ids,
+    amenity_ids: parsed.amenity_ids,
+  })
+
+  const results = useMemo(() => data?.results ?? [], [data])
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const maxPrice = useMemo(() => {
-    if (results.length === 0) return 500;
-    return Math.ceil(Math.max(...results.map((p) => p.total_price ?? 0)));
-  }, [results]);
+    if (results.length === 0) return 500
+    return Math.ceil(Math.max(...results.map((p) => p.total_price ?? 0)))
+  }, [results])
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  const [propertyFilters, setPropertyFilters] = useState<string[]>(() => {
-    const fromUrl = searchParams.get("propertyTypes")?.split(",").filter(Boolean);
-    if (fromUrl && fromUrl.length > 0) {
-      const mapped = fromUrl.map((t) => {
-        const lower = t.toLowerCase();
-        if (lower === "hotel" || lower === "hostel") return "Hotel";
-        if (lower === "apartment") return "Apartment";
-        if (lower === "villa") return "Villa";
-        if (lower === "resort") return "Resort";
-        return "Others";
-      });
-      return [...new Set(mapped)];
-    }
-    return ["All types"];
-  });
-  const [amenities, setAmenities] = useState<string[]>([]);
+  const isInitialLoading = isLoading && !data
+  const isRefetching = isFetching && !!data
+  const showSkeleton = isInitialLoading || isRefetching
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [whereParam, propertyTypes, checkinParam, checkoutParam, guests]);
+  const filterParams = useMemo(
+    () => buildFilterQueryString(parsed),
+    [parsed]
+  )
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
-  const togglePropertyType = (type: string) => {
-    if (type === "All types") {
-      setPropertyFilters(["All types"]);
-    } else {
-      setPropertyFilters((prev) => {
-        const next = prev.filter((t) => t !== "All types");
-        if (next.includes(type)) {
-          return next.filter((t) => t !== type);
-        }
-        return [...next, type];
-      });
-    }
-  };
-
-  const toggleAmenity = (amenity: string) => {
-    setAmenities((prev) =>
-      prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity]
-    );
-  };
-
-  useEffect(() => {
-    setPriceRange(([, prevMax]) => [0, maxPrice]);
-  }, [maxPrice]);
-
-  const pageResults = useMemo(() => {
-    return results.filter((property) => {
-      if (!propertyFilters.includes("All types")) {
-        const type = (property.type || "").toLowerCase().trim();
-        const matchesType = propertyFilters.some((f) => {
-          if (f === "Others") {
-            const knownTypes = ["hotel", "hostel", "apartment", "villa", "resort"];
-            return !knownTypes.some((kt) => type.includes(kt));
-          }
-          const fLower = f.toLowerCase().replace(/s$/, "");
-          const tNorm = type.replace(/s$/, "");
-          return type.includes(fLower) || fLower.includes(type) || tNorm === fLower;
-        });
-        if (!matchesType) return false;
-      }
-
-      const price = property.total_price ?? 0;
-      if (price < priceRange[0] || price > priceRange[1]) return false;
-
-      if (amenities.length > 0) {
-        const matches = amenities.every((a) =>
-          (property.amenities || []).some((amenity) =>
-            amenity.toLowerCase().includes(a.toLowerCase())
-          )
-        );
-        if (!matches) return false;
-      }
-
-      return true;
-    });
-  }, [results, propertyFilters, priceRange, amenities]);
-
-  const clearAll = () => {
-    setPriceRange([0, maxPrice]);
-    setPropertyFilters(["All types"]);
-    setAmenities([]);
-  };
-
-  const buildFilterParams = () => {
-    const params = new URLSearchParams();
-    if (whereParam) params.set("where", whereParam);
-    if (checkinParam) params.set("checkin", checkinParam);
-    if (checkoutParam) params.set("checkout", checkoutParam);
-    if (guests) params.set("guests", guests);
-    if (amenities.length > 0) params.set("amenities", amenities.join(","));
-    return params.toString();
-  };
-
-  const hasFilters = Boolean(whereParam || propertyTypes);
+  const hasFilters = Boolean(parsed.where || parsed.propertyTypes)
 
   return (
     <div className="min-h-screen bg-background font-jakarta">
@@ -153,24 +78,25 @@ export default function SearchResultsPage() {
 
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex gap-6">
-          <div className="sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
-            <FilterSidebar
-              priceRange={priceRange}
-              onPriceRangeChange={setPriceRange}
-              maxPrice={maxPrice}
-              propertyFilters={propertyFilters}
-              onTogglePropertyType={togglePropertyType}
-              amenities={amenities}
-              onToggleAmenity={toggleAmenity}
-              onClearAll={clearAll}
-            />
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+            <FilterSidebar maxPrice={maxPrice} />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowMobileFilters(true)}
+                className="lg:hidden flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                Filters
+              </button>
               <h2 className="text-xl font-bold font-brand text-brand-heading">
-                {loading ? "Searching..." : `${total} stays${whereParam ? ` in ${whereParam}` : propertyTypes ? ` - ${propertyTypes}` : ""}`}
+                {showSkeleton ? "Searching..." : `${total} stays${parsed.where ? ` in ${parsed.where}` : parsed.propertyTypes ? ` - ${parsed.propertyTypes}` : ""}`}
               </h2>
+              </div>
               <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode("list")}
@@ -190,10 +116,8 @@ export default function SearchResultsPage() {
             </div>
 
             <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"}>
-              {loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <LoadingSpinner />
-                </div>
+              {showSkeleton ? (
+                viewMode === "list" ? <SearchResultListSkeleton /> : <SearchResultGridSkeleton />
               ) : results.length === 0 ? (
                 <EmptySearch hasFilters={hasFilters} />
               ) : (
@@ -204,7 +128,7 @@ export default function SearchResultsPage() {
                       property={property}
                       isFavorite={isFavorite(property.property_id)}
                       onToggleFavorite={toggleFavorite}
-                      filterParams={buildFilterParams()}
+                      filterParams={filterParams}
                       guests={guests}
                     />
                   ) : (
@@ -213,7 +137,7 @@ export default function SearchResultsPage() {
                       property={property}
                       isFavorite={isFavorite(property.property_id)}
                       onToggleFavorite={toggleFavorite}
-                      filterParams={buildFilterParams()}
+                      filterParams={filterParams}
                       guests={guests}
                     />
                   )
@@ -232,7 +156,28 @@ export default function SearchResultsPage() {
         </div>
       </div>
 
+      {/* Mobile Filter Drawer */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileFilters(false)} />
+          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-white shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-base font-bold text-gray-900">Filters</h3>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <FilterSidebar maxPrice={maxPrice} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
-  );
+  )
 }

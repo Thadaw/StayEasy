@@ -190,6 +190,22 @@ export interface AvailableRoom {
   custom_amenities: { name: string; icon: string | null }[]
 }
 
+export interface RoomCalendarDay {
+  date: string
+  status: string
+  booking_ref: string
+  guest_name: string
+}
+
+export interface RoomCalendarRoom {
+  room_id: string
+  room_name: string
+  room_type: string
+  bed_type: string
+  floor_number: number
+  days: RoomCalendarDay[]
+}
+
 export interface SpecialOfferPayload {
   title: string
   description: string
@@ -277,4 +293,84 @@ export interface BookingCreatePayload {
   check_out: string
   adults: number
   children: number
+}
+
+export interface WalkinBookingPayload {
+  idempotency_key: string
+  property_id: string
+  room_ids: string[]
+  check_in: string
+  check_out: string
+  adults: number
+  children: number
+  guest_full_name: string
+  guest_email: string
+  guest_phone: string
+  guest_nationality: string
+  coupon_code?: string
+  payment_method: string
+  payment_gateway?: string
+  amount_paid: number
+  advance_amount: number
+  special_requests?: string
+}
+
+// ─── Notifications ──────────────────────────────────────────
+
+export interface StaffNotification {
+  id: string
+  type: string
+  priority: string
+  title: string
+  message: string
+  entity_type: string
+  entity_id: string
+  actor_user_id: string
+  meta: Record<string, unknown>
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse {
+  notifications: StaffNotification[]
+  total: number
+  skip: number
+  limit: number
+  has_more: boolean
+  unread_count: number
+}
+
+export interface ArrivalGuest {
+  booking_id: string
+  ref_number: string
+  status: string
+  booking_type: string
+  guest: {
+    guest_id: string
+    full_name: string
+    email: string
+    phone: string
+    nationality: string
+  }
+  rooms: {
+    room_id: string
+    room_name: string
+    room_type: string
+    bed_type: string
+    base_rate: number
+  }[]
+  checkin_date: string
+  checkout_date: string
+  number_of_adults: number
+  number_of_children: number
+  special_requests: string
+  payment_method: string
+  payment_status: string
+  payment_gateway: string
+  amount_paid: number
+  amount_due: number
+  advance_amount: number
+  total_amount: number
+  created_at: string
 }

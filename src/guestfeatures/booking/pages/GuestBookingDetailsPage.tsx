@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom"
 import { ChevronRight, Star, ArrowLeft, BedDouble, Phone, Mail } from "lucide-react"
 import type { RoomType } from "../../../data/hotels"
 import { Navbar } from "../../../shared/components/Navbar"
 import { Footer } from "../../../shared/components/Footer"
 import { PageMessage } from "../../../shared/components/PageMessage"
+import { GuestBookingDetailsSkeleton } from "../components/GuestBookingDetailsSkeleton"
 import { GuestInformationForm } from "../components/GuestInformationForm"
+import type { GuestInformationFormData } from "../schemas/bookingSchemas"
 import { useGuestProfile } from "../../profile/hooks/useGuestProfile"
 import { formatDate } from "../../../shared/utils/format"
 import { mapPropertyToHotel } from "../../../shared/utils/propertyMapper"
@@ -15,8 +17,10 @@ import { parseJSON } from "../../../shared/utils/helpers"
 import { getDefaultDates } from "../../../shared/utils/date"
 import { allCountries } from "../../../data/countries"
 import { calculateNights } from "../../../shared/utils/time"
+import api from "../../../services/axios"
+import toast from "react-hot-toast"
 
-const HOTEL_IMAGE_HEIGHT = "h-56"
+const HOTEL_IMAGE_HEIGHT = "h-44 sm:h-56"
 const MAX_AMENITIES_DISPLAY = 5
 const DEFAULT_PHONE_CODE = "+977"
 
@@ -40,6 +44,9 @@ export default function BookingDetailsPage() {
   }
 
   const [refNumber, setRefNumber] = useState(refParam)
+  const [creatingBooking, setCreatingBooking] = useState(false)
+  const [creationError, setCreationError] = useState("")
+  const creationStartedRef = useRef(false)
   const selectedRooms: Record<string, number> = parseJSON(roomsParam, {})
   const guestAllocation: Record<string, number> = parseJSON(guestCountsParam, {})
 
@@ -65,19 +72,25 @@ export default function BookingDetailsPage() {
     ? { adults: bookingData.number_of_adults || 0, children: bookingData.number_of_children || 0 }
     : null
 
-  const loading = (refNumber ? bookingLoading : false) || propertyLoading
+  // Keep the skeleton up until the reservation actually exists (ref received
+  // and its data loaded) — or until creation fails, so we never render the
+  // guest form against a half-created booking.
+  const awaitingCreation = !!id && !refNumber && !creationError
+  const loading = creatingBooking || awaitingCreation || (refNumber ? bookingLoading : false) || propertyLoading
 
   const totalGuests = (bookingGuests ? bookingGuests.adults + bookingGuests.children : null)
     || Object.values(guestAllocation).reduce((s, c) => s + c, 0)
     || bookingParams.adults + bookingParams.children
 
-  const [guest, setGuest] = useState({
+  const [guest, setGuest] = useState<GuestInformationFormData>({
     name: "",
     email: "",
     phoneCode: DEFAULT_PHONE_CODE,
     phone: "",
     country: "",
   })
+
+  const [specialRequest, setSpecialRequest] = useState("")
 
   useEffect(() => {
     if (!guestProfile) return
@@ -115,7 +128,7 @@ export default function BookingDetailsPage() {
   const { createBooking } = useBookingCreation()
 
   useEffect(() => {
-    if (!id || refNumber) return
+    if (!id || refNumber || creationStartedRef.current) return
     const { today, tomorrow } = getDefaultDates()
     const rooms: Record<string, number> = parseJSON(roomsParam, {})
     const roomIds = Object.entries(rooms)
@@ -123,6 +136,14 @@ export default function BookingDetailsPage() {
       .flatMap(([roomId, qty]) => Array(qty).fill(roomId))
     const adults = bookingParams.adults
     const children = bookingParams.children
+    if (roomIds.length === 0) {
+      setCreationError("No rooms selected. Please go back and choose a room to reserve.")
+      toast.error("No rooms selected. Please go back and choose a room to reserve.")
+      return
+    }
+    creationStartedRef.current = true
+    setCreatingBooking(true)
+    setCreationError("")
     createBooking({
       property_id: id,
       room_ids: roomIds,
@@ -133,7 +154,11 @@ export default function BookingDetailsPage() {
     }).then(ref => {
       if (ref) setRefNumber(ref)
     }).catch(() => {
-      // error handled by hook
+      creationStartedRef.current = false
+      setCreationError("Could not create your reservation. Please go back and try again.")
+      toast.error("Could not create your reservation. Please go back and try again.")
+    }).finally(() => {
+      setCreatingBooking(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, refNumber, roomsParam, checkIn, checkOut])
@@ -153,6 +178,8 @@ export default function BookingDetailsPage() {
     return hotel.roomTypes.filter(rt => selectedRooms[rt.id] && selectedRooms[rt.id] > 0)
   }, [hotel, reservedRooms, selectedRooms])
 
+  const nights = bookingData?.nights || calculateNights(checkIn, checkOut)
+
   const roomLines = useMemo(() => {
     if (reservedRooms.length > 0) {
       return reservedRooms.map(br => {
@@ -160,23 +187,56 @@ export default function BookingDetailsPage() {
         const qty = 1
         const gc = br.max_adults + br.max_children
         const ep = br.base_rate
-        return { room: rt || { id: br.room_id, name: br.room_name, price: br.base_rate, maxGuests: gc } as RoomType, qty, gc, ep, lineTotal: qty * ep }
+        return {
+          room: rt || {
+            id: br.room_id,
+            name: br.room_name,
+            price: br.base_rate,
+            maxGuests: gc,
+            maxAdults: br.max_adults,
+            maxChildren: br.max_children,
+            roomTypeName: br.room_type || '',
+            bedType: br.bed_type || '',
+            image: br.photo || br.photos?.cover || '',
+            cancellationTitle: br.cancellation_title || '',
+            cancellationDescription: br.cancellation_description || '',
+          } as RoomType,
+          qty, gc, ep, lineTotal: br.subtotal || qty * ep * nights,
+          nights: br.nights,
+          maxAdults: br.max_adults,
+          maxChildren: br.max_children,
+        }
       })
     }
     return selectedRoomTypes.map(rt => {
       const qty = selectedRooms[rt.id] || 0
       const gc = guestAllocation[rt.id] || 1
       const ep = rt.price
-      const lineTotal = qty * ep
-      return { room: rt, qty, gc, ep, lineTotal }
+      const lineTotal = qty * ep * nights
+      return { room: rt, qty, gc, ep, lineTotal, maxAdults: rt.maxAdults || 0, maxChildren: rt.maxChildren || 0 }
     })
-  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation])
+  }, [reservedRooms, selectedRoomTypes, hotel, selectedRooms, guestAllocation, nights])
 
-  const nights = calculateNights(checkIn, checkOut)
-  const subtotal = roomLines.reduce((s, l) => s + l.lineTotal * nights, 0)
-  const total = subtotal
+  const subtotal = bookingData?.subtotal || roomLines.reduce((s, l) => s + l.lineTotal, 0)
+  const specialOfferDiscount = bookingData?.special_offer_discount || 0
+  const couponDiscount = bookingData?.coupon_discount || 0
+  const couponCode = bookingData?.coupon_code || null
+  const total = bookingData?.total_amount || subtotal
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (!refNumber) {
+      toast.error("Your reservation is still being created. Please wait a moment.")
+      return
+    }
+    if (specialRequest.trim() && refNumber) {
+      try {
+        await api.patch(`/bookings/${refNumber}/special-requests`, {
+          special_requests: specialRequest.trim()
+        })
+      } catch {
+        // Continue even if special request fails
+      }
+    }
     const params = new URLSearchParams()
     if (checkIn) params.set("checkIn", checkIn)
     if (checkOut) params.set("checkOut", checkOut)
@@ -193,7 +253,7 @@ export default function BookingDetailsPage() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading booking details..." />
+    return <GuestBookingDetailsSkeleton />
   }
 
   if (!hotel) {
@@ -216,7 +276,7 @@ export default function BookingDetailsPage() {
 
       {/* Full-width stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-14 sm:top-15 md:top-17 z-40">
-        <div className="max-w-275 mx-auto px-4 sm:px-6 py-5 relative">
+        <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-4 sm:py-5 relative">
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
@@ -225,36 +285,34 @@ export default function BookingDetailsPage() {
             <ArrowLeft size={16} />
           </button>
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">1</span>
-              <span className="text-sm font-semibold text-[#1A3C5E]">Your selection</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-xs sm:text-sm font-bold">1</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#1A3C5E] hidden sm:inline">Your selection</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-[#1A3C5E] mx-4 min-w-15 max-w-30" />
+            <div className="flex-1 h-0.5 bg-[#1A3C5E] mx-2 sm:mx-4 min-w-8 sm:min-w-15 max-w-16 sm:max-w-30" />
 
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-sm font-bold">2</span>
-              <span className="text-sm font-semibold text-[#1A3C5E]">Enter your details</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1A3C5E] text-white flex items-center justify-center text-xs sm:text-sm font-bold">2</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#1A3C5E] hidden sm:inline">Enter your details</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-gray-200 mx-4 min-w-15 max-w-30" />
+            <div className="flex-1 h-0.5 bg-gray-200 mx-2 sm:mx-4 min-w-8 sm:min-w-15 max-w-16 sm:max-w-30" />
 
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-bold">3</span>
-              <span className="text-sm text-gray-500">Confirm your reservation</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs sm:text-sm font-bold">3</span>
+              <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">Confirm your reservation</span>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-275 mx-auto px-4 sm:px-6 py-6">
+      </div>        <div className="mx-auto w-full max-w-[1250px] px-3 sm:px-3.5 py-4 pb-10 sm:px-6 sm:py-5">
 
         <div className="bg-[#E8F6EF] border border-[#A9DFBF] rounded-lg px-5 py-3 mb-6 text-center">
           <p className="text-sm font-medium text-[#1E8449]">Great choice! You're almost done.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
-          <div className="order-1 lg:order-1">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_600px] lg:gap-[26px] items-start">
+          <div className="order-1 lg:order-1 space-y-5">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <img
                 src={hotel.imageUrl || hotel.images[0]}
@@ -345,7 +403,7 @@ export default function BookingDetailsPage() {
               </div>
 
               {roomLines.length > 0 && (
-                <div className="border-t border-gray-200 p-5 hidden lg:block">
+                <div className="border-t border-gray-200 p-5">
                   <h3 className="text-sm font-bold text-gray-900 mb-3">Room details</h3>
                   <div className="space-y-3">
                     {roomLines.map((l, i) => {
@@ -362,14 +420,21 @@ export default function BookingDetailsPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900">{room.name}</p>
-                            <p className="text-xs text-gray-500">{room.roomTypeName || room.bedType || ''}</p>
-                            <p className="text-xs text-gray-500">Room type: Standard</p>
-                            <p className="text-xs text-gray-500">Bed type: Queen</p>
+                            {room.roomTypeName && (
+                              <p className="text-xs text-gray-500">Room type: {room.roomTypeName}</p>
+                            )}
+                            {room.bedType && (
+                              <p className="text-xs text-gray-500">Bed type: {room.bedType}</p>
+                            )}
                             <p className="text-xs text-gray-400">
-                              3 adults · 2 children
+                              {l.maxAdults > 0 && l.maxChildren > 0
+                                ? `${l.maxAdults} adult${l.maxAdults !== 1 ? 's' : ''} · ${l.maxChildren} child${l.maxChildren !== 1 ? 'ren' : ''}`
+                                : l.gc > 0
+                                  ? `${l.gc} guest${l.gc !== 1 ? 's' : ''}`
+                                  : ''}
                             </p>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.ep.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900 shrink-0">{currency}{l.lineTotal.toFixed(2)}</p>
                         </div>
                       )
                     })}
@@ -379,13 +444,28 @@ export default function BookingDetailsPage() {
 
               <div className="border-t border-gray-200 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Your price summary</h3>
+                {specialOfferDiscount > 0 && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Special offer discount</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{specialOfferDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && couponCode && (
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-[#C0392B] font-medium">Coupon ({couponCode})</span>
+                    <span className="text-xs text-[#C0392B] font-medium">-{currency}{couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
                 {roomLines.map(l => (
                   <div key={l.room.id} className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-600">{l.room.name}</span>
-                    <span className="text-xs text-gray-900">{currency}{(l.lineTotal * nights).toFixed(2)}</span>
+                    <span className="text-xs text-gray-600">{l.room.name} × {nights} night{nights !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-gray-900">{currency}{l.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
                 <div className="border-t border-gray-200 mt-3 pt-3">
+                  {(specialOfferDiscount > 0 || couponDiscount > 0) && (
+                    <p className="text-xs text-[#C0392B] line-through mb-1">{currency}{(subtotal + specialOfferDiscount + couponDiscount).toFixed(2)}</p>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-gray-900">Total</span>
                     <span className="text-sm font-bold text-gray-900">{currency}{Math.max(0, total).toFixed(2)}</span>
@@ -396,20 +476,42 @@ export default function BookingDetailsPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+          <div className="order-2 lg:order-2 w-full lg:max-w-[600px] lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
               onGuestChange={setGuest}
               roomNames={roomLines.map(l => l.room.name).join(", ")}
             />
 
+            <div className="mt-5 bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Special requests</h3>
+              <p className="text-xs text-gray-500 mb-3">Special requests cannot be guaranteed, but the property will do its best to meet your needs.</p>
+              <textarea
+                value={specialRequest}
+                onChange={(e) => setSpecialRequest(e.target.value)}
+                placeholder="e.g. late check-in, extra pillows, dietary needs..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#1A3C5E] resize-none"
+              />
+            </div>
+
             <button
               onClick={handleNext}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2"
+              disabled={creatingBooking || !refNumber}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#1A3C5E]"
             >
-              Next: Final details
-              <ChevronRight size={16} />
+              {creatingBooking ? (
+                "Creating your reservation…"
+              ) : (
+                <>
+                  Next: Final details
+                  <ChevronRight size={16} />
+                </>
+              )}
             </button>
+            {creationError && (
+              <p className="text-xs text-red-500 mt-2 text-center">{creationError}</p>
+            )}
             <p className="text-center text-xs text-gray-400 mt-2">
               Don't worry — you won't be charged yet
             </p>

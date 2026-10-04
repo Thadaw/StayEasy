@@ -8,6 +8,7 @@ import type {
   RoomTypeResponse,
   BedTypeResponse,
   AvailableRoom,
+  RoomCalendarRoom,
   SpecialOfferPayload,
   SpecialOfferResponse,
   DiscountCodePayload,
@@ -18,6 +19,10 @@ import type {
   BookingCreatePayload,
   SystemRoomTypeItem,
   SystemBedTypeItem,
+  WalkinBookingPayload,
+  ArrivalGuest,
+  StaffNotification,
+  NotificationsResponse,
 } from '../types/pms'
 import type {
   ApiStaff,
@@ -116,9 +121,18 @@ export const createRooms = async (propertyId: string, data: RoomBulkCreateReques
 }
 
 export const getRooms = async (propertyId: string): Promise<RoomResponse[]> => {
-  const { data: result } = await api.get(`/properties/${propertyId}/rooms`)
-  const data = unwrapBody<RoomResponse[]>(result)
-  return Array.isArray(data) ? data : []
+  const all: RoomResponse[] = []
+  let skip = 0
+  const pageSize = 50
+  for (;;) {
+    const { data: result } = await api.get(`/properties/${propertyId}/rooms`, { params: { skip, limit: pageSize } })
+    const data = unwrapBody<RoomResponse[]>(result)
+    const batch: RoomResponse[] = Array.isArray(data) ? data : []
+    all.push(...batch)
+    if (batch.length < pageSize) break
+    skip += pageSize
+  }
+  return all
 }
 
 export const getRoom = async (propertyId: string, roomId: string): Promise<RoomResponse> => {
@@ -135,12 +149,20 @@ export const deleteRoom = async (propertyId: string, roomId: string): Promise<vo
   await api.delete(`/properties/${propertyId}/rooms/${roomId}`)
 }
 
-export const getAvailableRooms = async (propertyId: string, checkinDate: string, checkoutDate: string): Promise<AvailableRoom[]> => {
+export const getAvailableRooms = async (propertyId: string, checkinDate: string, checkoutDate: string, adults: number, children: number): Promise<AvailableRoom[]> => {
   const { data: result } = await api.get(`/properties/${propertyId}/rooms/available-rooms`, {
-    params: { checkin_date: checkinDate, checkout_date: checkoutDate },
+    params: { checkin_date: checkinDate, checkout_date: checkoutDate, adults, children },
   })
   const data = unwrapBody<AvailableRoom[]>(result)
   return Array.isArray(data) ? data : []
+}
+
+export const getRoomCalendar = async (propertyId: string, startDate: string, endDate: string): Promise<RoomCalendarRoom[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/room-calendar`, {
+    params: { start_date: startDate, end_date: endDate },
+  })
+  const data = unwrapBody<{ rooms: RoomCalendarRoom[] }>(result)
+  return data?.rooms ?? (Array.isArray(data) ? data : [])
 }
 
 // ─── Room Types ─────────────────────────────────────────────
@@ -428,4 +450,162 @@ export const uploadStaffImage = async (propertyId: string, file: File): Promise<
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return typeof result === 'string' ? result : (result?.data ?? '')
+}
+
+export const createWalkinBooking = async (data: WalkinBookingPayload): Promise<PropertyBooking> => {
+  const fd = new FormData()
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      fd.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
+    }
+  })
+  const TOKEN_KEY = 'token'
+  const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
+  const baseURL = (api.defaults.baseURL || '').replace(/\/+$/, '')
+  const response = await fetch(`${baseURL}/staff/create-walkin-booking`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err?.error || `Request failed with status ${response.status}`)
+  }
+  const result = await response.json()
+  return unwrapBody<PropertyBooking>(result)
+}
+
+// ─── Staff Arrivals ──────────────────────────────────────────
+
+export const getTodayArrivals = async (propertyId: string): Promise<ArrivalGuest[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/arrivals`)
+  const data = unwrapBody<ArrivalGuest[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getTodayDepartures = async (propertyId: string): Promise<ArrivalGuest[]> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/departures`)
+  const data = unwrapBody<ArrivalGuest[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+// ─── Staff Check-In ──────────────────────────────────────────
+
+export const checkInGuest = async (refNumber: string): Promise<string> => {
+  const { data: result } = await api.post(`/staff/check-in/${refNumber}`)
+  return typeof result === "string" ? result : result?.data ?? "Checked in"
+}
+
+// ─── Staff Check-Out ─────────────────────────────────────────
+
+export const checkOutGuest = async (refNumber: string, amount?: number, paymentGateway?: string): Promise<string> => {
+  const { data: result } = await api.post(`/staff/check-out/${refNumber}`, {
+    amount: amount || 0,
+    payment_gateway: paymentGateway || "CASH",
+  })
+  return typeof result === "string" ? result : result?.data ?? "Checked out"
+}
+
+// ─── Staff Front Desk Summary ────────────────────────────────
+
+export interface FrontDeskSummary {
+  todays_arrivals: number
+  todays_departures: number
+  todays_checked_in: number
+  todays_checked_out: number
+  total_rooms: number
+  total_available_rooms: number
+  dirty_rooms: number
+  occupied_rooms: number
+  occupancy_vs_last_week?: number
+}
+
+export const getFrontDeskSummary = async (propertyId: string): Promise<FrontDeskSummary> => {
+  const { data: result } = await api.get(`/staff/properties/${propertyId}/front-desk-summary`)
+  return unwrapBody<FrontDeskSummary>(result)
+}
+
+// ─── Staff Enums ─────────────────────────────────────────────
+
+export interface EnumOption {
+  value: string
+  label: string
+}
+
+export const getBookingStatuses = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/booking-statuses')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentStatuses = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-statuses')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentGateways = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-gateways')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getPaymentMethods = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/payment-methods')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getBookingTypes = async (): Promise<EnumOption[]> => {
+  const { data: result } = await api.get('/staff/enums/booking-types')
+  const data = unwrapBody<EnumOption[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const uploadCitizenshipPhotos = async (
+  refNumber: string,
+  front: File | null,
+  back: File | null
+): Promise<{ front: string; back: string }> => {
+  const formData = new FormData()
+  if (front) formData.append('front', front)
+  if (back) formData.append('back', back)
+
+  const { data: result } = await api.post(
+    `/staff/check-in/${refNumber}/citizenship-photos`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  )
+  return unwrapBody<{ front: string; back: string }>(result)
+}
+
+// ─── Notifications ──────────────────────────────────────────
+
+export interface GetNotificationsParams {
+  property_id: string
+  skip?: number
+  limit?: number
+  unread_only?: boolean
+  notif_type?: string | null
+}
+
+export const getNotifications = async (params: GetNotificationsParams): Promise<NotificationsResponse> => {
+  const { data: result } = await api.get('/notifications', { params })
+  return unwrapBody<NotificationsResponse>(result)
+}
+
+export const getUnreadNotificationCount = async (propertyId: string): Promise<number> => {
+  const { data: result } = await api.get('/notifications/unread-count', { params: { property_id: propertyId } })
+  const data = unwrapBody<{ unread_count?: number }>(result)
+  return data?.unread_count ?? 0
+}
+
+export const markNotificationRead = async ({ notificationId, propertyId }: { notificationId: string; propertyId: string }): Promise<void> => {
+  await api.patch(`/notifications/${notificationId}/read`, null, { params: { property_id: propertyId } })
+}
+
+export const markAllNotificationsRead = async (propertyId: string): Promise<void> => {
+  await api.patch('/notifications/read-all', null, { params: { property_id: propertyId } })
 }

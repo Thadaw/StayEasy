@@ -1,4 +1,5 @@
 import { Heart, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useFavorites } from "../../context/FavoritesContext";
 
 interface HeroCardData {
@@ -18,6 +19,12 @@ interface HeroCardProps {
   fallbackPrice: number;
   className?: string;
   style?: React.CSSProperties;
+  /**
+   * Set for cards that don't represent a real property (e.g. static demo
+   * hotels). The card then opens a search for that location instead of a
+   * property detail page that would404.
+   */
+  fallbackSearchQuery?: string;
 }
 
 export function HeroCard({
@@ -27,7 +34,9 @@ export function HeroCard({
   fallbackPrice,
   className = "",
   style,
+  fallbackSearchQuery,
 }: HeroCardProps) {
+  const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
   const name = data.name || fallbackName;
   const location = data.city ? `${data.city}, ${data.country}` : fallbackLocation;
@@ -38,7 +47,16 @@ export function HeroCard({
     <div
       className={`bg-white rounded-2xl shadow-modal overflow-hidden cursor-pointer ${className}`}
       style={style}
-      onClick={() => { window.location.href = `/hotel/${data.id}`; }}
+      onClick={() => {
+        // SPA navigation — a hard reload (window.location.href) refires every
+        // query from cold and can land on "Property not found" if the backend
+        // times out while waking up.
+        if (fallbackSearchQuery) {
+          navigate(`/search?where=${encodeURIComponent(fallbackSearchQuery)}`);
+        } else if (data.id) {
+          navigate(`/hotel/${data.id}`);
+        }
+      }}
     >
       <div className="relative h-[120px] xl:h-[150px] overflow-hidden">
         <img src={data.image} alt="" className="w-full h-full object-cover" />

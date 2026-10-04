@@ -1,11 +1,17 @@
 import { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
 import { AuthProvider } from '../auth/AuthContext'
 import { FavoritesProvider } from '../context/FavoritesContext'
 import { BookingProvider } from '../context/BookingContext'
 import { CouponProvider } from '../context/CouponContext'
 import { NotificationProvider } from '../context/NotificationContext'
+
+function getErrorMessage(error: unknown): string {
+  if (!error) return "Something went wrong"
+  const err = error as { response?: { data?: { message?: string } }; message?: string }
+  return err.response?.data?.message || err.message || "Something went wrong"
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,6 +20,11 @@ const queryClient = new QueryClient({
       gcTime: 5 * 60_000,
       refetchOnWindowFocus: false,
       retry: 1,
+    },
+    mutations: {
+      onError: (error) => {
+        toast.error(getErrorMessage(error))
+      },
     },
   },
 })

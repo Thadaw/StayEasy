@@ -5,7 +5,24 @@ import crypto from 'crypto'
 import cors from 'cors'
 
 const app = express()
-app.use(cors())
+
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'https://stayeasy-rose.vercel.app',
+  'https://stayeasy.vercel.app',
+].filter(Boolean)
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+}))
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''
@@ -42,15 +59,24 @@ app.post('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }), a
 
 app.use(express.json())
 
-const razorpay = new Razorpay({
-  key_id: 'rzp_test_THG2PBUwAQ3U9c',
-  key_secret: 'ND377Ai9cN0rv8Q1lI0T7KVs',
-})
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || ''
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || ''
+if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+  console.warn('WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET env vars not set. Payment features will fail.')
+}
 
-const KEY_SECRET = 'ND377Ai9cN0rv8Q1lI0T7KVs'
+const razorpay = RAZORPAY_KEY_ID ? new Razorpay({
+  key_id: RAZORPAY_KEY_ID,
+  key_secret: RAZORPAY_KEY_SECRET,
+}) : null
+
+const KEY_SECRET = RAZORPAY_KEY_SECRET
 const BACKEND_URL = 'https://stay-easy-sizw.onrender.com'
 
 app.post('/api/v1/payments/create-order', async (req, res) => {
+  if (!razorpay) {
+    return res.status(500).json({ error: 'Razorpay not configured' })
+  }
   try {
     const { amount, hotelId } = req.body
     const options = {
@@ -71,6 +97,9 @@ app.post('/api/v1/payments/create-order', async (req, res) => {
 })
 
 app.post('/api/v1/payments/verify', (req, res) => {
+  if (!KEY_SECRET) {
+    return res.status(500).json({ error: 'Razorpay not configured' })
+  }
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
     const body = razorpay_order_id + '|' + razorpay_payment_id

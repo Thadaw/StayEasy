@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import api, { type AuthRequestConfig } from '../services/axios'
 import type { SearchProperty } from '../shared/types/api'
 
 interface FavoritesContextValue {
@@ -7,6 +8,7 @@ interface FavoritesContextValue {
   isFavorite: (id: string) => boolean
   toggleFavorite: (id: string, property?: SearchProperty) => void
   getFavoriteProperties: () => SearchProperty[]
+  loading: boolean
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null)
@@ -46,14 +48,37 @@ function saveFavoritesData(data: Record<string, SearchProperty>, userId?: number
 }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites(user?.id))
   const [favoritesData, setFavoritesData] = useState<Record<string, SearchProperty>>(() => loadFavoritesData(user?.id))
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (role !== 'guest') return
     setFavorites(loadFavorites(user?.id))
     setFavoritesData(loadFavoritesData(user?.id))
-  }, [user?.id])
+  }, [user?.id, role])
+
+  useEffect(() => {
+    if (!user || role !== 'guest') return
+    setLoading(true)
+    api.get('/favorites', { skipAuthRedirect: true } as AuthRequestConfig)
+      .then(({ data }) => {
+        const raw: any[] = Array.isArray(data) ? data : data?.data ?? []
+        const normalized: SearchProperty[] = raw.map((p: any) => ({
+          ...p,
+          property_id: p.property_id ?? p.id,
+          cover_photo: p.cover_photo ?? p.photos?.cover ?? "",
+        }))
+        const ids = new Set(normalized.map((p) => p.property_id))
+        const map: Record<string, SearchProperty> = {}
+        normalized.forEach((p) => { map[p.property_id] = p })
+        setFavorites(ids)
+        setFavoritesData(map)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [user])
 
   useEffect(() => {
     saveFavorites(favorites, user?.id)
@@ -70,6 +95,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const toggleFavorite = useCallback(
     (id: string, property?: SearchProperty) => {
+      const isRemoving = favorites.has(id)
+
       setFavorites((prev) => {
         const next = new Set(prev)
         if (next.has(id)) {
@@ -90,8 +117,31 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           return next
         })
       }
+
+      api.post(`/favorites/${id}/toggle`).catch(() => {
+        setFavorites((prev) => {
+          const next = new Set(prev)
+          if (isRemoving) {
+            next.add(id)
+          } else {
+            next.delete(id)
+          }
+          return next
+        })
+        if (property) {
+          setFavoritesData((prev) => {
+            const next = { ...prev }
+            if (isRemoving) {
+              next[id] = property
+            } else {
+              delete next[id]
+            }
+            return next
+          })
+        }
+      })
     },
-    []
+    [favorites]
   )
 
   const getFavoriteProperties = useCallback(
@@ -106,6 +156,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         isFavorite,
         toggleFavorite,
         getFavoriteProperties,
+        loading,
       }}
     >
       {children}

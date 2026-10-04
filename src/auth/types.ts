@@ -11,6 +11,7 @@ export interface User {
   avatar?: string
   countryFlag?: string
   country?: string
+  nationality?: string
   phone?: string
   joinedDate?: string
   aboutMe?: string

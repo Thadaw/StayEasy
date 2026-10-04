@@ -83,7 +83,7 @@ export default function NewBookingStep1({ data, onChange, onContinue, onCancel }
 
   const { data: availableRooms = [], isLoading: roomsLoading } = useQuery({
     queryKey: roomKeys.available(effectivePropertyId, data.checkIn, data.checkOut, data.adults, data.children, 1),
-    queryFn: () => getAvailableRooms(effectivePropertyId, data.checkIn, data.checkOut),
+    queryFn: () => getAvailableRooms(effectivePropertyId, data.checkIn, data.checkOut, data.adults, data.children),
     enabled: !!effectivePropertyId && hasDates,
   })
 

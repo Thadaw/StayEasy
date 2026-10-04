@@ -41,6 +41,8 @@ export function useBookingDetails(id: string | undefined) {
   // Track the last fetched id to prevent unnecessary re-fetches when
   // the bookings context array changes (e.g. addBooking in ReservePage).
   const lastFetchedIdRef = useRef<string | undefined>(undefined)
+  const bookingsRef = useRef(bookings)
+  bookingsRef.current = bookings
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -59,7 +61,7 @@ export function useBookingDetails(id: string | undefined) {
     }
 
     const controller = new AbortController()
-    const localMatch = bookings.find((b) => b.refNumber === id || b.id === id)
+    const localMatch = bookingsRef.current.find((b) => b.refNumber === id || b.id === id)
 
     const loadBookingDetails = async () => {
       try {
@@ -124,10 +126,9 @@ export function useBookingDetails(id: string | undefined) {
     })
 
     return () => { controller.abort() }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const localBooking = bookings.find((b) => b.refNumber === id || b.id === id)
+  const localBooking = bookingsRef.current.find((b) => b.refNumber === id || b.id === id)
 
   const propertyName = booking?.property?.name ?? localBooking?.hotelName ?? ""
   const propertyCity = booking?.property?.city ?? localBooking?.hotelCity ?? ""
@@ -148,19 +149,22 @@ export function useBookingDetails(id: string | undefined) {
   const specialOfferDiscount = booking?.special_offer_discount || 0
   const couponDiscount = booking?.coupon_discount || 0
   const paymentStatus = booking?.payment_status || (localBooking ? "paid" : null)
-  const paymentGateway = booking?.payment_gateway || ""
+  const paymentGateway = booking?.payment_gateway || localBooking?.paymentGateway || ""
+  const amountPaid = booking?.amount_paid ?? 0
+  const amountDue = booking?.amount_due ?? totalAmount
   const refNumber = booking?.ref_number || localBooking?.refNumber || localBooking?.id || id || ""
   const createdAt = booking?.created_at || localBooking?.createdAt || new Date().toISOString()
   const bookingStatus = resolveBookingStatus(
     booking?.status || localBooking?.status || "upcoming",
     booking?.check_out || localBooking?.checkOut
-  )
+  ) ?? 'upcoming'
   const statusLabel = bookingStatus.charAt(0).toUpperCase() + bookingStatus.slice(1)
 
   const guestName = guestProfile?.name || booking?.guest_name || user?.full_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Guest"
   const guestEmail = guestProfile?.email || booking?.guest_email || user?.email || ""
   const guestPhone = guestProfile?.phone || booking?.guest_phone || ""
   const guestNationality = guestProfile?.nationality || ""
+  const specialRequests = booking?.special_requests || ""
 
   const coverImage = coverPhoto || localBooking?.hotelImage || ""
 
@@ -192,6 +196,8 @@ export function useBookingDetails(id: string | undefined) {
     couponDiscount,
     paymentStatus,
     paymentGateway,
+    amountPaid,
+    amountDue,
     refNumber,
     createdAt,
     bookingStatus,
@@ -200,6 +206,7 @@ export function useBookingDetails(id: string | undefined) {
     guestEmail,
     guestPhone,
     guestNationality,
+    specialRequests,
     taxAmount,
     basePrice,
   }

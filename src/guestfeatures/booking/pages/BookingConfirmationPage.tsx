@@ -2,6 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Navbar } from '../../../shared/components/Navbar'
 import { Footer } from '../../../shared/components/Footer'
 import { PageMessage } from '../../../shared/components/PageMessage'
+import { BookingConfirmationSkeleton } from '../components/BookingConfirmationSkeleton'
 import { ReserveLayout } from '../components/ReserveLayout'
 import { ReserveStepper } from '../components/ReserveStepper'
 import { ConfirmationBanner } from '../components/ConfirmationBanner'
@@ -61,6 +62,8 @@ export default function BookingConfirmationPage() {
     specialOfferDiscount,
     couponDiscount,
     paymentGateway,
+    createdAt,
+    specialRequests,
   } = useBookingDetails(refNumber)
 
   const { copied, copyCode, shareBooking, downloadReceipt } = useBookingActions()
@@ -76,7 +79,7 @@ export default function BookingConfirmationPage() {
   }
 
   if (loading) {
-    return <PageMessage loading title="Loading confirmation..." />
+    return <BookingConfirmationSkeleton />
   }
 
   if (!booking && !localBooking) {
@@ -117,6 +120,9 @@ export default function BookingConfirmationPage() {
       couponDiscount,
       totalAmount,
       currency,
+      createdAt,
+      paymentGateway,
+      specialRequests,
     })
   }
 
@@ -147,7 +153,8 @@ export default function BookingConfirmationPage() {
     currency,
     paymentMethod: paymentGateway || 'Online',
     cancellationPolicy: cancellationDescription || cancellationTitle || '',
-    bookedOn: new Date().toISOString(),
+    bookedOn: createdAt || new Date().toISOString(),
+    specialRequests,
   })
 
   const leftContent = (
@@ -171,6 +178,12 @@ export default function BookingConfirmationPage() {
         guestPhone={guestPhone}
         guestNationality={guestNationality}
       />
+      {specialRequests && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">Special Requests</h3>
+          <p className="text-sm text-gray-600">{specialRequests}</p>
+        </div>
+      )}
       <InfoCards
         cancellationTitle={cancellationTitle}
         cancellationDescription={cancellationDescription}
@@ -190,6 +203,9 @@ export default function BookingConfirmationPage() {
         totalAmount={totalAmount}
         paymentGateway={confirmationState?.paymentGateway || paymentGateway}
         refNumber={confirmationCode}
+        advanceAmount={booking?.advance_amount}
+        amountPaid={booking?.amount_paid}
+        amountDue={booking?.amount_due}
       />
       <BookingActions
         refNumber={confirmationCode}

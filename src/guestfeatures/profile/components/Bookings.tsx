@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../../services/axios'
 import { normalizeBookingStatus } from '../../../shared/utils/format'
 import { resolveBookingStatus } from '../../../shared/utils/bookingHelpers'
-import { CalendarDays, Clock, X, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react'
-import { LoadingSpinner } from '../../../shared/components/LoadingSpinner'
+import { CalendarDays, Clock, X, ChevronRight, RefreshCw, AlertTriangle, Star, Pencil } from 'lucide-react'
+import { BookingsSkeleton } from './BookingsSkeleton'
+import { WriteReviewModal } from '../../review/components/WriteReviewModal'
+import { EditReviewModal } from '../../review/components/EditReviewModal'
 import toast from 'react-hot-toast'
 
 type Tab = 'upcoming' | 'completed' | 'cancelled'
@@ -24,6 +26,7 @@ interface ApiBookingItem {
   total_amount: string
   created_at: string
   currency?: string
+  property_id?: string
   property?: { id: string; name?: string; city?: string; country?: string; currency?: string }
   property_name?: string
   property_photo?: string
@@ -41,10 +44,22 @@ interface NormalizedBooking {
   currency: string
   propertyName: string
   coverPhoto: string
+  propertyId: string
 }
 
 interface CancelModal {
   show: boolean
+  booking: NormalizedBooking | null
+}
+
+interface ReviewData {
+  id: string | number
+  rating: number
+  comment: string
+}
+
+interface ReviewModalState {
+  type: 'write' | 'edit' | null
   booking: NormalizedBooking | null
 }
 
@@ -53,7 +68,7 @@ function normalizeBooking(item: ApiBookingItem): NormalizedBooking {
   return {
     id: item.id,
     refNumber: item.ref_number,
-    status: resolveBookingStatus(item.status, item.checkout_date),
+    status: resolveBookingStatus(item.status, item.checkout_date) ?? 'upcoming',
     checkIn: item.checkin_date,
     checkOut: item.checkout_date,
     totalPrice: Number(item.total_amount) || 0,
@@ -61,6 +76,7 @@ function normalizeBooking(item: ApiBookingItem): NormalizedBooking {
     currency,
     propertyName: item.property?.name || item.property_name || '',
     coverPhoto: item.photos?.cover || item.property_photo || '',
+    propertyId: item.property_id || item.property?.id || '',
   }
 }
 
@@ -72,6 +88,8 @@ export default function Bookings() {
   const [error, setError] = useState(false)
   const [cancelModal, setCancelModal] = useState<CancelModal>({ show: false, booking: null })
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [reviewModal, setReviewModal] = useState<ReviewModalState>({ type: null, booking: null })
+  const [reviewedMap, setReviewedMap] = useState<Record<string, ReviewData>>({})
 
   const loadBookings = async () => {
     setLoading(true)
@@ -79,7 +97,10 @@ export default function Bookings() {
     try {
       const { data } = await api.get('/bookings/me')
       const items: ApiBookingItem[] = data?.data?.items ?? data?.data ?? data?.items ?? []
-      setBookings(Array.isArray(items) ? items.map(normalizeBooking) : [])
+      const valid = Array.isArray(items)
+        ? items.filter(b => resolveBookingStatus(b.status, b.checkout_date) !== null)
+        : []
+      setBookings(valid.map(normalizeBooking))
     } catch {
       setError(true)
     } finally {
@@ -89,6 +110,28 @@ export default function Bookings() {
 
   useEffect(() => {
     loadBookings()
+  }, [])
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const { data } = await api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } })
+        const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+        if (Array.isArray(items)) {
+          const map: Record<string, ReviewData> = {}
+          items.forEach((r: any) => {
+            const propId = r.property?.id || r.property_id
+            if (propId) {
+              map[propId] = { id: r.id, rating: r.rating, comment: r.comment }
+            }
+          })
+          setReviewedMap(map)
+        }
+      } catch {
+        // silently fail — review buttons just won't show
+      }
+    }
+    fetchReviews()
   }, [])
 
   const closeCancelModal = useCallback(() => {
@@ -106,7 +149,7 @@ export default function Bookings() {
   const handleCancelBooking = async (booking: NormalizedBooking) => {
     setCancellingId(booking.id)
     try {
-      await api.patch(`/bookings/${booking.refNumber}/cancel`)
+      await api.post(`/bookings/${booking.refNumber}/cancel`)
       setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b))
       setCancelModal({ show: false, booking: null })
       toast.success('Booking cancelled successfully')
@@ -131,7 +174,7 @@ export default function Bookings() {
   return (
     <div className="max-w-4xl">
       <div className="bg-white rounded-xl border border-brand-card-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-brand-card-border flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-brand-card-border flex items-center justify-between">
           <h2 className="text-base font-semibold text-brand-heading">My Bookings</h2>
           {!loading && !error && (
             <button
@@ -143,7 +186,7 @@ export default function Bookings() {
           )}
         </div>
 
-        <div className="flex border-b border-brand-card-border px-6">
+        <div className="flex border-b border-brand-card-border px-4 sm:px-6 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -160,12 +203,9 @@ export default function Bookings() {
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
-            <div className="flex flex-col items-center py-12">
-              <LoadingSpinner className="mb-3" />
-              <p className="text-sm text-brand-text-secondary">Loading bookings...</p>
-            </div>
+            <BookingsSkeleton />
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-sm text-brand-text-secondary mb-4">Could not load your bookings.</p>
@@ -202,8 +242,8 @@ export default function Bookings() {
                   key={booking.id}
                   className="rounded-xl border border-brand-card-border overflow-hidden hover:shadow-card transition-shadow"
                 >
-                  <div className="flex gap-4 p-4">
-                    <div className="w-24 h-24 rounded-lg bg-brand-secondary-surface overflow-hidden flex items-center justify-center shrink-0">
+                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-brand-secondary-surface overflow-hidden flex items-center justify-center shrink-0">
                       {booking.coverPhoto ? (
                         <img src={booking.coverPhoto} alt={booking.propertyName || 'Booking'} className="w-full h-full object-cover" />
                       ) : (
@@ -242,6 +282,23 @@ export default function Bookings() {
                             >
                               Cancel
                             </button>
+                          )}
+                          {booking.status === 'completed' && booking.propertyId && (
+                            reviewedMap[booking.propertyId] ? (
+                              <button
+                                onClick={() => setReviewModal({ type: 'edit', booking })}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-accent-light transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Pencil size={11} /> Edit Review
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setReviewModal({ type: 'write', booking })}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand-accent text-brand-accent hover:bg-brand-accent-light transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Star size={11} /> + Review
+                              </button>
+                            )
                           )}
                           <button
                             onClick={() => navigate(`/booking-view/${booking.refNumber}`)}
@@ -302,6 +359,55 @@ export default function Bookings() {
             </div>
           </div>
         </div>
+      )}
+
+      {reviewModal.type === 'write' && reviewModal.booking && (
+        <WriteReviewModal
+          propertyId={reviewModal.booking.propertyId}
+          propertyName={reviewModal.booking.propertyName}
+          onClose={() => {
+            setReviewModal({ type: null, booking: null })
+            const propId = reviewModal.booking?.propertyId
+            if (propId) {
+              api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } }).then(({ data }) => {
+                const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+                if (Array.isArray(items)) {
+                  const map: Record<string, ReviewData> = {}
+                  items.forEach((r: any) => {
+                    const pid = r.property?.id || r.property_id
+                    if (pid) map[pid] = { id: r.id, rating: r.rating, comment: r.comment }
+                  })
+                  setReviewedMap(map)
+                }
+              }).catch(() => {})
+            }
+          }}
+        />
+      )}
+
+      {reviewModal.type === 'edit' && reviewModal.booking && reviewedMap[reviewModal.booking.propertyId] && (
+        <EditReviewModal
+          propertyId={reviewModal.booking.propertyId}
+          reviewId={String(reviewedMap[reviewModal.booking.propertyId].id)}
+          propertyName={reviewModal.booking.propertyName}
+          initialRating={reviewedMap[reviewModal.booking.propertyId].rating}
+          initialComment={reviewedMap[reviewModal.booking.propertyId].comment}
+          onClose={() => setReviewModal({ type: null, booking: null })}
+          onUpdated={() => {
+            setReviewModal({ type: null, booking: null })
+            api.get('/properties/me/reviews', { params: { skip: 0, limit: 50 } }).then(({ data }) => {
+              const items = data?.data?.reviews ?? data?.data?.items ?? data?.data ?? data?.reviews ?? []
+              if (Array.isArray(items)) {
+                const map: Record<string, ReviewData> = {}
+                items.forEach((r: any) => {
+                  const pid = r.property?.id || r.property_id
+                  if (pid) map[pid] = { id: r.id, rating: r.rating, comment: r.comment }
+                })
+                setReviewedMap(map)
+              }
+            }).catch(() => {})
+          }}
+        />
       )}
     </div>
   )

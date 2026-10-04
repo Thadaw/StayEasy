@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../../../services/axios'
+import api, { type AuthRequestConfig } from '../../../services/axios'
 import { bookingKeys, propertyKeys, roomKeys } from '../../../lib/queryKeys'
 import type { ApiBooking } from '../types'
 import type { ApiProperty, ApiRoom } from '../../../shared/types/api'
@@ -18,11 +18,17 @@ export function useBookingQuery(refNumber: string | null | undefined) {
 }
 
 // -- Property public details --
-export function usePropertyQuery(propertyId: string | null | undefined) {
+export function usePropertyQuery(
+  propertyId: string | null | undefined,
+  requestConfig?: AuthRequestConfig,
+) {
   return useQuery({
     queryKey: propertyKeys.detail(propertyId || ''),
     queryFn: async ({ signal }) => {
-      const { data } = await api.get(`/properties/${propertyId}/public`, { signal })
+      const { data } = await api.get(`/properties/${propertyId}/public`, {
+        signal,
+        ...requestConfig,
+      } as AuthRequestConfig)
       return (data?.data || data) as ApiProperty
     },
     enabled: !!propertyId,
@@ -38,6 +44,7 @@ export function useAvailableRoomsQuery(
   adults: number = 2,
   children: number = 0,
   rooms: number = 1,
+  requestConfig?: AuthRequestConfig,
 ) {
   return useQuery({
     queryKey: roomKeys.available(propertyId || '', checkinDate, checkoutDate, adults, children, rooms),
@@ -45,7 +52,8 @@ export function useAvailableRoomsQuery(
       const { data } = await api.get(`/properties/${propertyId}/rooms/available-rooms`, {
         params: { checkin_date: checkinDate, checkout_date: checkoutDate, adults, children, rooms },
         signal,
-      })
+        ...requestConfig,
+      } as AuthRequestConfig)
       return (data?.data || []) as ApiRoom[]
     },
     enabled: !!propertyId && !!checkinDate && !!checkoutDate,

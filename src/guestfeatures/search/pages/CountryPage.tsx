@@ -7,9 +7,12 @@ import { Footer } from "../../../shared/components/Footer";
 import { PageMessage } from "../../../shared/components/PageMessage";
 import { useFavorites } from "../../../context/FavoritesContext";
 import { getDefaultDates } from "../../../shared/utils/date";
-import { parseSearchResponse } from "../../../shared/utils/helpers";
+import { parseSearchResponse, parseSearchMeta } from "../../../shared/utils/helpers";
 import type { SearchProperty } from "../../../shared/types/api";
 import api from "../../../services/axios";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 10;
 
 export default function CountryPage() {
   const { code } = useParams<{ code: string }>();
@@ -18,14 +21,28 @@ export default function CountryPage() {
   const [activeCity, setActiveCity] = useState<string | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
   const [searchResults, setSearchResults] = useState<SearchProperty[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [code]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   useEffect(() => {
     if (!country) return;
+    let cancelled = false;
     const loadProperties = async () => {
       setLoading(true);
       try {
         const { today, tomorrow } = getDefaultDates();
+        const skip = (currentPage - 1) * PAGE_SIZE;
         const { data } = await api.get("/search", {
           params: {
             destination: country.name,
@@ -34,18 +51,27 @@ export default function CountryPage() {
             adults: 2,
             children: 0,
             rooms: 1,
+            limit: PAGE_SIZE,
+            skip,
           },
         });
-        const results = parseSearchResponse<SearchProperty>(data);
-        setSearchResults(results);
+        if (cancelled) return;
+        const parsed = parseSearchResponse<SearchProperty>(data);
+        setSearchResults(parsed);
+        const meta = parseSearchMeta(data);
+        setTotal(meta?.total ?? parsed.length);
       } catch {
-        setSearchResults([]);
+        if (!cancelled) {
+          setSearchResults([]);
+          setTotal(0);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadProperties();
-  }, [country]);
+    return () => { cancelled = true; };
+  }, [country, currentPage]);
 
   const selectedCity = activeCity
     ? country?.cities.find((c) => c.name === activeCity)
@@ -232,19 +258,21 @@ export default function CountryPage() {
             <h2 className="font-display font-bold text-foreground text-2xl">
               {selectedCity ? `Stays in ${selectedCity.name}` : `Stays in ${country.name}`}
             </h2>
-            <Link to="/" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-              View all <ChevronRight size={15} />
-            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {loading ? (
               [1, 2, 3, 4].map((i) => (
                 <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
-                  <div className="h-[180px] bg-gray-200" />
-                  <div className="px-4 py-3 space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-3/4" />
-                    <div className="h-2 bg-gray-200 rounded w-1/2" />
-                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                  <div className="relative h-[180px] bg-gray-200">
+                    {/* property type badge */}
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/70 rounded-full h-3.5 w-10" />
+                    {/* favourite (star) button */}
+                    <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/70" />
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-1.5" />
+                    <div className="h-2.5 bg-gray-200 rounded w-1/2 mb-2" />
+                    <div className="h-3.5 bg-gray-200 rounded w-2/3" />
                   </div>
                 </div>
               ))
@@ -292,6 +320,13 @@ export default function CountryPage() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </div>
 
