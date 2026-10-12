@@ -104,7 +104,7 @@ export function InvoiceReceipt({
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <FileText size={16} className="text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">{propertyName || "StayEasy"}</span>
+              <span className="text-xl font-bold text-gray-900">{propertyName || "ServeIQ"}</span>
             </div>
             <div className="text-right">
               <h2 className="text-xl font-bold text-gray-900">{title}</h2>

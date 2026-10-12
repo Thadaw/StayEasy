@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Star, Calendar, Utensils, Clock, ChevronRight } from
 import { getCountry } from "../data/worldCountries";
 import { hotels } from "../data/hotels";
 import { Navbar } from "../components/Navbar";
-import { Footer } from "../components/Footer";
+import { Footer } from "../shared/components/Footer";
 import { HotelCard } from "../components/HotelCard";
 
 export default function CountryPage() {

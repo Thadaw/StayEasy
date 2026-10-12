@@ -8,11 +8,8 @@ const footerLinks: { section: string; links: { text: string; to: string }[] }[] 
     links: [
       { text: "Help Center", to: "/help-center" },
       { text: "Contact Us", to: "/contact" },
-      { text: "Booking Help", to: "/booking-help" },
       { text: "Cancellation & Refund", to: "/cancellation-refund" },
-      { text: "Payment & Security", to: "/payment-security" },
       { text: "Safety Information", to: "/safety" },
-      { text: "Accessibility", to: "/accessibility" },
     ],
   },
   {
@@ -20,7 +17,6 @@ const footerLinks: { section: string; links: { text: string; to: string }[] }[] 
     links: [
       { text: "Browse Properties", to: "/search" },
       { text: "Popular Destinations", to: "/destinations" },
-      { text: "Hotels & Stays", to: "/hotels-stays" },
       { text: "Offers & Deals", to: "/offers" },
       { text: "Nearby Stays", to: "/nearby-stays" },
     ],
@@ -28,12 +24,9 @@ const footerLinks: { section: string; links: { text: string; to: string }[] }[] 
   {
     section: "Hosting",
     links: [
-      { text: "List Your Property", to: "/host/tenant-setup" },
-      { text: "Host Dashboard", to: "/host/portal" },
+      { text: "List Your Property", to: "/host" },
       { text: "Hosting Guide", to: "/hosting-guide" },
-      { text: "Host Resources", to: "/host-resources" },
       { text: "Host Safety", to: "/host-safety" },
-      { text: "Host Support", to: "/host/support" },
     ],
   },
   {
@@ -43,7 +36,6 @@ const footerLinks: { section: string; links: { text: string; to: string }[] }[] 
       { text: "Features", to: "/features" },
       { text: "Careers", to: "/careers" },
       { text: "Pricing & Plans", to: "/host/pricing" },
-      { text: "Contact Us", to: "/contact" },
     ],
   },
   {
@@ -53,8 +45,8 @@ const footerLinks: { section: string; links: { text: string; to: string }[] }[] 
       { text: "Terms of Service", to: "/terms" },
       { text: "Cancellation Policy", to: "/cancellation-policy" },
       { text: "Refund Policy", to: "/refund-policy" },
-      { text: "Cookie Policy", to: "/cookie-policy" },
-      { text: "Sitemap", to: "/sitemap" },
+      
+    
     ],
   },
 ];
@@ -97,9 +89,6 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:underline">
               <Globe size={16} className="text-primary" /> English (US)
-            </button>
-            <button className="text-sm font-medium text-foreground transition-colors hover:underline">
-              $ USD
             </button>
             <button className="text-sm font-medium text-foreground transition-colors hover:underline">
               Nepal

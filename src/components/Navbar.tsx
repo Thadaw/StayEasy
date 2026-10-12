@@ -172,7 +172,7 @@ export function Navbar() {
                     <div className="mt-2 max-h-48 overflow-y-auto">
                       {searchWhere === "" && (
                         <div className="px-1 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
-                          Popular destinations
+                          Popular Destinations
                         </div>
                       )}
                       {suggestions.map(s => (

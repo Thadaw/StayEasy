@@ -7,6 +7,7 @@ import DashboardHeader from '../components/dashboard/DashboardHeader'
 import BookingStats from '../components/bookings/BookingStats'
 import BookingFilters from '../components/bookings/BookingFilters'
 import BookingTable, { type Booking } from '../components/bookings/BookingTable'
+import BookingDetailModal from '../components/bookings/BookingDetailModal'
 import { getAllProperties, getPropertyBookings, getRooms, getRoomTypes, createBooking } from '../services/pmsApi'
 import { propertyKeys, roomKeys, roomTypeKeys, bookingKeys } from '../lib/queryKeys'
 import { mapApiBookingToBooking } from '../components/bookings/bookingUtils'
@@ -24,6 +25,7 @@ export default function BookingsPage() {
   const [roomType, setRoomType] = useState('All Rooms')
   const [dateFilter, setDateFilter] = useState('')
   const [showNewBookingModal, setShowNewBookingModal] = useState(false)
+  const [viewingBookingId, setViewingBookingId] = useState<string | null>(null)
   const [newBooking, setNewBooking] = useState(initialForm)
 
   const { data: properties = [] } = useQuery<GeneralInfoResponse[]>({
@@ -136,6 +138,10 @@ export default function BookingsPage() {
 
   const canSubmit = !!propertyId && newBooking.roomIds.length > 0 && !!newBooking.checkIn && !!newBooking.checkOut && newBooking.checkOut > newBooking.checkIn
 
+  const viewingBooking = viewingBookingId
+    ? apiBookings.find((b) => (b.booking_number || b.id) === viewingBookingId) ?? null
+    : null
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
@@ -173,6 +179,7 @@ export default function BookingsPage() {
               activeStatus={activeStatus}
               roomType={roomType}
               dateFilter={dateFilter}
+              onViewBooking={setViewingBookingId}
             />
           )}
         </main>
@@ -283,6 +290,13 @@ export default function BookingsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {viewingBookingId && (
+        <BookingDetailModal
+          booking={viewingBooking}
+          onClose={() => setViewingBookingId(null)}
+        />
       )}
     </div>
   )

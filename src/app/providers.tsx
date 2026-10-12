@@ -6,6 +6,7 @@ import { FavoritesProvider } from '../context/FavoritesContext'
 import { BookingProvider } from '../context/BookingContext'
 import { CouponProvider } from '../context/CouponContext'
 import { NotificationProvider } from '../context/NotificationContext'
+import { LocationProvider } from '../context/LocationContext'
 
 function getErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong"
@@ -37,8 +38,10 @@ export function Providers({ children }: { children: ReactNode }) {
           <BookingProvider>
             <CouponProvider>
               <NotificationProvider>
-                {children}
-                <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+                <LocationProvider>
+                  {children}
+                  <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+                </LocationProvider>
               </NotificationProvider>
             </CouponProvider>
           </BookingProvider>

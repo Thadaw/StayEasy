@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 
 export interface Booking {
@@ -36,12 +35,12 @@ interface BookingTableProps {
   activeStatus: string
   roomType: string
   dateFilter: string
+  onViewBooking?: (id: string) => void
 }
 
 type SortKey = 'id' | 'guest' | 'roomType' | 'checkIn' | 'checkOut' | 'amount' | 'status'
 
-export default function BookingTable({ bookings, searchQuery, activeStatus, roomType, dateFilter }: BookingTableProps) {
-  const navigate = useNavigate()
+export default function BookingTable({ bookings, searchQuery, activeStatus, roomType, dateFilter, onViewBooking }: BookingTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [sortAsc, setSortAsc] = useState(true)
   const [page, setPage] = useState(1)
@@ -113,7 +112,7 @@ export default function BookingTable({ bookings, searchQuery, activeStatus, room
           </thead>
           <tbody>
             {paged.map((b) => (
-              <tr key={b.id} onClick={() => navigate(`/host/bookings/${b.id}`)} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <tr key={b.id} onClick={() => onViewBooking?.(b.id)} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <td style={{ padding: '12px 14px', color: 'var(--primary)', fontWeight: 600 }}>{b.id}</td>
                 <td style={{ padding: '12px 14px' }}>
                   <div style={{ fontWeight: 500 }}>{b.guest}</div>
@@ -144,7 +143,7 @@ export default function BookingTable({ bookings, searchQuery, activeStatus, room
                 </td>
                 <td style={{ padding: '12px 14px' }}>
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/host/bookings/${b.id}`) }}
+                    onClick={(e) => { e.stopPropagation(); onViewBooking?.(b.id) }}
                     style={{
                       padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)',
                       background: '#fff', cursor: 'pointer', fontSize: 12, color: 'var(--foreground)',

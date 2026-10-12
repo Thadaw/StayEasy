@@ -37,7 +37,7 @@ function PopularDestinations() {
   return (
     <section className="px-10 py-12 max-w-7xl mx-auto">
       <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-        Popular destinations
+        Popular Destinations
       </h2>
       <motion.div
         initial="hidden"

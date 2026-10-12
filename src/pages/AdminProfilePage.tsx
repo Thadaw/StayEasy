@@ -53,8 +53,8 @@ export default function AdminProfilePage() {
   const [formData, setFormData] = useState({
     fullName: `${firstName} ${lastName}`.trim() || 'Admin',
     username: firstName.toLowerCase(),
-    email: user?.email || 'admin@stayeasy.com',
-    altEmail: 'admin.contact@stayeasy.com',
+    email: user?.email || 'admin@serveiq.com',
+    altEmail: 'admin.contact@serveiq.com',
     phoneCode: '+977',
     phoneNumber: '9841234567',
     timezone: '(GMT+05:45) Asia/Kathmandu',

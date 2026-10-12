@@ -505,7 +505,6 @@ export default function BookingDetailsPage() {
               ) : (
                 <>
                   Next: Final details
-                  <ChevronRight size={16} />
                 </>
               )}
             </button>

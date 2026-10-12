@@ -99,7 +99,7 @@ export function BookingActions({
           </div>
         </div>
         <Button variant="primary" onClick={onDone} className="mt-5 w-full justify-center">
-          Done <ArrowRight size={16} />
+           Done
         </Button>
       </div>
     </Card>

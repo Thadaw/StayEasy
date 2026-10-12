@@ -104,12 +104,6 @@ export function PaymentForms({
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="space-y-3">
-          {khaltiLoading && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <Loader2 size={16} className="animate-spin text-[#5C2D91]" />
-              <span className="text-sm text-gray-500">Redirecting to Khalti...</span>
-            </div>
-          )}
           {khaltiError && (
             <div className="text-center py-4">
               <p className="text-sm text-red-500 mb-2">{khaltiError}</p>
@@ -186,12 +180,6 @@ export function PaymentForms({
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="space-y-3">
-          {esewaLoading && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <Loader2 size={16} className="animate-spin text-[#60BB46]" />
-              <span className="text-sm text-gray-500">Redirecting to eSewa...</span>
-            </div>
-          )}
           {esewaError && (
             <div className="text-center py-4">
               <p className="text-sm text-red-500 mb-2">{esewaError}</p>

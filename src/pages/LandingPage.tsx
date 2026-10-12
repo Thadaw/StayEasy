@@ -7,7 +7,7 @@ import { HeroSection } from "../guestfeatures/landing/components/HeroSection";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { HotelCard } from "../components/HotelCard";
 import { DestinationCard } from "../components/DestinationCard";
-import { Footer } from "../components/Footer";
+import { Footer } from "../shared/components/Footer";
 import { hotels } from "../data/hotels";
 
 const destinations = [

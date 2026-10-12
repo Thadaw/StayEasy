@@ -41,7 +41,7 @@ export function SearchBar() {
   const [where, setWhere] = useState(() => {
     if (urlParams.get("where")) return urlParams.get("where")!
     if (propertyTypesParam) return propertyTypesParam
-    return localStorage.getItem("nearbyLocation") || ""
+    return ""
   })
   const [checkIn, setCheckIn] = useState(() => urlParams.get("checkin") || "")
   const [checkOut, setCheckOut] = useState(() => urlParams.get("checkout") || "")
@@ -112,8 +112,10 @@ export function SearchBar() {
   const handleSearch = () => {
     if (checkIn && checkOut && checkIn >= checkOut) return
     const params = new URLSearchParams()
-    const rawWhere = where || localStorage.getItem("nearbyLocation") || ""
-    const searchWhere = rawWhere.replace(/\s*\([\d.]+,\s*[\d.]+\)/, "").trim()
+    // `where` is purely text. It used to fall back to the stored
+    // `nearbyLocation` string, so a failed geolocation lookup turned into a
+    // literal text search for the word "Nearby" and matched nothing.
+    const searchWhere = where.trim()
     if (searchWhere) {
       params.set("where", searchWhere)
       saveRecentSearch(searchWhere)
@@ -149,7 +151,7 @@ export function SearchBar() {
           >
             <MapPin size={13} className="text-brand-accent shrink-0" />
             <div className="min-w-0">
-              <div className={`text-xs md:text-sm font-medium truncate ${where || localStorage.getItem("nearbyLocation") ? "text-gray-800" : "text-gray-400"}`}>{(where || localStorage.getItem("nearbyLocation") || "").replace(/\s*\([\d.]+,\s*[\d.]+\)/, "").trim() || t("searchPlaceholder")}</div>
+              <div className={`text-xs md:text-sm font-medium truncate ${where ? "text-gray-800" : "text-gray-400"}`}>{where || t("searchPlaceholder")}</div>
               <div className="text-[7px] md:text-[8px] font-semibold text-gray-400 uppercase tracking-wide">{t("whereTo")}</div>
             </div>
             <ChevronDown size={13} className={`ml-auto shrink-0 text-gray-400 transition-transform hidden sm:block ${showWhere ? "rotate-180" : ""}`} />

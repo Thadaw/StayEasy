@@ -81,7 +81,7 @@ export default function RecentBookings({ bookings: propBookings }: RecentBooking
                   cursor: 'pointer',
                   transition: 'background 0.15s',
                 }}
-                onClick={() => navigate(`/host/bookings/${b.id}`)}
+                onClick={() => navigate('/host/bookings')}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >

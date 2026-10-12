@@ -144,7 +144,7 @@ function SidebarContent() {
     refetchInterval: 30000,
   })
 
-  const hotelName = property?.name || "StayEasy"
+  const hotelName = property?.name || "ServeIQ"
   const brandColor = property?.brand_color || "#1e3a5f"
 
   useEffect(() => {

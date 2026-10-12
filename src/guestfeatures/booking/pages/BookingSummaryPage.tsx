@@ -370,7 +370,7 @@ export default function BookingDetailsView() {
               onClick={() => navigate("/")}
               className="w-full py-3 rounded-xl bg-brand-primary text-white font-semibold text-sm hover:bg-brand-primary-hover transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              Done <ArrowRight size={16} />
+              Done
             </button>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -380,7 +380,7 @@ export default function BookingDetailsView() {
                 onClick={() => navigate(`/hotel/${booking?.property?.id || localBooking?.hotelId}`)}
                 className="w-full py-3 rounded-xl bg-brand-primary text-white font-semibold text-sm hover:bg-brand-primary-hover transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Heart size={14} /> Book Again
+                Book Again
               </button>
             </div>
 
