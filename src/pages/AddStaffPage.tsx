@@ -90,7 +90,7 @@ export default function AddStaffPage() {
             <div>
               <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>Add New Staff</h2>
               <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>
-                Create accounts for Receptionists, Kitchen Staff, etc. for the StayEasy ecosystem.
+                Create accounts for Receptionists, Kitchen Staff, etc. for the ServeIQ ecosystem.
               </p>
             </div>
             <button

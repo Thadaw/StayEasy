@@ -10,10 +10,10 @@ interface HousekeepingHeaderProps {
   notificationCount?: number
 }
 
-const properties = ['StayEasy Pokhara', 'StayEasy Kathmandu', 'StayEasy Chitwan']
+const properties = ['ServeIQ Pokhara', 'ServeIQ Kathmandu', 'ServeIQ Chitwan']
 
 export default function HousekeepingHeader({
-  propertyName = 'StayEasy Pokhara',
+  propertyName = 'ServeIQ Pokhara',
   dateRange = 'Jul 1, 2026 - Jul 31, 2026',
   userName = 'Aswin Pandit',
   userRole = 'Admin',

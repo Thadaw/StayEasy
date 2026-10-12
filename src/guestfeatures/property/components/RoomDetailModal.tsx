@@ -8,9 +8,10 @@ interface RoomDetailModalProps {
   roomGuestCounts: Record<string, number>;
   onClose: () => void;
   onReserve: (roomId: string) => void;
+  currency?: string;
 }
 
-export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailModalProps) {
+export function RoomDetailModal({ room, hotel, onClose, onReserve, currency = '$' }: RoomDetailModalProps) {
   const [roomImgIndex, setRoomImgIndex] = useState(0);
   const images = useMemo(() => {
     const roomGallery = (room.gallery ?? []).filter(Boolean);
@@ -105,7 +106,7 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
                 <p className="text-sm text-muted-foreground mt-1">{hotel.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-foreground">${room.price}<span className="text-sm font-normal text-muted-foreground">/night</span></p>
+                <p className="text-2xl font-bold text-foreground">{currency}{room.price}<span className="text-sm font-normal text-muted-foreground">/night</span></p>
               </div>
             </div>
 
@@ -261,7 +262,7 @@ export function RoomDetailModal({ room, hotel, onClose, onReserve }: RoomDetailM
             >
               ✕
             </button>
-            <p className="text-xl font-bold text-foreground">${room.price}<span className="text-sm font-normal text-muted-foreground">/night</span></p>
+            <p className="text-xl font-bold text-foreground">{currency}{room.price}<span className="text-sm font-normal text-muted-foreground">/night</span></p>
           </div>
           <button
             onClick={() => onReserve(room.id)}

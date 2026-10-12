@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
   Sparkles,
   Tag,
   CreditCard,
@@ -105,7 +104,19 @@ export default function Sidebar({ simplified }: SidebarProps) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() => {
+    // Resolve the active branch during the first render (not in an effect) so the
+    // submenu is already open on mount instead of animating open after navigation.
+    const active: Record<string, boolean> = {}
+    sections.forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.children && item.children.some((child) => location.pathname === child.path.split('?')[0])) {
+          active[item.label] = true
+        }
+      })
+    })
+    return active
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const navRef = useRef<HTMLElement>(null)
   const scrollPositionRef = useRef(0)
@@ -189,7 +200,7 @@ export default function Sidebar({ simplified }: SidebarProps) {
     >
       {/* Logo */}
       <div style={{ padding: collapsed ? '20px 12px' : '20px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <img src={logo1} alt="StayEasy" style={{ height: 34, width: 'auto', flexShrink: 0 }} />
+        <img src={logo1} alt="ServeIQ" style={{ height: 34, width: 'auto', flexShrink: 0 }} />
         {!collapsed && (
           <div>
             <div style={{
@@ -199,7 +210,7 @@ export default function Sidebar({ simplified }: SidebarProps) {
               letterSpacing: '-0.5px',
               color: '#111827',
               lineHeight: 1.2,
-            }}>StayEasy</div>
+            }}>ServeIQ</div>
           </div>
         )}
       </div>
@@ -308,16 +319,33 @@ export default function Sidebar({ simplified }: SidebarProps) {
                             </span>
                           )}
                           {item.children && (
-                            <span style={{ flexShrink: 0, color: '#9ca3af' }}>
-                              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            <span
+                              style={{
+                                flexShrink: 0,
+                                color: '#9ca3af',
+                                display: 'flex',
+                                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.25s ease',
+                              }}
+                            >
+                              <ChevronDown size={14} />
                             </span>
                           )}
                         </>
                       )}
                     </button>
 
-                    {!collapsed && item.children && expanded && (
-                      <div style={{ paddingLeft: 12, marginTop: 2 }}>
+                    {!collapsed && item.children && (
+                      <div style={{ display: 'grid', gridTemplateRows: expanded ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease' }}>
+                        <div style={{
+                          overflow: 'hidden',
+                          minWidth: 0,
+                          paddingLeft: 12,
+                          marginTop: expanded ? 2 : 0,
+                          opacity: expanded ? 1 : 0,
+                          visibility: expanded ? 'visible' : 'hidden',
+                          transition: `opacity 0.2s ease, margin-top 0.25s ease, visibility 0s linear ${expanded ? '0s' : '0.25s'}`,
+                        }}>
                         {item.children.map((child) => {
                           const childPathname = child.path.split('?')[0]
                           const childSearchParams = child.path.split('?')[1] || ''
@@ -342,6 +370,7 @@ export default function Sidebar({ simplified }: SidebarProps) {
                                 fontWeight: childActive ? 600 : 400,
                                 marginBottom: 2,
                                 textAlign: 'left',
+                                transition: 'background 0.15s ease, color 0.15s ease, border-left-color 0.15s ease',
                               }}
                             >
                               <span style={{ opacity: 0.7 }}>{child.icon}</span>
@@ -349,6 +378,7 @@ export default function Sidebar({ simplified }: SidebarProps) {
                             </button>
                           )
                         })}
+                        </div>
                       </div>
                     )}
                   </div>

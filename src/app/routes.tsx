@@ -89,6 +89,7 @@ export function AppRoutes() {
       <Route path="/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/reset-password/*" element={<ResetPasswordPage />} />
       <Route path="/host/profile" element={<ProtectedRoute allowedRoles={['host']}><HostProfilePage /></ProtectedRoute>} />
+      <Route path="/host/admin-profile" element={<ProtectedRoute allowedRoles={['host']}><AdminProfilePage /></ProtectedRoute>} />
       <Route path="/host/portal" element={<ProtectedRoute allowedRoles={['host']}><HostPortalPageNew /></ProtectedRoute>} />
       <Route path="/host/tenant-setup" element={<ProtectedRoute allowedRoles={['host']}><TenantSetupPage /></ProtectedRoute>} />
       <Route path="/host/overall-dashboard" element={<ProtectedRoute allowedRoles={['host']}><OverallDashboardPage /></ProtectedRoute>} />
@@ -96,9 +97,16 @@ export function AppRoutes() {
       <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
       <Route path="/host/my-properties/dashboard/:propertyId" element={<ProtectedRoute allowedRoles={['host']}><PropertyDashboardPage /></ProtectedRoute>} />
       <Route path="/host/bookings" element={<ProtectedRoute allowedRoles={['host']}><BookingsPage /></ProtectedRoute>} />
+      <Route path="/host/bookings/new" element={<Navigate to="/host/bookings" replace />} />
+      <Route path="/host/bookings/:id" element={<Navigate to="/host/bookings" replace />} />
       <Route path="/host/rooms" element={<ProtectedRoute allowedRoles={['host']}><RoomsPage /></ProtectedRoute>} />
       <Route path="/host/guests" element={<ProtectedRoute allowedRoles={['host']}><GuestsPage /></ProtectedRoute>} />
       <Route path="/host/staff" element={<ProtectedRoute allowedRoles={['host']}><StaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/add" element={<ProtectedRoute allowedRoles={['host']}><AddStaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/edit/:id" element={<ProtectedRoute allowedRoles={['host']}><EditStaffPage /></ProtectedRoute>} />
+      <Route path="/host/staff/performance" element={<ProtectedRoute allowedRoles={['host']}><StaffPerformancePage /></ProtectedRoute>} />
+      <Route path="/host/staff/shifts" element={<ProtectedRoute allowedRoles={['host']}><StaffShiftsPage /></ProtectedRoute>} />
+      <Route path="/host/staff/shift-coverage" element={<ProtectedRoute allowedRoles={['host']}><ShiftCoveragePage /></ProtectedRoute>} />
       <Route path="/host/housekeeping" element={<ProtectedRoute allowedRoles={['host']}><HousekeepingPage /></ProtectedRoute>} />
       <Route path="/host/pricing/*" element={<ProtectedRoute allowedRoles={['host']}><PricingPage /></ProtectedRoute>} />
       <Route path="/host/reports" element={<ProtectedRoute allowedRoles={['host']}><ReportsPage /></ProtectedRoute>} />

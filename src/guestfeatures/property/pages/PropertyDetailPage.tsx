@@ -264,6 +264,7 @@ export default function PropertyDetailPage() {
           roomGuestCounts={roomGuestCounts}
           onClose={() => setDetailRoomId(null)}
           onReserve={handleReserveFromModal}
+          currency={currency}
         />
       )}
 

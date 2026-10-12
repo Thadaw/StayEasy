@@ -130,8 +130,8 @@ export default function StaffPerformancePage() {
               <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Property:</span>
               <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                 <select style={{ ...selectStyle, minWidth: 180 }}>
-                  <option>StayEasy Pokhara</option>
-                  <option>StayEasy Kathmandu</option>
+                  <option>ServeIQ Pokhara</option>
+                  <option>ServeIQ Kathmandu</option>
                 </select>
                 <ChevronDown size={14} style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: '#9CA3AF' }} />
               </div>

@@ -16,8 +16,8 @@ export default function LandingPage() {
       <PropertyTypesSection />
       <NearbyLocationBanner />
       <NearbySection />
-      <CitySection city="kathmandu" />
-      <CitySection city="pokhara" />
+      <CitySection city="Kathmandu" />
+      <CitySection city="Pokhara" />
       <PopularDestinations />
       <TrustBadgesSection />
       <Footer />
