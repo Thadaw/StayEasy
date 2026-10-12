@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import api from '../services/axios'
 import { useAuth } from './AuthContext'
+import { useManagerPropertyStore } from '../stores/managerPropertyStore'
 import { usePropertyStore } from '../stores/propertyStore'
 import loginAni from '../assets/login.mp4'
 import bgImage from '../assets/background.png'
@@ -25,12 +26,14 @@ export default function Login() {
   const [searchParams] = useSearchParams()
 
   const { login: authLogin } = useAuth()
+  const setAssignedProperty = useManagerPropertyStore((s) => s.setAssignedProperty)
   const { setCurrentPropertyId } = usePropertyStore()
   const isHost = location.pathname.startsWith('/host') || searchParams.get('host') === 'true'
+  const isManager = location.pathname.startsWith('/manager') || searchParams.get('manager') === 'true'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
-  const [remember, setRemember] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -53,20 +56,42 @@ export default function Login() {
 
       const responseRole = res.data.role
       const isStaff = responseRole === 'front_desk'
-      const userRole = isStaff ? 'staff' : isHost ? 'host' : 'guest'
+      const userRole = isManager ? 'manager' : isStaff ? 'staff' : isHost ? 'host' : 'guest'
 
-      // Every session persists to localStorage (shared by every tab), so a
-      // new tab stays logged in until an explicit logout — guests, hosts and
-      // frontdesk alike. (The "Remember me" checkbox no longer gates storage.)
-      await authLogin(res.data.access_token, true, userRole, res.data.refresh_token, res.data.must_change_password, res.data.temp_password)
+      if (isManager && responseRole !== 'manager') {
+        setError('This account does not have manager access.')
+        setLoading(false)
+        return
+      }
+
+      await authLogin(
+        res.data.access_token,
+        remember,
+        userRole,
+        res.data.refresh_token,
+        res.data.must_change_password,
+        res.data.temp_password
+      )
+
+      if (isManager) {
+        const propertyData = res.data.property || (res.data.properties && res.data.properties[0])
+        if (propertyData) {
+          setAssignedProperty(propertyData.id || propertyData.property_id, propertyData.name || null)
+        }
+      }
 
       if (isStaff && res.data.property?.id) {
         setCurrentPropertyId(res.data.property.id)
       }
 
+      if (isManager && res.data.must_change_password) {
+        setTimeout(() => navigate('/manager/change-password'), 800)
+        return
+      }
+
       const redirectTo = searchParams.get('redirect')
       const isAuthPage =
-        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup'
+        redirectTo === '/login' || redirectTo === '/signup' || redirectTo === '/host/login' || redirectTo === '/host/signup' || redirectTo === '/manager/login'
       const isValidRedirect = redirectTo
         && redirectTo.startsWith('/')
         && !redirectTo.startsWith('//')
@@ -74,16 +99,18 @@ export default function Login() {
         && !isAuthPage
         // Staff refresh-failure redirects arrive here from /frontdesk/* pages
         // while on /host/login — allow those deep links through.
-        && (redirectTo.startsWith('/host') === isHost || redirectTo.startsWith('/frontdesk'))
+        && (redirectTo.startsWith('/host') === isHost
+          || redirectTo.startsWith('/frontdesk')
+          || (isManager && redirectTo.startsWith('/manager')))
       if (isValidRedirect) {
         setTimeout(() => navigate(redirectTo), 800)
         return
       }
-      if (isStaff) {
-        setTimeout(() => navigate('/frontdesk'), 800)
-      } else {
-        setTimeout(() => navigate(isHost ? '/host/overall-dashboard' : '/'), 800)
-      }
+      setTimeout(() => {
+        if (isManager) navigate('/manager/dashboard')
+        else if (isStaff) navigate('/frontdesk')
+        else navigate(isHost ? '/host/overall-dashboard' : '/')
+      }, 800)
     } catch (err) {
       setError(extractError(err))
       setLoading(false)
@@ -201,10 +228,10 @@ export default function Login() {
           </div>
 
           <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 3 }}>
-            {isHost ? 'Welcome Back, Host' : 'Welcome back!'}
+            {isManager ? 'Welcome Back, Manager' : isHost ? 'Welcome Back, Host' : 'Welcome back!'}
           </div>
           <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>
-            {isHost ? 'Manage your properties' : 'Please enter your details'}
+            {isManager ? 'Access your hotel dashboard' : isHost ? 'Manage your properties' : 'Please enter your details'}
           </div>
 
           {/* Email */}

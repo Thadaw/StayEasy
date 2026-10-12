@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
 import { decodeTokenExp } from './services/axios'
 
 export interface AuthRequestConfig extends AxiosRequestConfig {
@@ -9,6 +9,7 @@ const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
+const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'https://stay-easy-sizw.onrender.com/api/v1',
@@ -37,6 +38,17 @@ function updateAccessToken(token: string) {
   store.setItem(EXPIRY_KEY, String(exp ? exp * 1000 : Date.now() + 24 * 60 * 60 * 1000))
 }
 
+function updateRefreshToken(token: string) {
+  if (localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, token)
+  else if (sessionStorage.getItem(REFRESH_KEY)) sessionStorage.setItem(REFRESH_KEY, token)
+}
+
+function updateTokenExpiry() {
+  const deadline = (Date.now() + EXPIRY_MS).toString()
+  if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(EXPIRY_KEY, deadline)
+  else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(EXPIRY_KEY, deadline)
+}
+
 api.interceptors.request.use((config) => {
   const token = storageGet(TOKEN_KEY)
   if (token) {
@@ -55,6 +67,8 @@ async function refreshAccessToken(): Promise<string> {
     refresh_token: refreshToken,
   })
   updateAccessToken(data.access_token)
+  if (data.refresh_token) updateRefreshToken(data.refresh_token)
+  updateTokenExpiry()
   return data.access_token
 }
 
@@ -89,6 +103,7 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // Skip redirect for requests that opt out (e.g. initial /me call after login)
     if ((original as AuthRequestConfig).skipAuthRedirect) {
       return Promise.reject(error)
     }
@@ -103,8 +118,12 @@ api.interceptors.response.use(
       const newToken = await refreshPromise
       original.headers.Authorization = `Bearer ${newToken}`
       return api(original)
-    } catch {
-      redirectToLogin()
+    } catch (err) {
+      // Only a definitive 401 (refused refresh token) ends the session.
+      // Transient network/5xx refresh failures keep the session and are retried.
+      if (err instanceof AxiosError && err.response?.status === 401) {
+        redirectToLogin()
+      }
       return Promise.reject(error)
     }
   }

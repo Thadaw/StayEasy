@@ -11,6 +11,7 @@ import BookingDetailModal from '../components/bookings/BookingDetailModal'
 import { getAllProperties, getPropertyBookings, getRooms, getRoomTypes, createBooking } from '../services/pmsApi'
 import { propertyKeys, roomKeys, roomTypeKeys, bookingKeys } from '../lib/queryKeys'
 import { mapApiBookingToBooking } from '../components/bookings/bookingUtils'
+import { useDateRangeStore, isWithinRange } from '../stores/dateRangeStore'
 import type { GeneralInfoResponse, PropertyBooking, RoomResponse, RoomTypeResponse } from '../types/pms'
 
 const initialForm = { roomIds: [] as string[], checkIn: '', checkOut: '', adults: 2, children: 0 }
@@ -32,8 +33,8 @@ export default function BookingsPage() {
     queryFn: getAllProperties,
   })
 
-  const [overallMode, setOverallMode] = useState(true)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const [overallMode, setOverallMode] = useState(() => currentPropertyId === null)
   const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
   const propertyId = overallMode ? null : property?.id
 
@@ -46,7 +47,7 @@ export default function BookingsPage() {
     queries: activePropertyIds.map((id: string) => ({
       queryKey: bookingKeys.byProperty(id),
       queryFn: () => getPropertyBookings(id),
-      select: (data: any) => (Array.isArray(data) ? data : []),
+      select: (data: unknown) => (Array.isArray(data) ? data : []),
       enabled: overallMode && activePropertyIds.length > 0,
     })),
   })
@@ -84,7 +85,13 @@ export default function BookingsPage() {
 
   const roomTypeMap = new Map(roomTypes.map(rt => [rt.id, rt.room_type_name]))
 
-  const bookings: Booking[] = apiBookings.map(mapApiBookingToBooking)
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+
+  const bookings: Booking[] = useMemo(
+    () => apiBookings.filter((b) => isWithinRange(b.created_at, dateFrom, dateTo)).map(mapApiBookingToBooking),
+    [apiBookings, dateFrom, dateTo],
+  )
 
   const [bookingError, setBookingError] = useState<string | null>(null)
 
@@ -104,16 +111,20 @@ export default function BookingsPage() {
       setShowNewBookingModal(false)
       setBookingError(null)
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Booking creation error:', error)
-      const data = error?.response?.data
+      const err = error as {
+        response?: { data?: { detail?: string; message?: string; error?: string } }
+        message?: string
+      }
+      const data = err?.response?.data
       let msg = 'Failed to create booking.'
       if (data) {
         msg = data.detail || data.message || data.error || JSON.stringify(data)
       } else {
-        msg = error?.message || 'Failed to create booking.'
+        msg = err?.message || 'Failed to create booking.'
       }
-      setBookingError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      setBookingError(msg)
     },
   })
 

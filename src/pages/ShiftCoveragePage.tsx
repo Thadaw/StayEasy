@@ -3,20 +3,18 @@ import Sidebar from '../components/dashboard/Sidebar'
 import ShiftCoverageStats from '../components/dashboard/ShiftCoverageStats'
 import ShiftCoverageFilters from '../components/dashboard/ShiftCoverageFilters'
 import ShiftCoverageTable from '../components/dashboard/ShiftCoverageTable'
-import { mockShiftCoverageData } from '../data/mockShiftCoverage'
-import type { ShiftCoverageFilters as FilterType, DayShiftGroup } from '../types/shiftCoverage'
+import type { DayShiftGroup, ShiftCoverageFilters as FilterType } from '../types/shiftCoverage'
 import { calculateStats } from '../types/shiftCoverage'
 import { ChevronDown, Bell } from 'lucide-react'
 
-function addDays(dateStr: string, days: number): Date {
-  const parts = dateStr.split(' ')
+function formatDateRange(startDate: Date, endDate: Date): string {
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const month = monthNames.indexOf(parts[0])
-  const day = parseInt(parts[1].replace(',', ''))
-  const year = parseInt(parts[2] || '2026')
-  const date = new Date(year, month, day)
-  date.setDate(date.getDate() + days)
-  return date
+  const startMonth = monthNames[startDate.getMonth()]
+  const endMonth = monthNames[endDate.getMonth()]
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDate.getDate()} – ${endDate.getDate()}, ${endDate.getFullYear()}`
+  }
+  return `${startMonth} ${startDate.getDate()} – ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`
 }
 
 function formatDateShort(date: Date): string {
@@ -24,23 +22,13 @@ function formatDateShort(date: Date): string {
   return `${monthNames[date.getMonth()]} ${date.getDate()}`
 }
 
-function formatDateRange(startDate: Date, endDate: Date): string {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const startMonth = monthNames[startDate.getMonth()]
-  const endMonth = monthNames[endDate.getMonth()]
-  if (startMonth === endMonth) {
-    return `${startMonth} ${startDate.getDate()} - ${endDate.getDate()}, ${endDate.getFullYear()}`
-  }
-  return `${startMonth} ${startDate.getDate()} - ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`
-}
-
 function generateWeekData(startDate: Date): DayShiftGroup[] {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const departments = ['Manager', 'Housekeeping', 'Restaurant', 'Kitchen Staff', 'Front Desk']
   const shiftTypes = [
-    { shift: 'Morning', time: '06:00 - 14:00' },
-    { shift: 'Afternoon', time: '14:00 - 22:00' },
-    { shift: 'Night', time: '22:00 - 06:00' },
+    { shift: 'Morning', time: '08:00 - 14:00' },
+    { shift: 'Evening', time: '14:00 - 22:00' },
+    { shift: 'Night', time: '22:00 - 08:00' },
   ]
 
   const groups: DayShiftGroup[] = []
@@ -57,17 +45,11 @@ function generateWeekData(startDate: Date): DayShiftGroup[] {
     const shifts = []
     for (const dept of departments) {
       for (const st of shiftTypes) {
-        if (dept === 'Kitchen Staff' && st.shift === 'Night') continue
-        if (dept === 'Manager' && st.shift === 'Night') continue
-        if (dept === 'Restaurant' && st.shift === 'Night') continue
-
-        const required = dept === 'Manager' ? (st.shift === 'Night' ? 1 : st.shift === 'Afternoon' ? 2 : 3)
-          : dept === 'Housekeeping' ? (st.shift === 'Night' ? 2 : st.shift === 'Afternoon' ? 6 : 8)
-          : dept === 'Restaurant' ? (st.shift === 'Night' ? 0 : st.shift === 'Afternoon' ? 5 : 6)
-          : dept === 'Kitchen Staff' ? (st.shift === 'Afternoon' ? 3 : 2)
+        const required = dept === 'Manager' ? (st.shift === 'Night' ? 1 : st.shift === 'Evening' ? 2 : 3)
+          : dept === 'Housekeeping' ? (st.shift === 'Night' ? 2 : st.shift === 'Evening' ? 6 : 8)
+          : dept === 'Restaurant' ? (st.shift === 'Night' ? 2 : st.shift === 'Evening' ? 5 : 6)
+          : dept === 'Kitchen Staff' ? (st.shift === 'Night' ? 2 : st.shift === 'Evening' ? 3 : 2)
           : (st.shift === 'Night' ? 1 : 2)
-
-        if (required === 0) continue
 
         const variance = Math.floor(Math.random() * 3) - 1
         let assigned = required + variance
@@ -77,8 +59,8 @@ function generateWeekData(startDate: Date): DayShiftGroup[] {
         const coverage = Math.round((assigned / required) * 100)
         let status: 'Fully Staffed' | 'Slightly Low' | 'Critically Low' | 'Overstaffed' = 'Fully Staffed'
         if (coverage > 100) status = 'Overstaffed'
-        else if (coverage >= 80) status = 'Fully Staffed'
-        else if (coverage >= 60) status = 'Slightly Low'
+        else if (coverage >= 100) status = 'Fully Staffed'
+        else if (coverage >= 80) status = 'Slightly Low'
         else status = 'Critically Low'
 
         const missing = assigned < required ? required - assigned : null
@@ -104,15 +86,15 @@ function generateWeekData(startDate: Date): DayShiftGroup[] {
 }
 
 export default function ShiftCoveragePage() {
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    return new Date(2026, 6, 14)
+  })
+
   const [filters, setFilters] = useState<FilterType>({
     department: 'All Departments',
     shift: 'All Shifts',
     weekStart: 'Jul 14',
     weekEnd: 'Jul 20, 2026',
-  })
-
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
-    return new Date(2026, 6, 14)
   })
 
   const weekData = useMemo(() => {
@@ -156,7 +138,7 @@ export default function ShiftCoveragePage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Single Header */}
+        {/* Header */}
         <header
           style={{
             background: '#fff',
@@ -170,7 +152,6 @@ export default function ShiftCoveragePage() {
             zIndex: 20,
           }}
         >
-          {/* Left: Title */}
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>
               Shift Coverage - <span style={{ fontWeight: 400, color: '#6B7280' }}>Weekly View</span>
@@ -180,9 +161,7 @@ export default function ShiftCoveragePage() {
             </p>
           </div>
 
-          {/* Right: Employee + Bell + Date */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Employee Avatar + Name */}
             <div
               style={{
                 display: 'flex',
@@ -220,7 +199,6 @@ export default function ShiftCoveragePage() {
               <ChevronDown size={14} color="#9CA3AF" />
             </div>
 
-            {/* Notification Bell */}
             <button
               style={{
                 display: 'flex',
@@ -251,7 +229,6 @@ export default function ShiftCoveragePage() {
               />
             </button>
 
-            {/* Date Range */}
             <div
               style={{
                 display: 'flex',
@@ -273,14 +250,22 @@ export default function ShiftCoveragePage() {
         </header>
 
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
+          {/* Stats Bar */}
           <ShiftCoverageStats stats={stats} />
+
+          {/* Filters Bar */}
           <ShiftCoverageFilters
             filters={{ ...filters, weekStart: filterWeekDisplay.split(' - ')[0], weekEnd: filterWeekDisplay.split(' - ')[1] }}
             onFiltersChange={setFilters}
             onWeekChange={handleWeekChange}
             data={filteredData}
           />
-          <ShiftCoverageTable data={filteredData} dateRange={headerDateRange} />
+
+          {/* Weekly Grid + Sidebar */}
+          <ShiftCoverageTable
+            data={filteredData}
+            dateRange={headerDateRange}
+          />
         </main>
       </div>
     </div>

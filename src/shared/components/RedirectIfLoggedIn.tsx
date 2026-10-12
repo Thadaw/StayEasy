@@ -2,10 +2,11 @@ import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { PageLoader } from './PageLoader'
 
-const HOME_BY_ROLE: Record<'host' | 'guest' | 'staff', string> = {
+const HOME_BY_ROLE: Record<'host' | 'guest' | 'staff' | 'manager', string> = {
   host: '/host/overall-dashboard',
   staff: '/frontdesk',
   guest: '/',
+  manager: '/manager/dashboard',
 }
 
 // Auth pages (login / signup / forgot-password) are for signed-out visitors

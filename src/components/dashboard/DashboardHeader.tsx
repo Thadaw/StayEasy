@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { usePropertyStore } from '../../stores/propertyStore'
 import { getAllProperties } from '../../services/pmsApi'
 import { propertyKeys } from '../../lib/queryKeys'
 import type { GeneralInfoResponse } from '../../types/pms'
-import { Bell, ChevronDown, Calendar, Menu, User, LogOut } from 'lucide-react'
+import { Bell, ChevronDown, Calendar, User, LogOut } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useDateRangeStore, DATE_RANGE_PRESETS, type DateRangePreset } from '../../stores/dateRangeStore'
 
 import { Layers } from 'lucide-react'
 
@@ -20,8 +22,9 @@ interface DashboardHeaderProps {
   hideControls?: boolean
 }
 
-export default function DashboardHeader({ title, subtitle, onMenuToggle, showOverallOption, onPropertyChange, selectedLabel, hideControls }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, subtitle, onPropertyChange, selectedLabel, hideControls }: DashboardHeaderProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logout } = useAuth()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const setCurrentPropertyId = usePropertyStore((s) => s.setCurrentPropertyId)
@@ -39,20 +42,39 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [selectedDateRange, setSelectedDateRange] = useState('M 1, 2026 - Jul 31, 2026')
+  const [showDateDropdown, setShowDateDropdown] = useState(false)
+  const dateRangeLabel = useDateRangeStore((s) => s.label)
+  const dateRangePreset = useDateRangeStore((s) => s.preset)
+  const setDateRange = useDateRangeStore((s) => s.setRange)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const dateMenuRef = useRef<HTMLDivElement>(null)
+  const propertyMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false)
       }
+      if (dateMenuRef.current && !dateMenuRef.current.contains(e.target as Node)) {
+        setShowDateDropdown(false)
+      }
+      if (propertyMenuRef.current && !propertyMenuRef.current.contains(e.target as Node)) {
+        setShowPropertyDropdown(false)
+        setShowAllProperties(false)
+      }
     }
-    if (showProfileMenu) {
+    if (showProfileMenu || showDateDropdown || showPropertyDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showProfileMenu])
+  }, [showProfileMenu, showDateDropdown, showPropertyDropdown])
+
+  const isOverallPage = location.pathname === '/host/overall-dashboard'
+  const isPropertyDashboardPage = location.pathname.startsWith('/host/my-properties/dashboard/')
+  const currentProperty = properties.find((p) => p.id === currentPropertyId)
+  const isOverallMode = isOverallPage || (!currentPropertyId && !!onPropertyChange)
+  const propertyLabel = selectedLabel || currentProperty?.name || properties[0]?.name || 'Overall'
+  const displayLabel = isOverallPage ? (selectedLabel || 'Overall') : propertyLabel
 
   const firstName = user?.firstName || user?.first_name || ''
   const lastName = user?.lastName || user?.last_name || ''
@@ -82,25 +104,6 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
     >
       {/* Left - Property Info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {onMenuToggle && (
-          <button
-            onClick={onMenuToggle}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              border: '1px solid #e5e7eb',
-              background: '#fff',
-              cursor: 'pointer',
-              color: '#6b7280',
-            }}
-          >
-            <Menu size={18} />
-          </button>
-        )}
         <div>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>
             {title || 'Dashboard'}
@@ -116,7 +119,7 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
         {!hideControls && (
           <>
             {/* Property Selector */}
-            <div style={{ position: 'relative' }}>
+            <div ref={propertyMenuRef} style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowPropertyDropdown(!showPropertyDropdown)
@@ -136,8 +139,15 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
               color: '#374151',
             }}
           >
-            <span>{selectedLabel || 'Property'}</span>
-            <ChevronDown size={14} color="#9ca3af" />
+            <span>{displayLabel}</span>
+            <ChevronDown
+              size={14}
+              color="#9ca3af"
+              style={{
+                transform: showPropertyDropdown ? 'rotate(180deg)' : 'rotate(0)',
+                transition: 'transform 0.2s',
+              }}
+            />
           </button>
           {showPropertyDropdown && (
             <div style={{
@@ -152,58 +162,54 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
               minWidth: 200,
               zIndex: 50,
             }}>
-              {properties.length === 0 && !showOverallOption ? (
+              {properties.length === 0 ? (
                 <div style={{ padding: '12px 16px', fontSize: 13, color: '#9ca3af' }}>
                   No properties found
                 </div>
               ) : (
                 <>
-                  {showOverallOption && (
-                    <div
-                      style={{
-                        padding: '8px 16px',
-                        fontSize: 13,
-                        color: !currentPropertyId && onPropertyChange ? '#2563eb' : onPropertyChange ? '#374151' : '#374151',
-                        fontWeight: !currentPropertyId && onPropertyChange ? 600 : 400,
-                        background: !currentPropertyId && onPropertyChange ? '#eff6ff' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
-                      onClick={() => {
-                        if (onPropertyChange) {
-                          onPropertyChange(null)
-                          setShowPropertyDropdown(false)
-                        } else {
-                          setCurrentPropertyId(null as any)
-                          setShowPropertyDropdown(false)
-                          navigate('/host/overall-dashboard')
-                        }
-                      }}
-                    >
-                      <Layers size={14} />
-                      <span style={{ fontWeight: 500 }}>Overall Bookings</span>
-                    </div>
-                  )}
+                  <div
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      color: isOverallMode ? '#2563eb' : '#374151',
+                      fontWeight: isOverallMode ? 600 : 400,
+                      background: isOverallMode ? '#eff6ff' : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                    onClick={() => {
+                      setCurrentPropertyId(null)
+                      onPropertyChange?.(null)
+                      setShowPropertyDropdown(false)
+                      setShowAllProperties(false)
+                      if (!onPropertyChange) {
+                        navigate('/host/overall-dashboard')
+                      }
+                    }}
+                  >
+                    <Layers size={14} />
+                    <span style={{ fontWeight: 500 }}>Overall</span>
+                  </div>
                   {(showAllProperties ? properties : properties.slice(0, 5)).map((p) => (
                     <div
                       key={p.id}
                       style={{
                         padding: '8px 16px',
                         fontSize: 13,
-                        color: currentPropertyId === p.id && onPropertyChange ? '#2563eb' : '#374151',
-                        fontWeight: currentPropertyId === p.id && onPropertyChange ? 600 : 400,
-                        background: currentPropertyId === p.id && onPropertyChange ? '#eff6ff' : 'transparent',
+                        color: !isOverallMode && currentPropertyId === p.id ? '#2563eb' : '#374151',
+                        fontWeight: !isOverallMode && currentPropertyId === p.id ? 600 : 400,
+                        background: !isOverallMode && currentPropertyId === p.id ? '#eff6ff' : 'transparent',
                         cursor: 'pointer',
                       }}
                     onClick={() => {
-                      if (onPropertyChange) {
-                        onPropertyChange(p.id)
-                        setShowPropertyDropdown(false)
-                      } else {
-                        setCurrentPropertyId(p.id)
-                        setShowPropertyDropdown(false)
+                      setCurrentPropertyId(p.id)
+                      onPropertyChange?.(p.id)
+                      setShowPropertyDropdown(false)
+                      setShowAllProperties(false)
+                      if (isOverallPage || isPropertyDashboardPage) {
                         navigate(`/host/my-properties/dashboard/${p.id}`)
                       }
                     }}
@@ -235,21 +241,80 @@ export default function DashboardHeader({ title, subtitle, onMenuToggle, showOve
         </div>
 
         {/* Date Range Picker */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 12px',
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
-          cursor: 'pointer',
-          fontSize: 13,
-          color: '#374151',
-        }}>
-          <Calendar size={14} color="#6b7280" />
-          <span>{selectedDateRange}</span>
-          <ChevronDown size={14} color="#9ca3af" />
+        <div ref={dateMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowDateDropdown((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 12px',
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 13,
+              color: '#374151',
+            }}
+          >
+            <Calendar size={14} color="#6b7280" />
+            <span>{dateRangeLabel}</span>
+            <ChevronDown
+              size={14}
+              color="#9ca3af"
+              style={{ transform: showDateDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+            />
+          </button>
+          {showDateDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 4,
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+              minWidth: 230,
+              zIndex: 50,
+              padding: '6px 0',
+            }}>
+              <div style={{ padding: '8px 16px 6px', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Date Range
+              </div>
+              {DATE_RANGE_PRESETS.map((preset) => {
+                const active = dateRangePreset === preset.id
+                return (
+                  <div
+                    key={preset.id}
+                    onClick={() => {
+                      setDateRange(preset.id as DateRangePreset)
+                      setShowDateDropdown(false)
+                      const range = useDateRangeStore.getState()
+                      toast.success(`Date range: ${range.label}`)
+                    }}
+                    style={{
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: active ? 600 : 400,
+                      color: active ? '#2563eb' : '#374151',
+                      background: active ? '#eff6ff' : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                    }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = '#f9fafb' }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span>{preset.label}</span>
+                    {active && <Calendar size={13} />}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Notifications */}

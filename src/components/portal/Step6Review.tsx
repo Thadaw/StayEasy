@@ -1,7 +1,8 @@
-﻿import { useNavigate } from 'react-router-dom'
-import { CheckCircle, Edit, Rocket, LifeBuoy, MapPin, Camera, Tag, Star, Home, Users, Bed, DollarSign, FileText } from 'lucide-react'
+﻿import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, Edit, Rocket, LifeBuoy, MapPin, Camera, Tag, Star, Home, Users, Bed, DollarSign, FileText, Globe } from 'lucide-react'
 import { Room } from './Step4RoomSetup'
-import type { AmenityOption } from '../../types/pms'
+import type { AmenityOption, SystemRoomTypeItem, SystemBedTypeItem } from '../../types/pms'
 
 interface Offer {
   id: string
@@ -33,28 +34,68 @@ interface Step6Props {
     latitude: number | null
     longitude: number | null
   }
+  localization: {
+    currency: string
+    timezone: string
+    language: string
+    checkInTime: string
+    checkOutTime: string
+    earlyCheckInGrace: number
+    lateCheckOutGrace: number
+    allowAlwaysCheckIn: boolean
+    allowPayOnArrival: boolean
+    minAdvancePercentage: number
+    maxAdvancePercentage: number
+  }
   photos: File[]
   availableAmenities: AmenityOption[]
   systemAmenityIds: string[]
   customAmenities: Array<{ name: string; icon: string }>
   rooms: Room[]
+  systemRoomTypes: SystemRoomTypeItem[]
+  systemBedTypes: SystemBedTypeItem[]
   offers: Offer[]
   starRating: number
   onGoToStep: (step: number) => void
-  onPublish?: () => void
+  onPublish?: () => Promise<void>
 }
 
-const stepOrder = ['type', 'property', 'location', 'photos', 'rooms', 'pricing', 'review']
+const stepOrder = ['type', 'property', 'location', 'photos', 'localization', 'branding', 'rooms', 'pricing', 'review']
 
 export default function Step6Review({
-  property, location, photos, availableAmenities, systemAmenityIds, customAmenities, rooms, offers, starRating,
+  property, location, localization, photos, availableAmenities, systemAmenityIds, customAmenities, rooms, systemRoomTypes, systemBedTypes, offers, starRating,
   onGoToStep, onPublish,
 }: Step6Props) {
   const navigate = useNavigate()
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
   const fullAddress = [location.street, location.city, location.state, location.country, location.zip]
     .filter(Boolean).join(', ')
 
   const enabledOffers = offers.filter(o => o.enabled)
+
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const roomTypeLabel = (id: string): string => {
+    if (!id) return 'Not set'
+    if (!uuidRe.test(id)) return id
+    return systemRoomTypes.find(t => t.id === id)?.room_type_name || 'Unknown type'
+  }
+  const bedTypeLabel = (id: string): string => {
+    if (!id) return 'Not set'
+    if (!uuidRe.test(id)) return id
+    return systemBedTypes.find(t => t.id === id)?.bed_name || 'Unknown type'
+  }
+  const policyLabel = (room: Room): string => {
+    const p = room.cancellationPolicy
+    if (!p) return 'Not set'
+    if (p.toLowerCase().startsWith('custom-')) {
+      return room.savedCustomPolicies.find(sp => sp.id === p)?.title || 'Custom'
+    }
+    const labelMap: Record<string, string> = {
+      FLEXIBLE: 'Flexible', MODERATE: 'Moderate', STRICT: 'Strict', NON_REFUNDABLE: 'Non-Refundable', CUSTOM: 'Custom',
+    }
+    return labelMap[p.toUpperCase().replace('-', '_')] || p
+  }
 
   const systemAmenityNames = systemAmenityIds
     .map(id => availableAmenities.find(a => String(a.id) === id)?.name)
@@ -154,6 +195,65 @@ export default function Step6Review({
         <div className="review-card">
           <div className="review-card-header">
             <h3 className="review-card-title">
+              <Globe size={14} className="icon-primary" /> Property Localization
+            </h3>
+            <button className="review-edit-btn" onClick={() => onGoToStep(stepOrder.indexOf('localization'))}>
+              <Edit size={12} /> Edit
+            </button>
+          </div>
+          <div className="review-grid-2">
+            <div className="review-field">
+              <span className="review-field-label">CURRENCY</span>
+              <span className="review-field-value">{localization.currency || 'Not set'}</span>
+            </div>
+            <div className="review-field">
+              <span className="review-field-label">TIMEZONE</span>
+              <span className="review-field-value">{localization.timezone || 'Not set'}</span>
+            </div>
+          </div>
+          <div className="review-field" style={{ marginTop: 12 }}>
+            <span className="review-field-label">LANGUAGE</span>
+            <span className="review-field-value">{localization.language || 'Not set'}</span>
+          </div>
+          <div className="review-grid-2" style={{ marginTop: 12 }}>
+            <div className="review-field">
+              <span className="review-field-label">CHECK-IN TIME</span>
+              <span className="review-field-value">{localization.allowAlwaysCheckIn ? 'Any time' : (localization.checkInTime || 'Not set')}</span>
+            </div>
+            <div className="review-field">
+              <span className="review-field-label">CHECK-OUT TIME</span>
+              <span className="review-field-value">{localization.allowAlwaysCheckIn ? 'Any time' : (localization.checkOutTime || 'Not set')}</span>
+            </div>
+          </div>
+          <div className="review-grid-2" style={{ marginTop: 12 }}>
+            <div className="review-field">
+              <span className="review-field-label">EARLY CHECK-IN GRACE</span>
+              <span className="review-field-value">{localization.earlyCheckInGrace === 0 ? 'None' : `${localization.earlyCheckInGrace} hour(s)`}</span>
+            </div>
+            <div className="review-field">
+              <span className="review-field-label">LATE CHECK-OUT GRACE</span>
+              <span className="review-field-value">{localization.lateCheckOutGrace === 0 ? 'None' : `${localization.lateCheckOutGrace} hour(s)`}</span>
+            </div>
+          </div>
+          <div className="review-grid-2" style={{ marginTop: 12 }}>
+            <div className="review-field">
+              <span className="review-field-label">MIN ADVANCE PAYMENT</span>
+              <span className="review-field-value">{localization.minAdvancePercentage}%</span>
+            </div>
+            <div className="review-field">
+              <span className="review-field-label">MAX ADVANCE PAYMENT</span>
+              <span className="review-field-value">{localization.maxAdvancePercentage}%</span>
+            </div>
+          </div>
+          <div className="review-field" style={{ marginTop: 12 }}>
+            <span className="review-field-label">ALLOW PAY ON ARRIVAL</span>
+            <span className="review-field-value">{localization.allowPayOnArrival ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+
+        <div className="review-card">
+          <div className="review-card-header">
+            <h3 className="review-card-title">
               <Camera size={14} className="icon-primary" /> Media & Amenities
             </h3>
             <button className="review-edit-btn" onClick={() => onGoToStep(stepOrder.indexOf('photos'))}>
@@ -206,11 +306,11 @@ export default function Step6Review({
                   <div className="review-room-details">
                     <div className="review-room-detail">
                       <Tag size={12} />
-                      <span>{r.type || 'Standard'}</span>
+                      <span>{roomTypeLabel(r.type)}</span>
                     </div>
                     <div className="review-room-detail">
                       <Bed size={12} />
-                      <span>{r.bedType || 'Not set'}</span>
+                      <span>{bedTypeLabel(r.bedType)}</span>
                     </div>
                     <div className="review-room-detail">
                       <Home size={12} />
@@ -226,7 +326,7 @@ export default function Step6Review({
                     </div>
                     <div className="review-room-detail">
                       <FileText size={12} />
-                      <span>{r.cancellationPolicy || 'moderate'}</span>
+                      <span>{policyLabel(r)}</span>
                     </div>
                   </div>
                   {r.amenities.length > 0 && (
@@ -295,8 +395,42 @@ export default function Step6Review({
           <p className="review-publish-desc">
             Your property listing is complete. Once you launch, it will be visible on the public portal and ready to accept bookings.
           </p>
-          <button className="btn-launch" onClick={async () => { await onPublish?.(); navigate('/host/my-properties') }}>
-            <Rocket size={16} /> Launch Property
+          {publishError && (
+            <div style={{ padding: '8px 12px', marginBottom: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, fontSize: 13, color: '#dc2626' }}>
+              {publishError}
+            </div>
+          )}
+          <button
+            className="btn-launch"
+            disabled={isPublishing || !onPublish}
+            onClick={async () => {
+              if (!onPublish) {
+                setPublishError('Publish function not available')
+                return
+              }
+              setIsPublishing(true)
+              setPublishError(null)
+              try {
+                await onPublish()
+                navigate('/host/my-properties')
+              } catch (err: any) {
+                const msg = err?.message || 'Failed to publish property'
+                setPublishError(msg)
+              } finally {
+                setIsPublishing(false)
+              }
+            }}
+          >
+            {isPublishing ? (
+              <>
+                <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Rocket size={16} /> Launch Property
+              </>
+            )}
           </button>
         </div>
 

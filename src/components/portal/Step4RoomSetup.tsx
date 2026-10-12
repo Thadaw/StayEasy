@@ -1,9 +1,6 @@
 ﻿import { useState, type ComponentType, type SVGProps } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2, Upload, Search, Star, ConciergeBell, AirVent, Coffee, Dumbbell, Wifi, Car, Wind, Flame, Vault, Shirt, Refrigerator, Sparkles, Bath, Tv, Waves, Copy } from 'lucide-react'
-import type { AmenityOption } from '../../types/pms'
-
-const ROOM_TYPES = ['Standard Room', 'Deluxe Room', 'Suite', 'Executive Suite', 'Family Room']
-const BED_TYPES = ['Single Bed', 'Double Bed', 'Queen Bed', 'King Bed', 'Twin Beds']
+import type { AmenityOption, SystemRoomTypeItem, SystemBedTypeItem } from '../../types/pms'
 
 const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>> = {
   ConciergeBell, AirVent, Coffee, Dumbbell, Wifi, Car, Wind, Flame, Vault, Shirt, Refrigerator, Sparkles, Bath, Tv, Waves,
@@ -57,9 +54,11 @@ interface Step4Props {
   onRoomsChange: (rooms: Room[]) => void
   availableAmenities: AmenityOption[]
   floors: number
+  systemRoomTypes: SystemRoomTypeItem[]
+  systemBedTypes: SystemBedTypeItem[]
 }
 
-export default function Step4RoomSetup({ rooms, onRoomsChange, availableAmenities, floors }: Step4Props) {
+export default function Step4RoomSetup({ rooms, onRoomsChange, availableAmenities, floors, systemRoomTypes, systemBedTypes }: Step4Props) {
   const [amenitySearch, setAmenitySearch] = useState('')
   const [customAmenities, setCustomAmenities] = useState<string[]>([])
   const [customAmenityInput, setCustomAmenityInput] = useState('')
@@ -239,7 +238,7 @@ export default function Step4RoomSetup({ rooms, onRoomsChange, availableAmenitie
                       className="form-select"
                     >
                       <option value="">Select type</option>
-                      {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {systemRoomTypes.map(t => <option key={t.id} value={t.id}>{t.room_type_name}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
@@ -250,7 +249,7 @@ export default function Step4RoomSetup({ rooms, onRoomsChange, availableAmenitie
                       className="form-select"
                     >
                       <option value="">Select bed type</option>
-                      {BED_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {systemBedTypes.map(t => <option key={t.id} value={t.id}>{t.bed_name}</option>)}
                     </select>
                   </div>
                 </div>

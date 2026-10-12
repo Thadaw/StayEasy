@@ -30,6 +30,8 @@ const roomThumbnails = [
   'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=80&h=60&fit=crop',
 ]
 
+const roomThumbColors = ['#D4A574', '#8B7355', '#A0937D', '#C4B5A0', '#C4B5A0']
+
 export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: HousekeepingTableProps) {
   return (
     <div
@@ -42,7 +44,7 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
     >
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+          <tr style={{ borderBottom: '1px solid #E5E7EB', background: '#F9FAFB' }}>
             {['ROOM', 'TYPE', 'FLOOR', 'STATUS', 'ASSIGNED TO', 'LAST CLEANED', 'NEXT CLEANING', 'ACTIONS'].map(col => (
               <th
                 key={col}
@@ -70,7 +72,9 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
             return (
               <tr
                 key={room.id}
-                style={{ borderBottom: '1px solid #F3F4F6' }}
+                style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 {/* Room Number + Thumbnail */}
                 <td style={{ padding: '14px 16px' }}>
@@ -82,13 +86,14 @@ export default function HousekeepingTable({ rooms, onViewRoom, onMoreActions }: 
                         borderRadius: 6,
                         overflow: 'hidden',
                         flexShrink: 0,
-                        background: '#F3F4F6',
+                        background: roomThumbColors[idx % roomThumbColors.length],
                       }}
                     >
                       <img
                         src={thumb}
                         alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
                       />
                     </div>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{room.roomNumber}</span>

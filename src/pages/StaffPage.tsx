@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUIStore } from '../stores/uiStore'
 import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
@@ -9,20 +9,10 @@ import StaffStats from '../components/staff/StaffStats'
 import StaffFilters from '../components/staff/StaffFilters'
 import StaffTable from '../components/staff/StaffTable'
 import StaffPagination from '../components/staff/StaffPagination'
-import { getAllProperties } from '../services/pmsApi'
-import { propertyKeys } from '../lib/queryKeys'
+import { getAllProperties, getStaffList, deleteStaff, updateStaff } from '../services/pmsApi'
+import { propertyKeys, staffKeys } from '../lib/queryKeys'
+import { mapApiStaffToStaffMember, toApiStatus } from '../types/staff'
 import type { StaffMember } from '../types/staff'
-
-const initialStaff: StaffMember[] = [
-  { id: 1, name: 'Ramesh Thapa', email: 'ramesh.thapa@email.com', role: 'Manager', department: 'Front Office', contact: '+977 9812345678', joiningDate: 'Jan 15, 2024', status: 'Active' },
-  { id: 2, name: 'Sunita Shrestha', email: 'sunita.shrestha@email.com', role: 'Receptionist', department: 'Front Office', contact: '+977 9823456789', joiningDate: 'Mar 10, 2024', status: 'Active' },
-  { id: 3, name: 'Kiran Gurung', email: 'kiran.gurung@email.com', role: 'Housekeeping Staff', department: 'Housekeeping', contact: '+977 9845678901', joiningDate: 'Feb 5, 2024', status: 'Active' },
-  { id: 4, name: 'Anita Lama', email: 'anita.lama@email.com', role: 'Housekeeping Supervisor', department: 'Housekeeping', contact: '+977 9856789012', joiningDate: 'Nov 20, 2023', status: 'On Leave' },
-  { id: 5, name: 'Sanjay Rai', email: 'sanjay.rai@email.com', role: 'Chef', department: 'Kitchen', contact: '+977 9811122233', joiningDate: 'Apr 12, 2024', status: 'Active' },
-  { id: 6, name: 'Bikash Magar', email: 'bikash.magar@email.com', role: 'Waiter', department: 'Restaurant', contact: '+977 9865432109', joiningDate: 'May 1, 2024', status: 'Active' },
-  { id: 7, name: 'Pooja Adhikari', email: 'pooja.adhikari@email.com', role: 'Cashier', department: 'Accounts', contact: '+977 9843322110', joiningDate: 'Jan 8, 2024', status: 'Inactive' },
-  { id: 8, name: 'Dinesh Parajuli', email: 'dinesh.parajuli@email.com', role: 'Maintenance Staff', department: 'Maintenance', contact: '+977 9819988776', joiningDate: 'Jun 3, 2024', status: 'Active' },
-]
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   Active: { bg: '#D1FAE5', text: '#065F46' },
@@ -40,15 +30,15 @@ export default function StaffPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const navigate = useNavigate()
-  const [overallMode, setOverallMode] = useState(true)
+  const queryClient = useQueryClient()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const [overallMode, setOverallMode] = useState(() => currentPropertyId === null)
   const [search, setSearch] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [staffList, setStaffList] = useState<StaffMember[]>(initialStaff)
   const [viewingStaff, setViewingStaff] = useState<StaffMember | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null)
 
@@ -58,18 +48,54 @@ export default function StaffPage() {
   })
 
   const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
+  const effectivePropertyId = property?.id ?? ''
+
+  const { data: apiStaff = [], isLoading } = useQuery({
+    queryKey: staffKeys.list(effectivePropertyId),
+    queryFn: async () => {
+      const all: import('../types/staff').ApiStaff[] = []
+      let skip = 0
+      const pageSize = 50
+      for (;;) {
+        const batch = await getStaffList(effectivePropertyId, { skip, limit: pageSize })
+        all.push(...batch)
+        if (batch.length < pageSize) break
+        skip += pageSize
+      }
+      return all
+    },
+    enabled: !!effectivePropertyId,
+  })
+
+  const staffList = useMemo(() => {
+    return apiStaff.map(mapApiStaffToStaffMember)
+  }, [apiStaff])
+
+  const deleteMutation = useMutation({
+    mutationFn: (staffId: string) => deleteStaff(effectivePropertyId, staffId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.list(effectivePropertyId) })
+      setConfirmDelete(null)
+    },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: ({ staffId, status }: { staffId: string; status: StaffMember['status'] }) =>
+      updateStaff(effectivePropertyId, staffId, { status: toApiStatus(status) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.list(effectivePropertyId) })
+    },
+  })
 
   const filteredStaff = useMemo(() => {
     return staffList.filter(member => {
-      const memberPropertyIndex = member.id % Math.max(properties.length, 1)
-      const matchesProperty = overallMode || (property && memberPropertyIndex === properties.findIndex((p) => p.id === property.id))
       const matchesSearch = !search || member.name.toLowerCase().includes(search.toLowerCase()) || member.email.toLowerCase().includes(search.toLowerCase()) || member.contact.includes(search)
       const matchesDept = !departmentFilter || member.department === departmentFilter
       const matchesRole = !roleFilter || member.role === roleFilter
       const matchesStatus = !statusFilter || member.status === statusFilter
-      return matchesProperty && matchesSearch && matchesDept && matchesRole && matchesStatus
+      return matchesSearch && matchesDept && matchesRole && matchesStatus
     })
-  }, [staffList, search, departmentFilter, roleFilter, statusFilter, overallMode, property, properties])
+  }, [staffList, search, departmentFilter, roleFilter, statusFilter])
 
   const stats = useMemo(() => {
     const total = staffList.length
@@ -97,13 +123,12 @@ export default function StaffPage() {
 
   const confirmDeleteStaff = () => {
     if (confirmDelete) {
-      setStaffList(prev => prev.filter(s => s.id !== confirmDelete.id))
-      setConfirmDelete(null)
+      deleteMutation.mutate(confirmDelete.id)
     }
   }
 
   const handleChangeStatus = (member: StaffMember, newStatus: StaffMember['status']) => {
-    setStaffList(prev => prev.map(s => s.id === member.id ? { ...s, status: newStatus } : s))
+    statusMutation.mutate({ staffId: member.id, status: newStatus })
   }
 
   return (
@@ -134,13 +159,19 @@ export default function StaffPage() {
             onAddStaff={openAddModal}
           />
 
-          <StaffTable
-            staff={paginatedStaff}
-            onViewStaff={setViewingStaff}
-            onEditStaff={openEditModal}
-            onDeleteStaff={handleDelete}
-            onChangeStatus={handleChangeStatus}
-          />
+          {isLoading ? (
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 60, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+              Loading staff...
+            </div>
+          ) : (
+            <StaffTable
+              staff={paginatedStaff}
+              onViewStaff={setViewingStaff}
+              onEditStaff={openEditModal}
+              onDeleteStaff={handleDelete}
+              onChangeStatus={handleChangeStatus}
+            />
+          )}
 
           <StaffPagination
             currentPage={currentPage}
@@ -162,7 +193,7 @@ export default function StaffPage() {
               <button onClick={() => setViewingStaff(null)} style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#6B7280' }}>×</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, padding: 16, background: '#F9FAFB', borderRadius: 10 }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColors[viewingStaff.id % avatarColors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 700 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColors[viewingStaff.id.length % avatarColors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 700 }}>
                 {getInitials(viewingStaff.name)}
               </div>
               <div>
@@ -201,7 +232,9 @@ export default function StaffPage() {
             <p style={{ fontSize: 14, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>Are you sure you want to delete <strong>{confirmDelete.name}</strong>? This action cannot be undone.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={confirmDeleteStaff} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Delete</button>
+              <button onClick={confirmDeleteStaff} disabled={deleteMutation.isPending} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: deleteMutation.isPending ? 0.6 : 1 }}>
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>

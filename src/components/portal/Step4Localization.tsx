@@ -1,4 +1,4 @@
-import { Clock, MapPin, Lock } from 'lucide-react'
+import { Clock, MapPin, Lock, CreditCard } from 'lucide-react'
 
 export interface LocalizationData {
   currency: string
@@ -9,6 +9,9 @@ export interface LocalizationData {
   earlyCheckInGrace: number
   lateCheckOutGrace: number
   allowAlwaysCheckIn: boolean
+  allowPayOnArrival: boolean
+  minAdvancePercentage: number
+  maxAdvancePercentage: number
 }
 
 interface Step4Props {
@@ -202,6 +205,56 @@ export default function Step4Localization({ data, onChange }: Step4Props) {
           >
             <div className="toggle-knob" />
           </button>
+        </div>
+
+        <div className="self-checkin-row">
+          <div className="self-checkin-info">
+            <CreditCard size={18} className="icon-primary" />
+            <div>
+              <div className="self-checkin-label">Allow Pay on Arrival</div>
+              <p className="form-hint" style={{ margin: 0 }}>Guests can pay at the property instead of online</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`toggle-switch ${data.allowPayOnArrival ? 'active' : ''}`}
+            onClick={() => onChange({ allowPayOnArrival: !data.allowPayOnArrival })}
+          >
+            <div className="toggle-knob" />
+          </button>
+        </div>
+
+        <div className="form-row-2">
+          <div className="form-group">
+            <label className="form-label">Minimum Advance Payment (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={data.minAdvancePercentage}
+              onChange={e => {
+                const raw = e.target.value.replace(/^0+/, '') || '0'
+                onChange({ minAdvancePercentage: Math.min(100, Math.max(0, Number(raw))) })
+              }}
+              className="form-input"
+            />
+            <p className="form-hint">Minimum percentage required before check-in</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Maximum Advance Payment (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={data.maxAdvancePercentage}
+              onChange={e => {
+                const raw = e.target.value.replace(/^0+/, '') || '0'
+                onChange({ maxAdvancePercentage: Math.min(100, Math.max(0, Number(raw))) })
+              }}
+              className="form-input"
+            />
+            <p className="form-hint">Maximum percentage guests can pay in advance</p>
+          </div>
         </div>
       </div>
     </div>

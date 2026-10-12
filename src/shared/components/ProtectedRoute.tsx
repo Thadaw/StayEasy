@@ -4,7 +4,7 @@ import { PageLoader } from "./PageLoader";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('host' | 'guest' | 'staff')[];
+  allowedRoles?: ('host' | 'guest' | 'staff' | 'manager')[];
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -26,6 +26,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     if (role === 'staff') return <Navigate to="/frontdesk" replace />;
+    if (role === 'manager') return <Navigate to="/manager/dashboard" replace />;
     if (role === 'host') return <Navigate to="/host/overall-dashboard" replace />;
     return <Navigate to="/" replace />;
   }

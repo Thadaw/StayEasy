@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import api, { type AuthRequestConfig, startTokenRefreshTimer, refreshAccessToken, decodeTokenExp } from '../services/axios'
+import api, { attemptSessionRefresh, startTokenRefreshTimer, refreshAccessToken, decodeTokenExp, type AuthRequestConfig } from '../services/axios'
 import type { User } from './types'
 
-type AuthRole = 'host' | 'guest' | 'staff'
+type AuthRole = 'host' | 'guest' | 'manager' | 'staff'
 
 interface AuthContextValue {
   user: User | null
@@ -60,6 +60,7 @@ function readToken(): string | null {
 function readRole(): AuthRole {
   const stored = storageGet(ROLE_KEY)
   if (stored === 'guest') return 'guest'
+  if (stored === 'manager') return 'manager'
   if (stored === 'staff') return 'staff'
   return 'host'
 }
@@ -196,6 +197,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [token, loadCurrentUser])
+
+  // Proactive sliding refresh: keep the access token fresh before it expires so
+  // the session never lapses between requests. Access tokens last ~10-60 min
+  // while the refresh token lasts 30 days, so this keeps the user signed in
+  // continuously instead of forcing a re-login when the access token dies.
+  useEffect(() => {
+    if (!token) return
+
+    const check = async () => {
+      try {
+        const refreshed = await attemptSessionRefresh()
+        if (refreshed && refreshed !== token) setToken(refreshed)
+      } catch {
+        // attemptSessionRefresh already swallows failures internally.
+      }
+    }
+
+    check()
+
+    const interval = setInterval(check, 60 * 1000)
+    const onFocus = () => check()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [token])
 
   // Sync logout across tabs: when another tab clears the token from localStorage,
   // the storage event fires here and we clear auth state in this tab too.

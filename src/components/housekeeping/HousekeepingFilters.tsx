@@ -140,7 +140,7 @@ export default function HousekeepingFilters({
           onChange={e => onRoomTypeChange(e.target.value)}
           style={selectStyle}
         >
-          <option value="">All Room Types</option>
+          <option value="">All RoomsTypes</option>
           <option value="Deluxe Room">Deluxe Room</option>
           <option value="Suite Room">Suite Room</option>
           <option value="Standard Room">Standard Room</option>

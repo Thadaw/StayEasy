@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '../shared/components/ProtectedRoute'
+import { ManagerRoute } from '../shared/components/ManagerRoute'
 import { StaffRedirect } from '../shared/components/StaffRedirect'
 import { RedirectIfLoggedIn } from '../shared/components/RedirectIfLoggedIn'
 
@@ -34,6 +35,20 @@ const IntegrationsPage = lazy(() => import('../pages/IntegrationsPage'))
 const HostNotificationsPage = lazy(() => import('../pages/HostNotificationsPage'))
 const ActivityLogsPage = lazy(() => import('../pages/ActivityLogsPage'))
 const SupportPage = lazy(() => import('../pages/SupportPage'))
+const ManagerDashboardPage = lazy(() => import('../pages/manager/ManagerDashboardPage'))
+const ManagerBookingsPage = lazy(() => import('../pages/manager/ManagerBookingsPage'))
+const ManagerNewBookingPage = lazy(() => import('../pages/manager/ManagerNewBookingPage'))
+const ManagerBookingDetailPage = lazy(() => import('../pages/manager/ManagerBookingDetailPage'))
+const ManagerRoomsPage = lazy(() => import('../pages/manager/ManagerRoomsPage'))
+const ManagerGuestsPage = lazy(() => import('../pages/manager/ManagerGuestsPage'))
+const ManagerStaffPage = lazy(() => import('../pages/manager/ManagerStaffPage'))
+const ManagerStaffApprovalsPage = lazy(() => import('../pages/manager/ManagerStaffApprovalsPage'))
+const ManagerHousekeepingPage = lazy(() => import('../pages/manager/ManagerHousekeepingPage'))
+const ManagerBillingPage = lazy(() => import('../pages/manager/ManagerBillingPage'))
+const ManagerReportsPage = lazy(() => import('../pages/manager/ManagerReportsPage'))
+const ManagerFeedbackPage = lazy(() => import('../pages/manager/ManagerFeedbackPage'))
+const ManagerNotificationsPage = lazy(() => import('../pages/manager/ManagerNotificationsPage'))
+const ManagerSettingsPage = lazy(() => import('../pages/manager/ManagerSettingsPage'))
 const CountryPage = lazy(() => import('../guestfeatures/search/pages/CountryPage'))
 const PropertyDetailPage = lazy(() => import('../guestfeatures/property/pages/PropertyDetailPage'))
 const SearchResultsPage = lazy(() => import('../guestfeatures/search/pages/SearchResultsPage'))
@@ -70,6 +85,7 @@ const FrontDeskNotificationsPage = lazy(() => import('../frontdesk/pages/FrontDe
 const InHousePage = lazy(() => import('../frontdesk/pages/InHousePage'))
 const NotFoundPage = lazy(() => import('../guestfeatures/extraPage/pages/NotFoundPage'))
 const FooterPage = lazy(() => import('../guestfeatures/extraPage/pages/FooterPage'))
+const RestaurantPosPage = lazy(() => import('../pages/RestaurantPosPage'))
 
 export function AppRoutes() {
   return (
@@ -116,6 +132,29 @@ export function AppRoutes() {
       <Route path="/host/notifications" element={<ProtectedRoute allowedRoles={['host']}><HostNotificationsPage /></ProtectedRoute>} />
       <Route path="/host/activity" element={<ProtectedRoute allowedRoles={['host']}><ActivityLogsPage /></ProtectedRoute>} />
       <Route path="/host/support" element={<ProtectedRoute allowedRoles={['host']}><SupportPage /></ProtectedRoute>} />
+      <Route path="/host/admin-profile" element={<ProtectedRoute allowedRoles={['host']}><AdminProfilePage /></ProtectedRoute>} />
+      <Route path="/host/restaurant" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
+      <Route path="/host/restaurant/orders" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
+      <Route path="/host/restaurant/tables" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
+      <Route path="/manager/login" element={<LoginPage />} />
+      <Route path="/manager/dashboard" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
+      <Route path="/manager/bookings" element={<ManagerRoute><ManagerBookingsPage /></ManagerRoute>} />
+      <Route path="/manager/bookings/new" element={<ManagerRoute><ManagerNewBookingPage /></ManagerRoute>} />
+      <Route path="/manager/bookings/:id" element={<ManagerRoute><ManagerBookingDetailPage /></ManagerRoute>} />
+      <Route path="/manager/rooms" element={<ManagerRoute><ManagerRoomsPage /></ManagerRoute>} />
+      <Route path="/manager/guests" element={<ManagerRoute><ManagerGuestsPage /></ManagerRoute>} />
+      <Route path="/manager/staff" element={<ManagerRoute><ManagerStaffPage /></ManagerRoute>} />
+      <Route path="/manager/staff/approvals" element={<ManagerRoute><ManagerStaffApprovalsPage /></ManagerRoute>} />
+      <Route path="/manager/housekeeping" element={<ManagerRoute><ManagerHousekeepingPage /></ManagerRoute>} />
+      <Route path="/manager/billing" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/billing/payments" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/billing/refunds" element={<ManagerRoute><ManagerBillingPage /></ManagerRoute>} />
+      <Route path="/manager/reports" element={<ManagerRoute><ManagerReportsPage /></ManagerRoute>} />
+      <Route path="/manager/feedback" element={<ManagerRoute><ManagerFeedbackPage /></ManagerRoute>} />
+      <Route path="/manager/notifications" element={<ManagerRoute><ManagerNotificationsPage /></ManagerRoute>} />
+      <Route path="/manager/settings" element={<ManagerRoute><ManagerSettingsPage /></ManagerRoute>} />
+      <Route path="/manager/change-password" element={<ProtectedRoute allowedRoles={['manager']}><ChangePasswordPage /></ProtectedRoute>} />
+      <Route path="/manager/*" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
       <Route path="/frontdesk" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskPage /></ProtectedRoute>} />
       <Route path="/frontdesk/bookings" element={<ProtectedRoute allowedRoles={['staff']}><FrontdeskBookingsPage /></ProtectedRoute>} />
       <Route path="/frontdesk/payments" element={<ProtectedRoute allowedRoles={['staff']}><FrontDeskPaymentsPage /></ProtectedRoute>} />

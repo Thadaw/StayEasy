@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import PortalHeader from '../components/portal/PortalHeader'
 import ProgressBar from '../components/portal/ProgressBar'
@@ -15,34 +16,28 @@ import Step5PricingOffers from '../components/portal/Step5PricingOffers'
 import Step6Review from '../components/portal/Step6Review'
 import NavigationButtons from '../components/portal/NavigationButtons'
 import {
-  createGeneralInfo,
-  createLocation,
-  createPhotosAmenities,
-  createLocalization,
-  createBrandVisual,
+  createProperty,
+  uploadSingleImage,
   uploadPropertyImage,
   uploadRoomImages,
   createRooms,
-  createRoomType,
-  createBedType,
-  getRoomTypes,
-  getBedTypes,
   createSpecialOffers,
   updatePropertyActivation,
   getAmenities as fetchAmenitiesApi,
+  getSystemRoomTypes,
+  getSystemBedTypes,
   getTenant,
   createTenant,
 } from '../services/pmsApi'
 import type {
-  GeneralInfoPayload,
-  LocationPayload,
-  PhotosAmenitiesPayload,
-  PhotosAmenityCustom,
+  CreatePropertyPayload,
   AmenityOption,
-  LocalizationPayload,
-  BrandVisualPayload,
+  PhotosAmenityCustom,
   RoomBase,
   SpecialOfferPayload,
+  SystemRoomTypeItem,
+  SystemBedTypeItem,
+  CancellationPolicyEnum,
 } from '../types/pms'
 import '../styles/portal.css'
 
@@ -111,14 +106,15 @@ const createDefaultRoom = (id: number): Room => ({
 
 export default function HostPortalPageNew() {
   const { user, loading: authLoading } = useAuth()
+  const location = useLocation()
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('type')
   const [propertyData, setPropertyData] = useState<PropertyData>({
-    type: '',
+    type: 'HOTEL',
     name: '',
-    totalRooms: 0,
-    floors: 0,
-    yearBuilt: 0,
+    totalRooms: 1,
+    floors: 1,
+    yearBuilt: 2020,
     description: '',
     phone: '',
     email: '',
@@ -137,6 +133,8 @@ export default function HostPortalPageNew() {
   const [systemAmenityIds, setSystemAmenityIds] = useState<string[]>([])
   const [customAmenities, setCustomAmenities] = useState<PhotosAmenityCustom[]>([])
   const [availableAmenities, setAvailableAmenities] = useState<AmenityOption[]>([])
+  const [systemRoomTypes, setSystemRoomTypes] = useState<SystemRoomTypeItem[]>([])
+  const [systemBedTypes, setSystemBedTypes] = useState<SystemBedTypeItem[]>([])
   const [rooms, setRooms] = useState<Room[]>([createDefaultRoom(1)])
   const [offers, setOffers] = useState<Offer[]>(DEFAULT_OFFERS)
   const [starRating, setStarRating] = useState(0)
@@ -150,6 +148,9 @@ export default function HostPortalPageNew() {
     earlyCheckInGrace: 0,
     lateCheckOutGrace: 0,
     allowAlwaysCheckIn: true,
+    allowPayOnArrival: true,
+    minAdvancePercentage: 0,
+    maxAdvancePercentage: 100,
   })
 
   const [brandData, setBrandData] = useState<BrandData>({
@@ -177,6 +178,7 @@ export default function HostPortalPageNew() {
   useEffect(() => {
     if (hasRestoredRef.current) return
     if (!user) return
+
     const raw = localStorage.getItem(draftKey)
     if (raw) {
       try {
@@ -195,6 +197,10 @@ export default function HostPortalPageNew() {
           customPolicyTitle: r.customPolicyTitle ?? '',
           customPolicyDescription: r.customPolicyDescription ?? '',
           savedCustomPolicies: r.savedCustomPolicies ?? [],
+          // Old drafts stored display labels (e.g. "Standard Room") instead of UUIDs.
+          // Clear non-UUID values so the user re-picks from the real API options.
+          type: isUuid(r.type) ? r.type : '',
+          bedType: isUuid(r.bedType) ? r.bedType : '',
         })))
         if (draft.offers) {
           setOffers(draft.offers.map((o: any) => ({
@@ -209,11 +215,7 @@ export default function HostPortalPageNew() {
       } catch {}
     }
     hasRestoredRef.current = true
-  }, [draftKey, user])
-
-  useEffect(() => {
-    hasRestoredRef.current = true
-  }, [])
+  }, [draftKey, user, location.state])
 
   useEffect(() => {
     if (!hasRestoredRef.current) return
@@ -244,6 +246,34 @@ export default function HostPortalPageNew() {
     }
   }, [currentStep, propertyData, locationData, coverIndex, systemAmenityIds, customAmenities, starRating, localizationData, rooms, offers, brandData, propertyId, draftKey])
 
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    const handler = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      const draft = {
+        currentStep,
+        propertyData,
+        locationData,
+        coverIndex,
+        systemAmenityIds,
+        customAmenities,
+        starRating,
+        localizationData,
+        rooms: rooms.map(r => ({ ...r, photos: [] })),
+        offers: offers.map(o => ({
+          ...o,
+          startDate: o.startDate instanceof Date ? o.startDate.toISOString() : o.startDate,
+          endDate: o.endDate instanceof Date ? o.endDate.toISOString() : o.endDate,
+        })),
+        brandData: { ...brandData, logo: null },
+        propertyId,
+      }
+      try { localStorage.setItem(draftKey, JSON.stringify(draft)) } catch {}
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [currentStep, propertyData, locationData, coverIndex, systemAmenityIds, customAmenities, starRating, localizationData, rooms, offers, brandData, propertyId, draftKey])
+
   const stepChangedRef = useRef(false)
   useEffect(() => {
     if (!stepChangedRef.current) { stepChangedRef.current = true; return }
@@ -258,9 +288,31 @@ export default function HostPortalPageNew() {
     lastSavedDataRef.current = {}
   }, [draftKey])
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const isUuid = (v: unknown): boolean => typeof v === 'string' && UUID_RE.test(v)
+
   useEffect(() => {
-    fetchAmenitiesApi().then(setAvailableAmenities).catch(() => {})
-  }, [])
+    if (authLoading) return
+    if (!user) return
+    fetchAmenitiesApi()
+      .then(setAvailableAmenities)
+      .catch((err) => {
+        console.error('Failed to fetch amenities:', err)
+        setSaveError('Failed to load amenities. Room amenities may not work correctly.')
+      })
+    getSystemRoomTypes()
+      .then(setSystemRoomTypes)
+      .catch((err) => {
+        console.error('Failed to fetch system room types:', err)
+        setSaveError('Failed to load room types. Room setup may not work correctly.')
+      })
+    getSystemBedTypes()
+      .then(setSystemBedTypes)
+      .catch((err) => {
+        console.error('Failed to fetch system bed types:', err)
+        setSaveError('Failed to load bed types. Room setup may not work correctly.')
+      })
+  }, [authLoading, user])
 
   const stepOrder: WizardStep[] = ['type', 'property', 'location', 'photos', 'localization', 'branding', 'rooms', 'pricing', 'review']
 
@@ -401,30 +453,33 @@ export default function HostPortalPageNew() {
           return true
 
         case 'property': {
-          try {
-            await getTenant()
-          } catch {
-            await createTenant(propertyData.name || 'My Property')
+          if (!propertyData.name.trim()) {
+            setSaveError('Property name is required before continuing.')
+            return false
           }
-          const payload: GeneralInfoPayload = {
-            name: propertyData.name,
-            type: propertyData.type,
-            total_rooms: propertyData.totalRooms,
-            number_of_floors: propertyData.floors,
-            year_built: propertyData.yearBuilt,
-            description: propertyData.description,
-            phone_number: propertyData.phone,
-            email: propertyData.email,
+          const phoneDigits = propertyData.phone.replace(/\D/g, '')
+          if (phoneDigits.length !== 10) {
+            setSaveError('Phone number must be exactly 10 digits.')
+            return false
           }
-          const result = await createGeneralInfo(payload)
-          setPropertyId(result.id)
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(propertyData.email.trim())) {
+            setSaveError('A valid email address is required.')
+            return false
+          }
+          if (!propertyData.type) {
+            setSaveError('Please select a property type.')
+            return false
+          }
+          if (propertyData.totalRooms < 1) {
+            setSaveError('Total rooms must be at least 1.')
+            return false
+          }
           savedStepsRef.current.add('property')
           snapshotStepData('property')
           return true
         }
 
         case 'location': {
-          if (propertyId === null) return false
           const requiredFields: [string, string][] = [
             ['Country', locationData.country],
             ['State/Province', locationData.state],
@@ -437,67 +492,20 @@ export default function HostPortalPageNew() {
             setSaveError(`${missing[0]} must be at least 2 characters before continuing.`)
             return false
           }
-          const payload: LocationPayload = {
-            country: locationData.country,
-            state: locationData.state,
-            city: locationData.city,
-            zip_code: locationData.zip,
-            address: locationData.street,
-            latitude: locationData.latitude,
-            longitude: locationData.longitude,
-          }
-          await createLocation(propertyId, payload)
           savedStepsRef.current.add('location')
           snapshotStepData('location')
           return true
         }
 
-        case 'photos': {
-          if (propertyId === null) return false
-
-          let coverUrl = ''
-          let galleryUrls: string[] = []
-
-          if (photos.length > 0) {
-            const orderedPhotos = coverIndex < photos.length
-              ? [photos[coverIndex], ...photos.filter((_, i) => i !== coverIndex)]
-              : photos
-            const formData = new FormData()
-            orderedPhotos.forEach(p => formData.append('files', p))
-            const uploadedUrls = await uploadPropertyImage(propertyId, formData)
-
-            if (uploadedUrls.length > 0) {
-              coverUrl = uploadedUrls[0]
-              galleryUrls = uploadedUrls.slice(1)
-            }
-          }
-
-          const payload: PhotosAmenitiesPayload = {
-            photos: {
-              cover: coverUrl,
-              gallery: galleryUrls,
-            },
-            amenities: {
-              system_amenity_ids: systemAmenityIds,
-              custom_amenities: customAmenities,
-            },
-            star_rating: starRating,
-          }
-          await createPhotosAmenities(propertyId, payload)
+        case 'photos':
           savedStepsRef.current.add('photos')
           snapshotStepData('photos')
           return true
-        }
 
         case 'localization': {
-          if (propertyId === null) return false
-
-          let checkInTime: string | null = null
-          let checkOutTime: string | null = null
-
           if (!localizationData.allowAlwaysCheckIn) {
-            checkInTime = localizationData.checkInTime.trim()
-            checkOutTime = localizationData.checkOutTime.trim()
+            const checkInTime = localizationData.checkInTime.trim()
+            const checkOutTime = localizationData.checkOutTime.trim()
             if (checkInTime.length < 2) {
               setSaveError('Check-in Time must be at least 2 characters before continuing.')
               return false
@@ -507,163 +515,49 @@ export default function HostPortalPageNew() {
               return false
             }
           }
-
-          const payload: LocalizationPayload = {
-            currency: localizationData.currency,
-            timezone: localizationData.timezone,
-            language: localizationData.language,
-            check_in_time: checkInTime,
-            check_out_time: checkOutTime,
-            check_in_grace_period: localizationData.earlyCheckInGrace,
-            check_out_grace_period: localizationData.lateCheckOutGrace,
-            always_allow_check_in_out: localizationData.allowAlwaysCheckIn,
-          }
-          await createLocalization(propertyId, payload)
           savedStepsRef.current.add('localization')
           snapshotStepData('localization')
           return true
         }
 
-        case 'branding': {
-          if (propertyId === null) return false
-          let logoUrl: string | null = null
-          if (brandData.logo) {
-            const formData = new FormData()
-            formData.append('files', brandData.logo)
-            const urls = await uploadPropertyImage(propertyId, formData)
-            if (urls.length > 0) logoUrl = urls[0]
-          }
-          const payload: BrandVisualPayload = {
-            brand_color: brandData.brandColor,
-            brand_logo_url: logoUrl,
-          }
-          await createBrandVisual(propertyId, payload)
+        case 'branding':
           savedStepsRef.current.add('branding')
           snapshotStepData('branding')
           return true
-        }
 
         case 'rooms': {
-          if (propertyId === null) return false
-
-          const roomTypeCache: Record<string, string> = {}
-          const bedTypeCache: Record<string, string> = {}
-
-          let existingRoomTypes: { room_type_name: string; id: string }[] = []
-          let existingBedTypes: { bed_name: string; id: string }[] = []
-          try {
-            const [rt, bt] = await Promise.all([
-              getRoomTypes(propertyId),
-              getBedTypes(propertyId),
-            ])
-            existingRoomTypes = rt
-            existingBedTypes = bt
-          } catch {
-            // room-types/bed-types endpoints may not be available yet
+          if (rooms.length === 0) {
+            setSaveError('At least one room is required before continuing.')
+            return false
           }
-          for (const rt of existingRoomTypes) {
-            roomTypeCache[rt.room_type_name] = rt.id
+          const unnamedRoom = rooms.find(r => !r.name.trim())
+          if (unnamedRoom) {
+            setSaveError('All rooms must have a name before continuing.')
+            return false
           }
-          for (const bt of existingBedTypes) {
-            bedTypeCache[bt.bed_name] = bt.id
+          if (systemRoomTypes.length === 0 || systemBedTypes.length === 0) {
+            setSaveError('Room or bed types failed to load. Please refresh the page and try again.')
+            return false
           }
-
-          for (const room of rooms) {
-            if (room.type && !roomTypeCache[room.type]) {
-              const res = await createRoomType(propertyId, room.type)
-              roomTypeCache[room.type] = res.id
-            }
-            if (room.bedType && !bedTypeCache[room.bedType]) {
-              const res = await createBedType(propertyId, room.bedType)
-              bedTypeCache[room.bedType] = res.id
-            }
+          const roomMissingType = rooms.find(r => !isUuid(r.type))
+          if (roomMissingType) {
+            setSaveError(`Room "${roomMissingType.name || 'Unnamed'}" must have a valid room type selected before continuing.`)
+            return false
           }
-
-          const roomBases: RoomBase[] = []
-
-          for (const room of rooms) {
-            let coverUrl: string | null = null
-            let galleryUrls: string[] = []
-            if (room.photos.length > 0) {
-              const coverIdx = room.coverPhotoIndex ?? 0
-              const orderedPhotos = coverIdx < room.photos.length
-                ? [room.photos[coverIdx], ...room.photos.filter((_, i) => i !== coverIdx)]
-                : room.photos
-              const formData = new FormData()
-              orderedPhotos.forEach(p => formData.append('files', p))
-              const uploadedUrls = await uploadRoomImages(propertyId, formData)
-              if (uploadedUrls.length > 0) {
-                coverUrl = uploadedUrls[0]
-                galleryUrls = uploadedUrls.slice(1)
-              }
-            }
-
-            let cancellationPolicy = (room.cancellationPolicy || 'moderate').toUpperCase() as string
-            let cancellationTitle: string | null = null
-            let cancellationDescription: string | null = null
-            if (cancellationPolicy.startsWith('CUSTOM-')) {
-              const saved = room.savedCustomPolicies.find(p => p.id === room.cancellationPolicy)
-              if (saved) {
-                cancellationPolicy = 'CUSTOM'
-                cancellationTitle = saved.title
-                cancellationDescription = saved.description
-              }
-            }
-
-            const systemAmenityIds = room.amenities
-              .map(name => {
-                const found = availableAmenities.find(a => (a.label || a.name) === name)
-                return found ? String(found.id) : null
-              })
-              .filter((id): id is string => id !== null)
-
-            const customAmenityNames = room.amenities.filter(name =>
-              !availableAmenities.some(a => (a.label || a.name) === name)
-            )
-
-            roomBases.push({
-              floor_number: parseInt(room.floor, 10) || 0,
-              room_name: room.name,
-              room_type_id: roomTypeCache[room.type] || '',
-              bed_type_id: bedTypeCache[room.bedType] || '',
-              max_adults: room.maxAdults,
-              max_children: room.maxChildren,
-              base_rate: parseFloat(room.minRate) || 1,
-              status: 'AVAILABLE',
-              cancellation_policy: cancellationPolicy,
-              cancellation_title: cancellationTitle,
-              cancellation_description: cancellationDescription,
-              photos: { cover: coverUrl, gallery: galleryUrls },
-              system_amenity_ids: systemAmenityIds,
-              custom_amenities: customAmenityNames.map(name => ({ name, icon: null })),
-            })
+          const roomMissingBedType = rooms.find(r => !isUuid(r.bedType))
+          if (roomMissingBedType) {
+            setSaveError(`Room "${roomMissingBedType.name || 'Unnamed'}" must have a valid bed type selected before continuing.`)
+            return false
           }
-
-          await createRooms(propertyId, { rooms: roomBases })
           savedStepsRef.current.add('rooms')
           snapshotStepData('rooms')
           return true
         }
 
-        case 'pricing': {
-          if (propertyId === null) return false
-          const enabledOffers = offers.filter(o => o.enabled)
-          if (enabledOffers.length > 0) {
-            const payload: SpecialOfferPayload[] = enabledOffers.map(o => ({
-              title: o.label,
-              description: o.desc,
-              discount_percentage: o.discountPercentage,
-              start_date: o.startDate ? o.startDate.toISOString().split('T')[0] : null,
-              end_date: o.endDate ? o.endDate.toISOString().split('T')[0] : null,
-              is_active: true,
-              is_custom: o.id.startsWith('custom-'),
-            }))
-            await createSpecialOffers(propertyId, payload)
-          }
+        case 'pricing':
           savedStepsRef.current.add('pricing')
           snapshotStepData('pricing')
           return true
-        }
 
         case 'review':
           return true
@@ -676,7 +570,195 @@ export default function HostPortalPageNew() {
       setSaveError(msg)
       return false
     }
-  }, [currentStep, propertyData, locationData, systemAmenityIds, customAmenities, starRating, localizationData, brandData, rooms, offers, photos, propertyId])
+  }, [currentStep, propertyData, locationData, localizationData, rooms])
+
+  const handlePublish = useCallback(async (): Promise<void> => {
+    setSaveError(null)
+
+    try {
+      // Phase 1: Ensure tenant exists
+      try {
+        await getTenant()
+      } catch {
+        await createTenant(propertyData.name || 'My Property')
+      }
+
+      // Phase 2: Upload brand logo first (before property creation)
+      let logoUrl: string | null = null
+      if (brandData.logo) {
+        logoUrl = await uploadSingleImage(brandData.logo)
+      }
+
+      // Phase 3: Create property with all data including logo URL
+      let checkInTime: string | null = null
+      let checkOutTime: string | null = null
+      if (!localizationData.allowAlwaysCheckIn) {
+        checkInTime = localizationData.checkInTime.trim()
+        checkOutTime = localizationData.checkOutTime.trim()
+      }
+
+      const propertyPayload: CreatePropertyPayload = {
+        general_information: {
+          name: propertyData.name,
+          type: propertyData.type,
+          description: propertyData.description,
+          total_rooms: propertyData.totalRooms,
+          year_built: propertyData.yearBuilt,
+          number_of_floors: propertyData.floors,
+          phone_number: propertyData.phone,
+          email: propertyData.email,
+        },
+        location: {
+          country: locationData.country,
+          state: locationData.state,
+          city: locationData.city,
+          zip_code: locationData.zip,
+          address: locationData.street,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+        },
+        photos_and_amenities: {
+          photos: { cover: '', gallery: [] },
+          amenities: {
+            system_amenity_ids: systemAmenityIds,
+            custom_amenities: customAmenities,
+          },
+        },
+        localization: {
+          currency: localizationData.currency,
+          timezone: localizationData.timezone,
+          language: localizationData.language,
+          check_in_time: checkInTime,
+          check_out_time: checkOutTime,
+          check_in_grace_period: localizationData.earlyCheckInGrace,
+          check_out_grace_period: localizationData.lateCheckOutGrace,
+          always_allow_check_in_out: localizationData.allowAlwaysCheckIn,
+          allow_pay_on_arrival: localizationData.allowPayOnArrival,
+          min_advance_percentage: localizationData.minAdvancePercentage,
+          max_advance_percentage: localizationData.maxAdvancePercentage,
+        },
+        brand_visual: {
+          brand_logo_url: logoUrl,
+          brand_color: brandData.brandColor,
+        },
+      }
+
+      const propertyResult = await createProperty(propertyPayload)
+      const newPropertyId = propertyResult.id
+      setPropertyId(newPropertyId)
+
+      // Phase 4: Upload property images with real property ID
+      if (photos.length > 0) {
+        const orderedPhotos = coverIndex < photos.length
+          ? [photos[coverIndex], ...photos.filter((_, i) => i !== coverIndex)]
+          : photos
+        const formData = new FormData()
+        orderedPhotos.forEach(p => formData.append('files', p))
+        await uploadPropertyImage(newPropertyId, formData)
+      }
+
+      // Phase 5: Upload room images and create rooms
+      if (rooms.length > 0) {
+        const roomBases: RoomBase[] = []
+
+        for (const room of rooms) {
+          let roomCoverUrl: string | null = null
+          let roomGalleryUrls: string[] = []
+          if (room.photos.length > 0) {
+            const coverIdx = room.coverPhotoIndex ?? 0
+            const orderedPhotos = coverIdx < room.photos.length
+              ? [room.photos[coverIdx], ...room.photos.filter((_, i) => i !== coverIdx)]
+              : room.photos
+            const formData = new FormData()
+            orderedPhotos.forEach(p => formData.append('files', p))
+            const uploadedUrls = await uploadRoomImages(newPropertyId, formData)
+            if (uploadedUrls.length > 0) {
+              roomCoverUrl = uploadedUrls[0]
+              roomGalleryUrls = uploadedUrls.slice(1)
+            }
+          }
+
+          let cancellationPolicy: CancellationPolicyEnum = ((room.cancellationPolicy || 'moderate').toUpperCase().replace('-', '_')) as CancellationPolicyEnum
+          let cancellationTitle: string | null = null
+          let cancellationDescription: string | null = null
+          if (cancellationPolicy === 'CUSTOM' || room.cancellationPolicy?.toLowerCase().startsWith('custom-')) {
+            const saved = room.savedCustomPolicies.find(p => p.id === room.cancellationPolicy)
+            if (saved) {
+              cancellationPolicy = 'CUSTOM'
+              cancellationTitle = saved.title
+              cancellationDescription = saved.description
+            } else {
+              // Custom policy was never saved or was removed — fall back to a valid default
+              cancellationPolicy = 'MODERATE'
+            }
+          }
+
+          const roomSystemAmenityIds = room.amenities
+            .map(name => {
+              const found = availableAmenities.find(a => (a.label || a.name) === name)
+              return found ? String(found.id) : null
+            })
+            .filter((id): id is string => id !== null)
+
+          const roomCustomAmenityNames = room.amenities.filter(name =>
+            !availableAmenities.some(a => (a.label || a.name) === name)
+          )
+
+          if (!isUuid(room.type) || !isUuid(room.bedType)) {
+            setSaveError(`Room "${room.name || 'Unnamed'}" is missing a valid room type or bed type. Please go back to Room Setup and re-select them.`)
+            throw new Error('Room type/bed type validation failed')
+          }
+
+          roomBases.push({
+            floor_number: parseInt(room.floor, 10) || 0,
+            room_name: room.name,
+            room_type_id: room.type,
+            bed_type_id: room.bedType,
+            max_adults: room.maxAdults,
+            max_children: room.maxChildren,
+            base_rate: parseFloat(room.minRate) || 1,
+            status: 'AVAILABLE',
+            cancellation_policy: cancellationPolicy,
+            cancellation_title: cancellationTitle,
+            cancellation_description: cancellationDescription,
+            photos: { cover: roomCoverUrl, gallery: roomGalleryUrls },
+            system_amenity_ids: roomSystemAmenityIds,
+            custom_amenities: roomCustomAmenityNames.map(name => ({ name, icon: null })),
+          })
+        }
+
+        await createRooms(newPropertyId, { rooms: roomBases })
+      }
+
+      // Phase 6: Create special offers
+      const enabledOffers = offers.filter(o => o.enabled)
+      if (enabledOffers.length > 0) {
+        const offerPayload: SpecialOfferPayload[] = enabledOffers.map(o => ({
+          title: o.label,
+          description: o.desc,
+          discount_percentage: o.discountPercentage,
+          start_date: o.startDate ? o.startDate.toISOString().split('T')[0] : null,
+          end_date: o.endDate ? o.endDate.toISOString().split('T')[0] : null,
+          is_active: true,
+          is_custom: o.id.startsWith('custom-'),
+        }))
+        await createSpecialOffers(newPropertyId, offerPayload)
+      }
+
+      // Phase 7: Activate and navigate
+      try {
+        await updatePropertyActivation(newPropertyId)
+      } catch (activationErr) {
+        setSaveError('Property created but could not be activated. Please activate it from the dashboard.')
+      }
+
+      clearDraft()
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to publish property'
+      setSaveError(msg)
+      throw err
+    }
+  }, [propertyData, locationData, photos, coverIndex, systemAmenityIds, customAmenities, localizationData, brandData, rooms, offers, availableAmenities, clearDraft])
 
   const handleNext = useCallback(async () => {
     setIsSaving(true)
@@ -730,19 +812,26 @@ export default function HostPortalPageNew() {
 
       case 'photos':
         return (
-          <Step3PhotosAmenities
-            photos={photos}
-            onPhotosChange={setPhotos}
-            coverIndex={coverIndex}
-            onCoverIndexChange={setCoverIndex}
-            availableAmenities={availableAmenities}
-            systemAmenityIds={systemAmenityIds}
-            onSystemAmenityIdsChange={setSystemAmenityIds}
-            customAmenities={customAmenities}
-            onCustomAmenitiesChange={setCustomAmenities}
-            starRating={starRating}
-            onStarRatingChange={setStarRating}
-          />
+          <>
+            {saveError && (
+              <div style={{ margin: '0 0 16px', padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13 }}>
+                {saveError}
+              </div>
+            )}
+            <Step3PhotosAmenities
+              photos={photos}
+              onPhotosChange={setPhotos}
+              coverIndex={coverIndex}
+              onCoverIndexChange={setCoverIndex}
+              availableAmenities={availableAmenities}
+              systemAmenityIds={systemAmenityIds}
+              onSystemAmenityIdsChange={setSystemAmenityIds}
+              customAmenities={customAmenities}
+              onCustomAmenitiesChange={setCustomAmenities}
+              starRating={starRating}
+              onStarRatingChange={setStarRating}
+            />
+          </>
         )
 
       case 'localization':
@@ -770,6 +859,8 @@ export default function HostPortalPageNew() {
             onRoomsChange={setRooms}
             availableAmenities={availableAmenities}
             floors={propertyData.floors}
+            systemRoomTypes={systemRoomTypes}
+            systemBedTypes={systemBedTypes}
           />
         )
 
@@ -795,20 +886,18 @@ export default function HostPortalPageNew() {
               yearBuilt: propertyData.yearBuilt,
             }}
             location={locationData}
+            localization={localizationData}
             photos={photos}
             availableAmenities={availableAmenities}
             systemAmenityIds={systemAmenityIds}
             customAmenities={customAmenities}
             rooms={rooms}
+            systemRoomTypes={systemRoomTypes}
+            systemBedTypes={systemBedTypes}
             offers={offers}
             starRating={starRating}
             onGoToStep={handleGoToStep}
-            onPublish={async () => {
-              if (propertyId) {
-                try { await updatePropertyActivation(propertyId) } catch {}
-              }
-              clearDraft()
-            }}
+            onPublish={handlePublish}
           />
         )
 

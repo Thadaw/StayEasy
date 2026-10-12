@@ -1,14 +1,22 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import { Camera, Upload } from 'lucide-react'
+import { createStaff, uploadStaffImage } from '../services/pmsApi'
+import { staffKeys } from '../lib/queryKeys'
+import { mapStaffMemberToCreatePayload } from '../types/staff'
 
-const roles = ['Receptionist', 'Manager', 'Housekeeping Staff', 'Housekeeping Supervisor', 'Chef', 'Waiter', 'Cashier', 'Maintenance Staff']
+const roles = ['MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'WAITER', 'KITCHEN', 'MAINTENANCE']
 const statuses = ['ACTIVE', 'ON LEAVE', 'INACTIVE'] as const
+const shifts = ['MORNING', 'EVENING', 'NIGHT'] as const
 
 export default function AddStaffPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const citizenshipFrontRef = useRef<HTMLInputElement>(null)
   const citizenshipBackRef = useRef<HTMLInputElement>(null)
@@ -17,31 +25,86 @@ export default function AddStaffPage() {
     fullName: '',
     email: '',
     contactNumber: '',
-    jobRole: 'Receptionist',
+    jobRole: 'MANAGER',
     monthlySalary: '',
     joiningDate: new Date().toISOString().split('T')[0],
     status: 'ACTIVE' as typeof statuses[number],
+    shift: 'MORNING' as typeof shifts[number],
   })
 
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [citizenshipFront, setCitizenshipFront] = useState<string | null>(null)
-  const [citizenshipBack, setCitizenshipBack] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [citizenshipFrontFile, setCitizenshipFrontFile] = useState<File | null>(null)
+  const [citizenshipBackFile, setCitizenshipBackFile] = useState<File | null>(null)
+
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [citizenshipFrontPreview, setCitizenshipFrontPreview] = useState<string | null>(null)
+  const [citizenshipBackPreview, setCitizenshipBackPreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+      if (citizenshipFrontPreview) URL.revokeObjectURL(citizenshipFrontPreview)
+      if (citizenshipBackPreview) URL.revokeObjectURL(citizenshipBackPreview)
+    }
+  }, [photoPreview, citizenshipFrontPreview, citizenshipBackPreview])
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentPropertyId) throw new Error('No property selected')
+
+      let profileUrl = null
+      let frontUrl = null
+      let backUrl = null
+
+      if (photoFile) profileUrl = await uploadStaffImage(currentPropertyId, photoFile)
+      if (citizenshipFrontFile) frontUrl = await uploadStaffImage(currentPropertyId, citizenshipFrontFile)
+      if (citizenshipBackFile) backUrl = await uploadStaffImage(currentPropertyId, citizenshipBackFile)
+
+      const payload = mapStaffMemberToCreatePayload({
+        name: form.fullName,
+        email: form.email,
+        contact: form.contactNumber,
+        role: form.jobRole,
+        monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : 0,
+        joiningDate: form.joiningDate,
+        status: form.status === 'ACTIVE' ? 'Active' : form.status === 'ON LEAVE' ? 'On Leave' : 'Inactive',
+        shift: form.shift,
+        photo: profileUrl ?? undefined,
+        citizenshipFront: frontUrl ?? undefined,
+        citizenshipBack: backUrl ?? undefined,
+      })
+      return createStaff(currentPropertyId, payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.all })
+      navigate('/host/staff')
+    },
+    onError: (error: Error) => {
+      alert(`Failed to create staff: ${error.message}`)
+    },
+  })
 
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setFile: (f: File | null) => void, setPreview: (p: string | null) => void, oldPreview: string | null) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => setter(reader.result as string)
-    reader.readAsDataURL(file)
+    if (oldPreview) URL.revokeObjectURL(oldPreview)
+    setFile(file)
+    setPreview(URL.createObjectURL(file))
     e.target.value = ''
+  }
+
+  const handleRemovePhoto = (setFile: (f: File | null) => void, setPreview: (p: string | null) => void, preview: string | null) => {
+    if (preview) URL.revokeObjectURL(preview)
+    setFile(null)
+    setPreview(null)
   }
 
   const inputStyle: React.CSSProperties = {
@@ -196,6 +259,18 @@ export default function AddStaffPage() {
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+
+              {/* Shift */}
+              <div>
+                <label style={labelStyle}>Shift</label>
+                <select
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                  value={form.shift}
+                  onChange={e => handleChange('shift', e.target.value)}
+                >
+                  {shifts.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -206,9 +281,9 @@ export default function AddStaffPage() {
             {/* Photo Upload */}
             <div style={{ marginBottom: 24 }}>
               <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>PHOTO</label>
-              {photo ? (
+              {photoPreview ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-                  <img src={photo} alt="Staff" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                  <img src={photoPreview} alt="Staff" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '1px solid #E5E7EB' }} />
                   <div>
                     <button
                       onClick={() => photoInputRef.current?.click()}
@@ -217,7 +292,7 @@ export default function AddStaffPage() {
                       Replace Photo
                     </button>
                     <button
-                      onClick={() => setPhoto(null)}
+                      onClick={() => handleRemovePhoto(setPhotoFile, setPhotoPreview, photoPreview)}
                       style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}
                     >
                       Remove
@@ -240,7 +315,7 @@ export default function AddStaffPage() {
               <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 10 }}>ℹ</span> Image size should be less than 5MB
               </p>
-              <input ref={photoInputRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setPhoto)} style={{ display: 'none' }} />
+              <input ref={photoInputRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setPhotoFile, setPhotoPreview, photoPreview)} style={{ display: 'none' }} />
             </div>
 
             {/* Citizenship Front & Back */}
@@ -248,9 +323,9 @@ export default function AddStaffPage() {
               {/* Citizenship Front */}
               <div>
                 <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>CITIZENSHIP FRONT</label>
-                {citizenshipFront ? (
+                {citizenshipFrontPreview ? (
                   <div style={{ marginTop: 8 }}>
-                    <img src={citizenshipFront} alt="Citizenship Front" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                    <img src={citizenshipFrontPreview} alt="Citizenship Front" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button
                         onClick={() => citizenshipFrontRef.current?.click()}
@@ -259,7 +334,7 @@ export default function AddStaffPage() {
                         Replace Image
                       </button>
                       <button
-                        onClick={() => setCitizenshipFront(null)}
+                        onClick={() => handleRemovePhoto(setCitizenshipFrontFile, setCitizenshipFrontPreview, citizenshipFrontPreview)}
                         style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}
                       >
                         Remove
@@ -279,15 +354,15 @@ export default function AddStaffPage() {
                     <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0 }}>Not added</p>
                   </div>
                 )}
-                <input ref={citizenshipFrontRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setCitizenshipFront)} style={{ display: 'none' }} />
+                <input ref={citizenshipFrontRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setCitizenshipFrontFile, setCitizenshipFrontPreview, citizenshipFrontPreview)} style={{ display: 'none' }} />
               </div>
 
               {/* Citizenship Back */}
               <div>
                 <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>CITIZENSHIP BACK</label>
-                {citizenshipBack ? (
+                {citizenshipBackPreview ? (
                   <div style={{ marginTop: 8 }}>
-                    <img src={citizenshipBack} alt="Citizenship Back" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                    <img src={citizenshipBackPreview} alt="Citizenship Back" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button
                         onClick={() => citizenshipBackRef.current?.click()}
@@ -296,7 +371,7 @@ export default function AddStaffPage() {
                         Replace Image
                       </button>
                       <button
-                        onClick={() => setCitizenshipBack(null)}
+                        onClick={() => handleRemovePhoto(setCitizenshipBackFile, setCitizenshipBackPreview, citizenshipBackPreview)}
                         style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}
                       >
                         Remove
@@ -316,7 +391,7 @@ export default function AddStaffPage() {
                     <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0 }}>Not added</p>
                   </div>
                 )}
-                <input ref={citizenshipBackRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setCitizenshipBack)} style={{ display: 'none' }} />
+                <input ref={citizenshipBackRef} type="file" accept="image/*" onChange={e => handleFileUpload(e, setCitizenshipBackFile, setCitizenshipBackPreview, citizenshipBackPreview)} style={{ display: 'none' }} />
               </div>
             </div>
           </div>
@@ -347,9 +422,13 @@ export default function AddStaffPage() {
                   alert('Please fill in Full Name and Email Address')
                   return
                 }
-                alert('Staff member created successfully!')
-                navigate('/host/staff')
+                if (!currentPropertyId) {
+                  alert('No property selected')
+                  return
+                }
+                createMutation.mutate()
               }}
+              disabled={createMutation.isPending}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -362,9 +441,10 @@ export default function AddStaffPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
+                opacity: createMutation.isPending ? 0.6 : 1,
               }}
             >
-              <span style={{ fontSize: 16 }}>👤</span> Create New Staff
+              {createMutation.isPending ? 'Creating...' : 'Create New Staff'}
             </button>
           </div>
         </main>

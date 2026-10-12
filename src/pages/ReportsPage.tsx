@@ -2,123 +2,114 @@ import { useState } from 'react'
 import { useUIStore } from '../stores/uiStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
-import ReportTabs from '../components/reports/ReportTabs'
 import ReportFilters from '../components/reports/ReportFilters'
 import ReportStats from '../components/reports/ReportStats'
 import RevenueChart from '../components/reports/RevenueChart'
-import RevenueByDepartment from '../components/reports/RevenueByDepartment'
-import OccupancyGauge from '../components/reports/OccupancyGauge'
-import TopRoomTypes from '../components/reports/TopRoomTypes'
-import RecentBookings from '../components/reports/RecentBookings'
-import RevenueSummary from '../components/reports/RevenueSummary'
+import RevenueByRoomType from '../components/reports/RevenueByRoomType'
+import RevenueInRoomTypeTable from '../components/reports/RevenueInRoomTypeTable'
+import BookingsTrend from '../components/reports/BookingsTrend'
+import TopPerformingChannels from '../components/reports/TopPerformingChannels'
 import type {
-  RevenueDataPoint,
-  DepartmentRevenue,
-  OccupancyData,
-  TopRoomType,
-  RecentBooking,
-  RevenueSummaryItem,
+  KpiCardData,
+  RevenueTrendData,
+  RoomTypeRevenue,
+  RevenueInRoomTypeRow,
+  BookingTrendData,
+  ChannelData,
 } from '../types/reports'
 
-const REVENUE_DATA: RevenueDataPoint[] = Array.from({ length: 30 }, (_, i) => ({
-  date: `Jun ${i + 1}`,
-  totalRevenue: 30000 + Math.floor(Math.random() * 50000),
-  roomRevenue: 20000 + Math.floor(Math.random() * 35000),
-}))
-
-const DEPARTMENT_DATA: DepartmentRevenue[] = [
-  { name: 'Rooms', percentage: 68.6, amount: 856000, color: 'var(--primary)' },
-  { name: 'Restaurant (F&B)', percentage: 25.0, amount: 312000, color: '#2563EB' },
-  { name: 'Other Services', percentage: 6.4, amount: 80000, color: '#16A34A' },
+const KPI_DATA: KpiCardData[] = [
+  { label: 'Total Revenue', value: '$24,560', growth: 5.2, iconBg: '#E8F6EF', iconColor: '#1E8449', iconType: 'currency' },
+  { label: 'ARR', value: '$135.42', growth: 4.8, iconBg: '#FEF3C7', iconColor: '#D97706', iconType: 'dollar' },
+  { label: 'RevPAR', value: '$98.31', growth: 6.2, iconBg: '#DBEAFE', iconColor: '#2563EB', iconType: 'barChart' },
+  { label: 'Occupancy Rate', value: '72.6%', growth: 4.4, iconBg: '#DBEAFE', iconColor: '#2563EB', iconType: 'building' },
+  { label: 'Bookings Today', value: '58', growth: 16.4, iconBg: '#FEE2E2', iconColor: '#DC2626', iconType: 'bell' },
 ]
 
-const OCCUPANCY_DATA: OccupancyData = {
-  rate: 72.4,
-  soldRooms: 548,
-  availableRooms: 757,
-  blockedRooms: 32,
-  growth: 10.3,
-}
-
-const TOP_ROOMS: TopRoomType[] = [
-  { id: 1, roomType: 'Deluxe Room', occupancy: 78.4, revenue: 456000 },
-  { id: 2, roomType: 'Suite Room', occupancy: 74.2, revenue: 286000 },
-  { id: 3, roomType: 'Standard Room', occupancy: 69.1, revenue: 210000 },
-  { id: 4, roomType: 'Family Room', occupancy: 65.3, revenue: 168000 },
-  { id: 5, roomType: 'Single Room', occupancy: 58.6, revenue: 92000 },
+const REVENUE_TREND_DATA: RevenueTrendData[] = [
+  { date: 'May 9', revenue: 12000 },
+  { date: 'May 10', revenue: 14500 },
+  { date: 'May 11', revenue: 9000 },
+  { date: 'May 12', revenue: 7500 },
+  { date: 'May 13', revenue: 11000 },
+  { date: 'May 14', revenue: 13500 },
+  { date: 'May 15', revenue: 10000 },
 ]
 
-const RECENT_BOOKINGS: RecentBooking[] = [
-  { id: '1', bookingId: 'BK-250601', guest: 'John Smith', checkIn: 'Jun 1, 2026', amount: 18000, status: 'Confirmed' },
-  { id: '2', bookingId: 'BK-250602', guest: 'Emily Johnson', checkIn: 'Jun 1, 2026', amount: 24000, status: 'Checked In' },
-  { id: '3', bookingId: 'BK-250603', guest: 'Michael Brown', checkIn: 'Jun 1, 2026', amount: 9000, status: 'Pending' },
-  { id: '4', bookingId: 'BK-250604', guest: 'Sarah Taylor', checkIn: 'Jun 2, 2026', amount: 21000, status: 'Confirmed' },
-  { id: '5', bookingId: 'BK-250605', guest: 'David Wilson', checkIn: 'Jun 2, 2026', amount: 22500, status: 'Checked Out' },
+const ROOM_TYPE_REVENUE: RoomTypeRevenue[] = [
+  { roomType: 'Standard', revenue: 6230 },
+  { roomType: 'Deluxe', revenue: 9455 },
+  { roomType: 'Suite', revenue: 11200 },
+  { roomType: 'Premium', revenue: 3615 },
+  { roomType: 'Penthouse', revenue: 2250 },
 ]
 
-const REVENUE_SUMMARY: RevenueSummaryItem[] = [
-  { label: 'Total Revenue', value: 1248000 },
-  { label: 'Room Revenue', value: 856000 },
-  { label: 'F&B Revenue', value: 312000 },
-  { label: 'Other Services', value: 80000 },
-  { label: 'Total Expenses', value: 420000, color: '#DC2626' },
-  { label: 'Net Profit', value: 828000, color: '#16A34A', bold: true },
+const REVENUE_TABLE_DATA: RevenueInRoomTypeRow[] = [
+  { roomType: 'Standard', roomNights: 290, adr: 92.48, roomRevenue: 8230.00, percentOfTotal: 27.8 },
+  { roomType: 'Deluxe', roomNights: 163, adr: 103.12, roomRevenue: 6762.00, percentOfTotal: 30.1 },
+  { roomType: 'Suite', roomNights: 88, adr: 132.35, roomRevenue: 6230.00, percentOfTotal: 27.8 },
+  { roomType: 'Premium', roomNights: 55, adr: 123.78, roomRevenue: 4480.00, percentOfTotal: 16.3 },
+]
+
+const BOOKING_TREND_DATA: BookingTrendData[] = [
+  { date: 'May 9', bookings: 100 },
+  { date: 'May 10', bookings: 105 },
+  { date: 'May 11', bookings: 110 },
+  { date: 'May 12', bookings: 95 },
+  { date: 'May 13', bookings: 115 },
+  { date: 'May 14', bookings: 125 },
+  { date: 'May 15', bookings: 118 },
+]
+
+const CHANNEL_DATA: ChannelData[] = [
+  { channel: 'Direct Bookings', percentage: 45, color: '#1A3C5E' },
+  { channel: 'OTA', percentage: 30, color: '#2E86AB' },
+  { channel: 'Walk-in', percentage: 15, color: '#57B8D9' },
+  { channel: 'Phone', percentage: 10, color: '#7C3AED' },
 ]
 
 export default function ReportsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [activeTab, setActiveTab] = useState('Overview')
-  const [dateRange, setDateRange] = useState('Jun 1 – Jun 30, 2026')
-  const [property, setProperty] = useState('All Properties')
-  const [department, setDepartment] = useState('All Departments')
+  const [dateRange, setDateRange] = useState('May 8, 2025 – May 15, 2025')
+  const [roomType, setRoomType] = useState('All Room Types')
+  const [bookingChannel, setBookingChannel] = useState('All Booking Channel')
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC', fontFamily: "'Inter', sans-serif" }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Reports" subtitle="Analyze performance and track key metrics" />
+        <DashboardHeader onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)} title="Reports & Analytics" subtitle="Analytics and reporting dashboard" />
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
-
-          <ReportTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
           <ReportFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
-            property={property}
-            onPropertyChange={setProperty}
-            department={department}
-            onDepartmentChange={setDepartment}
+            roomType={roomType}
+            onRoomTypeChange={setRoomType}
+            bookingChannel={bookingChannel}
+            onBookingChannelChange={setBookingChannel}
+            onApply={() => {}}
+            onReset={() => {}}
             onExport={() => {}}
           />
 
-          <ReportStats
-            stats={{
-              totalRevenue: 1248000,
-              roomRevenue: 856000,
-              fbRevenue: 312000,
-              totalBookings: 256,
-              avgDailyRate: 8450,
-              occupancyRate: 72.4,
-              revenueGrowth: 18.6,
-              roomRevenueGrowth: 16.2,
-              fbRevenueGrowth: 21.8,
-              bookingsGrowth: 12.6,
-              adrGrowth: 9.7,
-              occupancyGrowth: 10.3,
-            }}
-          />
+          <ReportStats stats={KPI_DATA} />
 
           <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
-            <RevenueChart data={REVENUE_DATA} />
-            <RevenueByDepartment data={DEPARTMENT_DATA} total={1248000} />
-            <OccupancyGauge data={OCCUPANCY_DATA} />
+            <RevenueChart data={REVENUE_TREND_DATA} />
+            <RevenueByRoomType data={ROOM_TYPE_REVENUE} />
           </div>
 
+          <RevenueInRoomTypeTable
+            data={REVENUE_TABLE_DATA}
+            totalNights={529}
+            totalAdr={108.88}
+            totalRevenue={13772.00}
+          />
+
           <div style={{ display: 'flex', gap: 20 }}>
-            <TopRoomTypes rooms={TOP_ROOMS} />
-            <RecentBookings bookings={RECENT_BOOKINGS} />
-            <RevenueSummary items={REVENUE_SUMMARY} />
+            <BookingsTrend data={BOOKING_TREND_DATA} />
+            <TopPerformingChannels data={CHANNEL_DATA} totalRevenue={24560} />
           </div>
         </main>
       </div>

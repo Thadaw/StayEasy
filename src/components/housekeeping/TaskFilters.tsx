@@ -1,4 +1,4 @@
-import { Search, ChevronDown, Plus } from 'lucide-react'
+import { Search, ChevronDown } from 'lucide-react'
 
 interface TaskFiltersProps {
   search: string
@@ -9,7 +9,6 @@ interface TaskFiltersProps {
   onPriorityChange: (value: string) => void
   room: string
   onRoomChange: (value: string) => void
-  onCreateTask: () => void
 }
 
 const selectStyle: React.CSSProperties = {
@@ -51,7 +50,6 @@ export default function TaskFilters({
   onPriorityChange,
   room,
   onRoomChange,
-  onCreateTask,
 }: TaskFiltersProps) {
   return (
     <div
@@ -144,27 +142,6 @@ export default function TaskFilters({
         </select>
         <ChevronDown size={16} style={dropdownIconStyle} />
       </div>
-
-      <button
-        onClick={onCreateTask}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: 8,
-          background: 'var(--primary)',
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#fff',
-          cursor: 'pointer',
-          marginLeft: 'auto',
-        }}
-      >
-        <Plus size={18} />
-        Create Task
-      </button>
     </div>
   )
 }

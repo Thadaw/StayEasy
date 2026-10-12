@@ -41,29 +41,25 @@ export const bookingKeys = {
   detail: (refNumber: string) => ['bookings', 'detail', refNumber] as const,
 }
 
-export interface NearbyKeyParams {
-  lat: number
-  lng: number
-  checkIn: string
-  checkOut: string
-  adults: number
-  children: number
-  rooms: number
+export const housekeepingKeys = {
+  all: ['housekeeping'] as const,
+  rooms: (propertyId: string) => ['housekeeping', 'rooms', propertyId] as const,
+  roomSummary: (propertyId: string) => ['housekeeping', 'roomSummary', propertyId] as const,
+  tasks: (propertyId: string) => ['housekeeping', 'tasks', propertyId] as const,
+  staffOptions: (propertyId: string) => ['housekeeping', 'staffOptions', propertyId] as const,
+  roomOptions: (propertyId: string) => ['housekeeping', 'roomOptions', propertyId] as const,
+  staffWorkSummary: (propertyId: string) => ['housekeeping', 'staffWorkSummary', propertyId] as const,
+  taskTypes: (propertyId: string) => ['housekeeping', 'taskTypes', propertyId] as const,
 }
 
-// The coordinates are part of the key on purpose: a visitor who moves city must
-// not keep reading the previous cache entry for an hour.
-export const nearbyKeys = {
-  all: ['nearbyProperties'] as const,
-  list: (p: NearbyKeyParams) =>
-    [
-      'nearbyProperties',
-      p.lat,
-      p.lng,
-      p.checkIn,
-      p.checkOut,
-      p.adults,
-      p.children,
-      p.rooms,
-    ] as const,
+export const staffKeys = {
+  all: ['staff'] as const,
+  list: (propertyId: string) => ['staff', 'list', propertyId] as const,
+  detail: (propertyId: string, staffId: string) => ['staff', 'detail', propertyId, staffId] as const,
+  summary: (propertyId: string) => ['staff', 'summary', propertyId] as const,
+}
+
+export const managerKeys = {
+  dashboard: (propertyId: string) => ['manager', 'dashboard', propertyId] as const,
+  stats: (propertyId: string) => ['manager', 'stats', propertyId] as const,
 }

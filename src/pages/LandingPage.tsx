@@ -172,7 +172,7 @@ export default function LandingPage() {
             <p className="text-sm mt-3 mb-6 leading-relaxed" style={{ color: "rgba(235,245,251,0.82)" }}>
               Join thousands of hosts earning extra income by sharing their spaces with travellers around the world.
             </p>
-            <Link to="/host" className="inline-block bg-white text-sm font-semibold px-6 py-3 rounded-xl hover:shadow-lg transition-all" style={{ color: "var(--brand-dark)" }}>
+            <Link to="/hosting-guide" className="inline-block bg-white text-sm font-semibold px-6 py-3 rounded-xl hover:shadow-lg transition-all" style={{ color: "var(--brand-dark)" }}>
               Learn more about hosting
             </Link>
           </div>

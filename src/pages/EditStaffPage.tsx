@@ -1,61 +1,151 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePropertyStore } from '../stores/propertyStore'
 import Sidebar from '../components/dashboard/Sidebar'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import { Camera, Upload } from 'lucide-react'
+import { getStaff, updateStaff, uploadStaffImage } from '../services/pmsApi'
+import { staffKeys } from '../lib/queryKeys'
+import { mapApiStaffToStaffMember, toApiJobRole, toApiStatus } from '../types/staff'
 
-const roles = ['Receptionist', 'Manager', 'Housekeeping Staff', 'Housekeeping Supervisor', 'Chef', 'Waiter', 'Cashier', 'Maintenance Staff']
+const roles = ['MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'WAITER', 'KITCHEN', 'MAINTENANCE']
 const statuses = ['ACTIVE', 'ON LEAVE', 'INACTIVE'] as const
-
-const mockStaff: Record<string, {
-  fullName: string; email: string; contactNumber: string; jobRole: string;
-  monthlySalary: string; joiningDate: string; status: typeof statuses[number];
-  photo: string | null; citizenshipFront: string | null; citizenshipBack: string | null;
-}> = {
-  '1': { fullName: 'Ramesh Thapa', email: 'ramesh.thapa@email.com', contactNumber: '+977 9812345678', jobRole: 'Manager', monthlySalary: '5500', joiningDate: '2024-01-15', status: 'ACTIVE', photo: null, citizenshipFront: null, citizenshipBack: null },
-  '2': { fullName: 'Sunita Shrestha', email: 'sunita.shrestha@email.com', contactNumber: '+977 9823456789', jobRole: 'Receptionist', monthlySalary: '3200', joiningDate: '2024-03-10', status: 'ACTIVE', photo: null, citizenshipFront: null, citizenshipBack: null },
-  '3': { fullName: 'Kiran Gurung', email: 'kiran.gurung@email.com', contactNumber: '+977 9845678901', jobRole: 'Housekeeping Staff', monthlySalary: '2800', joiningDate: '2024-02-05', status: 'ACTIVE', photo: null, citizenshipFront: null, citizenshipBack: null },
-}
+const shifts = ['MORNING', 'EVENING', 'NIGHT'] as const
 
 export default function EditStaffPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
+  const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const citizenshipFrontRef = useRef<HTMLInputElement>(null)
   const citizenshipBackRef = useRef<HTMLInputElement>(null)
 
-  const existing = mockStaff[id || ''] || mockStaff['1']
-
-  const [form, setForm] = useState({
-    fullName: existing.fullName,
-    email: existing.email,
-    contactNumber: existing.contactNumber,
-    jobRole: existing.jobRole,
-    monthlySalary: existing.monthlySalary,
-    joiningDate: existing.joiningDate,
-    status: existing.status,
+  const { data: apiStaff, isLoading } = useQuery({
+    queryKey: staffKeys.detail(currentPropertyId ?? '', id ?? ''),
+    queryFn: () => getStaff(currentPropertyId!, id!),
+    enabled: !!currentPropertyId && !!id,
   })
 
-  const [isActive, setIsActive] = useState(existing.status === 'ACTIVE')
-  const [photo, setPhoto] = useState<string | null>(existing.photo)
-  const [citizenshipFront, setCitizenshipFront] = useState<string | null>(existing.citizenshipFront)
-  const [citizenshipBack, setCitizenshipBack] = useState<string | null>(existing.citizenshipBack)
+  const staffMember = useMemo(
+    () => (apiStaff ? mapApiStaffToStaffMember(apiStaff) : null),
+    [apiStaff]
+  )
+
+  const [form, setForm] = useState({
+    fullName: '',
+    email: '',
+    contactNumber: '',
+    jobRole: 'MANAGER',
+    monthlySalary: '',
+    joiningDate: '',
+    status: 'ACTIVE' as typeof statuses[number],
+    shift: 'MORNING' as typeof shifts[number],
+  })
+
+  const [isActive, setIsActive] = useState(true)
+  const [photo, setPhoto] = useState<string | File | null>(null)
+  const [citizenshipFront, setCitizenshipFront] = useState<string | File | null>(null)
+  const [citizenshipBack, setCitizenshipBack] = useState<string | File | null>(null)
+
+  useEffect(() => {
+    if (staffMember) {
+      const apiStatus = apiStaff?.status ?? 'ACTIVE'
+      setForm({
+        fullName: staffMember.name,
+        email: staffMember.email,
+        contactNumber: staffMember.contact,
+        jobRole: apiStaff?.job_role ?? 'MANAGER',
+        monthlySalary: staffMember.monthlySalary?.toString() ?? '',
+        joiningDate: apiStaff?.joining_date ?? '',
+        status: apiStatus as typeof statuses[number],
+        shift: (apiStaff?.shift ?? 'MORNING') as typeof shifts[number],
+      })
+      setIsActive(apiStatus === 'ACTIVE')
+      setPhoto(staffMember.photo ?? null)
+      setCitizenshipFront(staffMember.citizenshipFront ?? null)
+      setCitizenshipBack(staffMember.citizenshipBack ?? null)
+    }
+  }, [staffMember, apiStaff])
+
+  useEffect(() => {
+    return () => {
+      if (photo instanceof File) URL.revokeObjectURL(URL.createObjectURL(photo))
+      if (citizenshipFront instanceof File) URL.revokeObjectURL(URL.createObjectURL(citizenshipFront))
+      if (citizenshipBack instanceof File) URL.revokeObjectURL(URL.createObjectURL(citizenshipBack))
+    }
+  }, [])
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentPropertyId || !id) throw new Error('Missing property or staff ID')
+
+      const uploadIfNeeded = async (val: string | File | null): Promise<string | null> => {
+        if (!val) return null
+        if (typeof val === 'string') return val
+        return uploadStaffImage(currentPropertyId, val)
+      }
+
+      const profileUrl = await uploadIfNeeded(photo)
+      const frontUrl = await uploadIfNeeded(citizenshipFront)
+      const backUrl = await uploadIfNeeded(citizenshipBack)
+
+      return updateStaff(currentPropertyId, id, {
+        full_name: form.fullName,
+        phone_number: form.contactNumber,
+        job_role: toApiJobRole(form.jobRole),
+        monthly_salary: form.monthlySalary ? Number(form.monthlySalary) : 0,
+        joining_date: form.joiningDate,
+        status: toApiStatus(form.status === 'ACTIVE' ? 'Active' : form.status === 'ON LEAVE' ? 'On Leave' : 'Inactive'),
+        shift: form.shift,
+        photos: (profileUrl || frontUrl || backUrl) ? {
+          profile: profileUrl,
+          citizenship_front: frontUrl,
+          citizenship_back: backUrl,
+        } : null,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.all })
+      navigate('/host/staff')
+    },
+    onError: (error: Error) => {
+      alert(`Failed to update staff: ${error.message}`)
+    },
+  })
 
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
+  const getPreviewUrl = (val: string | File | null): string | null => {
+    if (!val) return null
+    if (typeof val === 'string') return val
+    return URL.createObjectURL(val)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | File | null) => void) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => setter(reader.result as string)
-    reader.readAsDataURL(file)
+    setter(file)
     e.target.value = ''
+  }
+
+  const handleRemovePhoto = (setter: (val: string | File | null) => void) => {
+    setter(null)
+  }
+
+  const handleSubmit = () => {
+    if (!form.fullName || !form.email) {
+      alert('Please fill in Full Name and Email Address')
+      return
+    }
+    updateMutation.mutate()
   }
 
   const inputStyle: React.CSSProperties = {
@@ -101,6 +191,20 @@ export default function EditStaffPage() {
     transition: 'border-color 0.15s',
   }
 
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+        <Sidebar />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <DashboardHeader title="Staff" subtitle="Edit Employee" />
+          <main style={{ padding: 24, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280', fontSize: 14 }}>
+            Loading staff details...
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
       <Sidebar />
@@ -112,16 +216,14 @@ export default function EditStaffPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
               <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>Edit Employee</h2>
-              <span
-                style={{ fontSize: 13, color: '#6366f1', cursor: 'pointer', fontWeight: 500 }}
-              >
-                Save to Draft
-              </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 13, color: '#6B7280' }}>Active</span>
               <div
-                onClick={() => setIsActive(v => !v)}
+                onClick={() => {
+                  setIsActive(v => !v)
+                  setForm(prev => ({ ...prev, status: isActive ? 'INACTIVE' : 'ACTIVE' }))
+                }}
                 style={{
                   width: 44,
                   height: 24,
@@ -188,10 +290,16 @@ export default function EditStaffPage() {
                 <label style={labelStyle}>Status</label>
                 <select
                   style={{ ...inputStyle, cursor: 'pointer' }}
-                  value={isActive ? 'ACTIVE' : form.status}
+                  value={form.status}
                   onChange={e => { handleChange('status', e.target.value); setIsActive(e.target.value === 'ACTIVE') }}
                 >
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Shift</label>
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.shift} onChange={e => handleChange('shift', e.target.value)}>
+                  {shifts.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
@@ -204,9 +312,9 @@ export default function EditStaffPage() {
             {/* Photo */}
             <div style={{ marginBottom: 24 }}>
               <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>PHOTO</label>
-              {photo ? (
+              {getPreviewUrl(photo) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-                  <img src={photo} alt="Staff" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                  <img src={getPreviewUrl(photo)!} alt="Staff" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '1px solid #E5E7EB' }} />
                   <div>
                     <button
                       onClick={() => photoInputRef.current?.click()}
@@ -215,7 +323,7 @@ export default function EditStaffPage() {
                       Replace Photo
                     </button>
                     <button
-                      onClick={() => setPhoto(null)}
+                      onClick={() => handleRemovePhoto(setPhoto)}
                       style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}
                     >
                       Remove
@@ -242,12 +350,12 @@ export default function EditStaffPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
                 <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>CITIZENSHIP FRONT</label>
-                {citizenshipFront ? (
+                {getPreviewUrl(citizenshipFront) ? (
                   <div style={{ marginTop: 8 }}>
-                    <img src={citizenshipFront} alt="Citizenship Front" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                    <img src={getPreviewUrl(citizenshipFront)!} alt="Citizenship Front" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button onClick={() => citizenshipFrontRef.current?.click()} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#374151' }}>Replace Image</button>
-                      <button onClick={() => setCitizenshipFront(null)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}>Remove</button>
+                      <button onClick={() => handleRemovePhoto(setCitizenshipFront)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}>Remove</button>
                     </div>
                   </div>
                 ) : (
@@ -260,12 +368,12 @@ export default function EditStaffPage() {
               </div>
               <div>
                 <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280' }}>CITIZENSHIP BACK</label>
-                {citizenshipBack ? (
+                {getPreviewUrl(citizenshipBack) ? (
                   <div style={{ marginTop: 8 }}>
-                    <img src={citizenshipBack} alt="Citizenship Back" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                    <img src={getPreviewUrl(citizenshipBack)!} alt="Citizenship Back" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button onClick={() => citizenshipBackRef.current?.click()} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#374151' }}>Replace Image</button>
-                      <button onClick={() => setCitizenshipBack(null)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}>Remove</button>
+                      <button onClick={() => handleRemovePhoto(setCitizenshipBack)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #FEE2E2', background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#DC2626' }}>Remove</button>
                     </div>
                   </div>
                 ) : (
@@ -300,14 +408,8 @@ export default function EditStaffPage() {
               Discard Changes
             </button>
             <button
-              onClick={() => {
-                if (!form.fullName || !form.email) {
-                  alert('Please fill in Full Name and Email Address')
-                  return
-                }
-                alert('Staff member updated successfully!')
-                navigate('/host/staff')
-              }}
+              onClick={handleSubmit}
+              disabled={updateMutation.isPending}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -320,9 +422,10 @@ export default function EditStaffPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
+                opacity: updateMutation.isPending ? 0.6 : 1,
               }}
             >
-              <span style={{ fontSize: 16 }}>💾</span> Update Changes
+              {updateMutation.isPending ? 'Updating...' : 'Update Changes'}
             </button>
           </div>
         </main>

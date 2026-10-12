@@ -1,4 +1,5 @@
-import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import { decodeJwtExp } from '../shared/utils/jwt'
 
 export interface AuthRequestConfig extends AxiosRequestConfig {
   skipAuthRedirect?: boolean
@@ -8,6 +9,7 @@ const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 const ROLE_KEY = 'authRole'
 const EXPIRY_KEY = 'tokenExpiry'
+const EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 const REMEMBER_KEY = 'rememberMe'
 
 const api = axios.create({
@@ -41,6 +43,12 @@ function updateAccessToken(token: string) {
 
 function updateRefreshToken(token: string) {
   sessionStore().setItem(REFRESH_KEY, token)
+}
+
+function updateTokenExpiry() {
+  const deadline = (Date.now() + EXPIRY_MS).toString()
+  if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(EXPIRY_KEY, deadline)
+  else if (sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(EXPIRY_KEY, deadline)
 }
 
 function clearStoredSession() {
@@ -89,7 +97,30 @@ async function refreshAccessToken(): Promise<string> {
 
   updateAccessToken(data.access_token)
   if (data.refresh_token) updateRefreshToken(data.refresh_token)
+  updateTokenExpiry()
   return data.access_token
+}
+
+// Proactively refresh the access token when it is close to expiring, so the
+// session survives without the user having to log in again. The access token
+// lives ~10-60 min while the refresh token lives 30 days, so a sliding refresh
+// effectively keeps the user signed in for up to the refresh token's lifetime.
+export async function attemptSessionRefresh(): Promise<string | null> {
+  const token = storageGet(TOKEN_KEY)
+  if (!token) return null
+
+  const expiresAt = decodeJwtExp(token)
+  const REFRESH_AHEAD_MS = 2 * 60 * 1000
+  if (expiresAt && expiresAt - Date.now() > REFRESH_AHEAD_MS) return token
+
+  try {
+    return await refreshAccessToken()
+  } catch (err) {
+    // Only a definitive 401 means the session is truly gone. Transient
+    // network/5xx failures are retried on the next tick instead of logging out.
+    if (err instanceof AxiosError && err.response?.status === 401) return null
+    return null
+  }
 }
 
 // On 401, attempt a silent token refresh and retry the original request once.
@@ -121,8 +152,12 @@ api.interceptors.response.use(
       const newToken = await refreshPromise
       original.headers.Authorization = `Bearer ${newToken}`
       return api(original)
-    } catch {
-      redirectToLogin()
+    } catch (err) {
+      // Redirect only when the refresh token itself is rejected (definitive
+      // 401). Transient network/5xx failures keep the session and are retried.
+      if (err instanceof AxiosError && err.response?.status === 401) {
+        redirectToLogin()
+      }
       return Promise.reject(error)
     }
   }
