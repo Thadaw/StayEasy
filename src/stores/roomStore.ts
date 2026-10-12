@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RoomRow } from '../components/manager/rooms/demoRooms'
+import type { RoomRow } from '@/admin/components/manager/rooms/demoRooms'
 
 interface RoomStoreState {
   edits: Record<string, Partial<RoomRow>>

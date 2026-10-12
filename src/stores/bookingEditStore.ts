@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { BookingRow } from '../components/manager/bookings/ManagerBookingTable'
-import type { BookingDetail } from '../components/manager/bookings/demoBookings'
+import type { BookingRow } from '@/admin/components/manager/bookings/ManagerBookingTable'
+import type { BookingDetail } from '@/admin/components/manager/bookings/demoBookings'
 
 export interface BookingEdit {
   guestName: string

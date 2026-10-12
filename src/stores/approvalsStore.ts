@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SEED_APPROVALS, type ApprovalRequest } from '../components/manager/staff/demoApprovals'
+import { SEED_APPROVALS, type ApprovalRequest } from '@/admin/components/manager/staff/demoApprovals'
 
 interface ApprovalsState {
   requests: ApprovalRequest[]

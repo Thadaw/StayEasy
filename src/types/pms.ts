@@ -275,11 +275,21 @@ export interface PropertyBooking {
   checkout_date: string
   status: string
   payment_gateway: string
+  payment_method?: string
+  payment_status?: string
+  booking_type?: string
   subtotal: string
   special_offer_discount: string | null
   coupon_code: string | null
   coupon_discount: string | null
   total_amount: string
+  amount_paid?: string
+  amount_due?: string
+  advance_amount?: string | null
+  refund_due?: string
+  allow_pay_on_arrival?: boolean
+  min_advance_percentage?: number
+  max_advance_percentage?: number
   created_at: string
 }
 
