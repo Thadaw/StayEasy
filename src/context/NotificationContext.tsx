@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 import { CalendarDays, TicketPercent, Shield, Bell, type LucideIcon } from 'lucide-react'
 
 export type NotificationIcon = typeof CalendarDays
@@ -49,17 +49,6 @@ function loadNotifications(userId?: number): Notification[] {
 
 function saveNotifications(notifications: Notification[], userId?: number) {
   localStorage.setItem(getStorageKey(userId), JSON.stringify(notifications))
-}
-
-function timeAgo(date: string): string {
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
-  if (seconds < 60) return 'Just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  const days = Math.floor(hours / 24)
-  return `${days} day${days > 1 ? 's' : ''} ago`
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {

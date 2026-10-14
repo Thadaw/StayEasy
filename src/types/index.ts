@@ -1,64 +1,39 @@
-export interface User {
-  id?: number | string
-  first_name: string
-  last_name: string
-  full_name?: string
-  email: string
-  firstName?: string
-  lastName?: string
-  name?: string
-  role?: string
-  avatar?: string
-  countryFlag?: string
-  country?: string
-  phone?: string
-  nationality?: string
-  joinedDate?: string
-}
+export * from '@/types/api'
+export * from '@/types/booking'
+export * from '@/types/razorpay'
+export * from '@/types/stripe'
 
-export interface AuthState {
-  user: User | null
-  token: string | null
-  loading: boolean
-}
-
-export interface LoginPayload {
-  email: string
-  password: string
-}
-
-export interface SignupPayload {
-  first_name: string
-  last_name: string
-  email: string
-  password: string
-}
-
-export interface SearchFormData {
-  destination: string
-  checkIn: string
-  checkOut: string
-  guests: number
+export interface Coupon {
+  id: string
+  code: string
+  description: string
+  discount: number
+  discountType: 'percentage' | 'fixed'
+  status: 'active' | 'used' | 'expired'
+  expiresAt: string
+  usedAt?: string
 }
 
 export interface Destination {
-  id: number
+  id: string
   name: string
   country: string
   image: string
-  reviews: number
+  propertyCount: number
 }
 
 export interface Testimonial {
-  id: number
+  id: string
   name: string
-  location: string
-  avatar: string
+  role: string
+  content: string
   rating: number
-  quote: string
+  avatar: string
 }
 
 export interface Tenant {
   id: string
   name: string
+  email: string
+  phone: string
 }

@@ -1,12 +1,12 @@
 import { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster, toast } from 'react-hot-toast'
-import { AuthProvider } from '../auth/AuthContext'
-import { FavoritesProvider } from '../context/FavoritesContext'
-import { BookingProvider } from '../context/BookingContext'
-import { CouponProvider } from '../context/CouponContext'
-import { NotificationProvider } from '../context/NotificationContext'
-import { LocationProvider } from '../context/LocationContext'
+import { AuthProvider } from '@/context/AuthContext'
+import { FavoritesProvider } from '@/context/FavoritesContext'
+import { BookingProvider } from '@/context/BookingContext'
+import { CouponProvider } from '@/context/CouponContext'
+import { NotificationProvider } from '@/context/NotificationContext'
+import { LocationProvider } from '@/context/LocationContext'
 
 function getErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong"

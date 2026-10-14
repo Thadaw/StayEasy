@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from '../auth/AuthContext'
-import type { Booking } from '../shared/types/booking'
-import { parseBookingDate } from '../shared/utils/time'
+import { useAuth } from '@/context/AuthContext'
+import type { Booking } from '@/types/booking'
+import { parseBookingDate } from '@/utils/time'
 
 interface BookingContextValue {
   bookings: Booking[]

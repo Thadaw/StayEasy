@@ -1,0 +1,226 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { AxiosError } from 'axios'
+import forgotPassAni from '@/assets/videos/forgotpass.mp4'
+import bgImage from '@/assets/images/background.png'
+import api from '@/api/axiosInstance'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function extractError(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
+  if (err instanceof AxiosError && err.response?.data) {
+    const data = err.response.data as Record<string, unknown>
+    if (typeof data.detail === 'string') return data.detail
+    if (typeof data.message === 'string') return data.message
+  }
+  return fallback
+}
+
+export default function ForgotPassword() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isHost = location.pathname.startsWith('/host')
+
+  useEffect(() => {
+    document.body.style.background = 'transparent'
+    document.documentElement.style.background = '#000'
+    return () => {
+      document.body.style.background = ''
+      document.documentElement.style.background = ''
+    }
+  }, [])
+
+  const [, setVideoReady] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const loginPath = isHost ? '/host/login' : '/login'
+
+  const handleSend = async () => {
+    setError('')
+    if (!EMAIL_RE.test(email.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    setLoading(true)
+    try {
+      await api.post('/auth/forgot-password', { email })
+      setSent(true)
+    } catch (err) {
+      setError(extractError(err, 'Could not send reset link. Please check your email and try again.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#f5f5f5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        fontFamily: "'Segoe UI', sans-serif",
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 640,
+          background: '#fff',
+          borderRadius: 16,
+          display: 'flex',
+          flexDirection: 'row',
+          overflow: 'hidden',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+          zIndex: 1,
+          position: 'relative',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
+          className="custom-scroll"
+          style={{
+            width: '100%',
+            background: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            padding: '28px 24px 32px',
+            order: 1,
+            flexShrink: 0,
+            overflowY: 'auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          {!sent ? (
+            <>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 3 }}>
+                Forgot password?
+              </div>
+              <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>
+                Enter your email and we'll send you a reset link.
+              </div>
+
+              <div style={{ position: 'relative', marginBottom: 13 }}>
+                <label
+                  style={{
+                    fontSize: 11, color: '#666', marginBottom: 3, display: 'block',
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                  }}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  placeholder="Enter your email"
+                  autoComplete="off"
+                  style={{
+                    width: '100%', border: 'none', borderBottom: '1.5px solid #ddd',
+                    padding: '7px 26px 7px 0', fontSize: 14, color: '#111', outline: 'none', background: 'transparent',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {error && (
+                <p style={{ color: '#e94560', fontSize: 12, marginBottom: 10 }}>{error}</p>
+              )}
+
+              <button
+                onClick={handleSend}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: 11, background: '#111', border: 'none', borderRadius: 8,
+                  color: '#fff', fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer',
+                  marginTop: 2, opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? 'Sending link...' : 'Send Reset Link'}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: '#aaa' }}>
+                Remembered it?{' '}
+                <span
+                  onClick={() => navigate(loginPath)}
+                  style={{ color: '#111', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Back to login
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>✓</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 4 }}>
+                  Check your email
+                </div>
+                <p style={{ fontSize: 13, color: '#1E8449', fontWeight: 600 }}>
+                  We emailed a reset link to <strong>{email}</strong>
+                </p>
+                <p style={{ fontSize: 12, color: '#999', marginTop: 10 }}>
+                  Open the link in the email to set a new password. If you don't see it, check your spam folder.
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate(loginPath)}
+                style={{
+                  width: '100%', padding: 11, background: '#111', border: 'none', borderRadius: 8,
+                  color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 2,
+                }}
+              >
+                Back to login
+              </button>
+            </>
+          )}
+        </div>
+
+        <div
+          style={{
+            width: '100%',
+            background: '#000',
+            order: 2,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+          className="hidden sm:block"
+        >
+          <video
+            src={forgotPassAni}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 280 }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}

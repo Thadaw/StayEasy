@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from '../auth/AuthContext'
-import type { Coupon } from '../shared/types'
+import { useAuth } from '@/context/AuthContext'
+import type { Coupon } from '@/types'
 
 interface CouponContextValue {
   coupons: Coupon[]

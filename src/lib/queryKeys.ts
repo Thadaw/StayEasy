@@ -41,6 +41,16 @@ export const bookingKeys = {
   detail: (refNumber: string) => ['bookings', 'detail', refNumber] as const,
 }
 
+export const reviewKeys = {
+  all: ['reviews'] as const,
+  detail: (propertyId: string) => ['reviews', 'detail', propertyId] as const,
+}
+
+export const userKeys = {
+  all: ['users'] as const,
+  profile: (userId?: number) => ['users', 'profile', userId ?? 'guest'] as const,
+}
+
 export const housekeepingKeys = {
   all: ['housekeeping'] as const,
   rooms: (propertyId: string) => ['housekeeping', 'rooms', propertyId] as const,

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from '../auth/AuthContext'
-import api, { type AuthRequestConfig } from '../services/axios'
-import type { SearchProperty } from '../shared/types/api'
+import { useAuth } from '@/context/AuthContext'
+import api, { type AuthRequestConfig } from '@/api/axiosInstance'
+import type { SearchProperty } from '@/types/api'
 
 interface FavoritesContextValue {
   favorites: Set<string>
@@ -12,6 +12,13 @@ interface FavoritesContextValue {
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null)
+
+interface FavoriteApiItem {
+  id?: string
+  property_id?: string
+  cover_photo?: string
+  photos?: { cover?: string }
+}
 
 function getStorageKey(userId?: number): string {
   return userId ? `favorites_${userId}` : 'favorites_guest'
@@ -64,12 +71,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     api.get('/favorites', { skipAuthRedirect: true } as AuthRequestConfig)
       .then(({ data }) => {
-        const raw: any[] = Array.isArray(data) ? data : data?.data ?? []
-        const normalized: SearchProperty[] = raw.map((p: any) => ({
+        const raw: FavoriteApiItem[] = Array.isArray(data) ? data : data?.data ?? []
+        const normalized = raw.map((p) => ({
           ...p,
-          property_id: p.property_id ?? p.id,
+          property_id: (p.property_id ?? p.id) as string,
           cover_photo: p.cover_photo ?? p.photos?.cover ?? "",
-        }))
+        }) as SearchProperty)
         const ids = new Set(normalized.map((p) => p.property_id))
         const map: Record<string, SearchProperty> = {}
         normalized.forEach((p) => { map[p.property_id] = p })

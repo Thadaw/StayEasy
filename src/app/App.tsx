@@ -1,11 +1,16 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { PageLoader } from '../shared/components/PageLoader'
-import { ErrorBoundary } from '../shared/components/ErrorBoundary'
-import { ScrollRestoration } from '../shared/components/ScrollRestoration'
-import { AppRoutes } from './routes'
+import { PageLoader } from '@/components/ui/PageLoader'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { ScrollRestoration } from '@/components/layout/ScrollRestoration'
+import { AppRoutes } from '@/app/routes'
+import { appConfig } from '@/config/appConfig'
 
 export default function App() {
+  useEffect(() => {
+    document.title = `${appConfig.name} — ${appConfig.tagline}`
+  }, [])
+
   return (
     <BrowserRouter>
       <ScrollRestoration />
