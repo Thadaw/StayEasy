@@ -20,7 +20,7 @@ export interface CreateBookingPayload {
   guest_nationality?: string
 }
 
-export async function getBookingByRef(
+export async function getBookingByRef(  
   refNumber: string,
   signal?: AbortSignal,
 ): Promise<ApiBooking> {
@@ -47,6 +47,15 @@ export async function createBooking(
   if (payload.guest_nationality) bookingPayload.guest_nationality = payload.guest_nationality
   const { data } = await api.post("/bookings/", bookingPayload)
   return data?.data?.ref_number || data?.ref_number || ""
+}
+
+export async function updateBookingSpecialRequests(
+  refNumber: string,
+  specialRequests: string,
+): Promise<void> {
+  await api.patch(`/bookings/${refNumber}/special-requests`, {
+    special_requests: specialRequests,
+  })
 }
 
 export async function applyDiscountCode(

@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import ShiftCoverageStats from '@/components/admin/dashboard/ShiftCoverageStats'
 import ShiftCoverageFilters from '@/components/admin/dashboard/ShiftCoverageFilters'
 import ShiftCoverageTable from '@/components/admin/dashboard/ShiftCoverageTable'
-import type { DayShiftGroup, ShiftCoverageFilters as FilterType } from '@/types/shiftCoverage'
+import type { DayShiftGroup } from '@/types/shiftCoverage'
 import { calculateStats } from '@/types/shiftCoverage'
+import { useShiftCoverageStore } from '@/store/admin/shiftCoverageStore'
 import { ChevronDown, Bell } from 'lucide-react'
 
 function formatDateRange(startDate: Date, endDate: Date): string {
@@ -86,46 +87,25 @@ function generateWeekData(startDate: Date): DayShiftGroup[] {
 }
 
 export default function ShiftCoveragePage() {
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
-    return new Date(2026, 6, 14)
-  })
+  const currentWeekStart = useShiftCoverageStore((s) => s.currentWeekStart)
+  const setCurrentWeekStart = useShiftCoverageStore((s) => s.setCurrentWeekStart)
+  const filters = useShiftCoverageStore((s) => s.filters)
+  const setFilters = useShiftCoverageStore((s) => s.setFilters)
+  const filteredData = useShiftCoverageStore((s) => s.filteredData)
+  const setWeekData = useShiftCoverageStore((s) => s.setWeekData)
 
-  const [filters, setFilters] = useState<FilterType>({
-    department: 'All Departments',
-    shift: 'All Shifts',
-    weekStart: 'Jul 14',
-    weekEnd: 'Jul 20, 2026',
-  })
-
-  const weekData = useMemo(() => {
-    return generateWeekData(currentWeekStart)
-  }, [currentWeekStart])
-
-  const filteredData = useMemo(() => {
-    return weekData.map((dayGroup) => ({
-      ...dayGroup,
-      shifts: dayGroup.shifts.filter((shift) => {
-        if (filters.department !== 'All Departments' && shift.department !== filters.department) {
-          return false
-        }
-        if (filters.shift !== 'All Shifts' && shift.shift !== filters.shift) {
-          return false
-        }
-        return true
-      }),
-    }))
-  }, [weekData, filters])
+  useEffect(() => {
+    setWeekData(generateWeekData(currentWeekStart))
+  }, [currentWeekStart, setWeekData])
 
   const stats = useMemo(() => {
     return calculateStats(filteredData)
   }, [filteredData])
 
   const handleWeekChange = (direction: 'prev' | 'next') => {
-    setCurrentWeekStart((prev) => {
-      const newDate = new Date(prev)
-      newDate.setDate(newDate.getDate() + (direction === 'prev' ? -7 : 7))
-      return newDate
-    })
+    const newDate = new Date(currentWeekStart)
+    newDate.setDate(newDate.getDate() + (direction === 'prev' ? -7 : 7))
+    setCurrentWeekStart(newDate)
   }
 
   const weekEnd = new Date(currentWeekStart)

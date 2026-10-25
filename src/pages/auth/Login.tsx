@@ -70,7 +70,7 @@ export default function Login() {
         userRole,
         res.data.refresh_token,
         res.data.must_change_password,
-        res.data.temp_password
+        res.data.temp_password || (res.data.must_change_password ? password : null)
       )
 
       if (isManager) {
@@ -336,7 +336,7 @@ export default function Login() {
               Remember me
             </label>
             <span
-              onClick={() => navigate(isHost ? '/host/forgot-password' : '/forgot-password')}
+              onClick={() => navigate(isHost || isManager ? '/host/forgot-password' : '/forgot-password')}
               style={{ fontSize: 11, color: '#bbb', cursor: 'pointer', marginLeft: 'auto' }}
             >
               Forgot password?

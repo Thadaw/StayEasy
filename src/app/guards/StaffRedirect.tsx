@@ -16,6 +16,7 @@ export function StaffRedirect({ children }: { children: React.ReactNode }) {
   if (user || token) {
     if (role === ROLES.STAFF) return <Navigate to={ROUTES.frontDesk} replace />
     if (role === ROLES.HOST) return <Navigate to={ROUTES.hostOverallDashboard} replace />
+    if (role === ROLES.MANAGER) return <Navigate to={ROUTES.managerDashboard} replace />
   }
 
   return <>{children}</>

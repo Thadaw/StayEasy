@@ -1,47 +1,49 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { usePropertyStore } from '@/store/properties/propertyStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import { Camera, Upload } from 'lucide-react'
-import { getStaff, updateStaff, uploadStaffImage } from '@/api/pms/pmsApi'
-import { staffKeys } from '@/lib/queryKeys'
 import { mapApiStaffToStaffMember, toApiJobRole, toApiStatus } from '@/types/staff'
-
-const roles = ['MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'WAITER', 'KITCHEN', 'MAINTENANCE']
-const statuses = ['ACTIVE', 'ON LEAVE', 'INACTIVE'] as const
-const shifts = ['MORNING', 'EVENING', 'NIGHT'] as const
+import { useStaffDetailQuery } from '@/services/queries/admin/staffQueries'
+import { useUpdateStaff } from '@/services/mutations/admin/staffMutations'
+import { staffFormSchema, type StaffFormData, roles, statuses, shifts } from '@/schemas/admin/staffSchema'
 
 export default function EditStaffPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const queryClient = useQueryClient()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const citizenshipFrontRef = useRef<HTMLInputElement>(null)
   const citizenshipBackRef = useRef<HTMLInputElement>(null)
 
-  const { data: apiStaff, isLoading } = useQuery({
-    queryKey: staffKeys.detail(currentPropertyId ?? '', id ?? ''),
-    queryFn: () => getStaff(currentPropertyId!, id!),
-    enabled: !!currentPropertyId && !!id,
-  })
+  const { data: apiStaff, isLoading } = useStaffDetailQuery(currentPropertyId, id)
 
   const staffMember = useMemo(
     () => (apiStaff ? mapApiStaffToStaffMember(apiStaff) : null),
     [apiStaff]
   )
 
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    contactNumber: '',
-    jobRole: 'MANAGER',
-    monthlySalary: '',
-    joiningDate: '',
-    status: 'ACTIVE' as typeof statuses[number],
-    shift: 'MORNING' as typeof shifts[number],
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<StaffFormData>({
+    resolver: zodResolver(staffFormSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      contactNumber: '',
+      jobRole: 'MANAGER',
+      monthlySalary: '',
+      joiningDate: '',
+      status: 'ACTIVE',
+      shift: 'MORNING',
+    },
   })
 
   const [isActive, setIsActive] = useState(true)
@@ -50,24 +52,22 @@ export default function EditStaffPage() {
   const [citizenshipBack, setCitizenshipBack] = useState<string | File | null>(null)
 
   useEffect(() => {
-    if (staffMember) {
-      const apiStatus = apiStaff?.status ?? 'ACTIVE'
-      setForm({
-        fullName: staffMember.name,
-        email: staffMember.email,
-        contactNumber: staffMember.contact,
-        jobRole: apiStaff?.job_role ?? 'MANAGER',
-        monthlySalary: staffMember.monthlySalary?.toString() ?? '',
-        joiningDate: apiStaff?.joining_date ?? '',
-        status: apiStatus as typeof statuses[number],
-        shift: (apiStaff?.shift ?? 'MORNING') as typeof shifts[number],
-      })
+    if (staffMember && apiStaff) {
+      const apiStatus = apiStaff.status ?? 'ACTIVE'
+      setValue('fullName', staffMember.name)
+      setValue('email', staffMember.email)
+      setValue('contactNumber', staffMember.contact)
+      setValue('jobRole', apiStaff.job_role as StaffFormData['jobRole'])
+      setValue('monthlySalary', staffMember.monthlySalary?.toString() ?? '')
+      setValue('joiningDate', apiStaff.joining_date)
+      setValue('status', (apiStatus === 'ON_LEAVE' ? 'ON LEAVE' : apiStatus) as StaffFormData['status'])
+      setValue('shift', (apiStaff.shift ?? 'MORNING') as StaffFormData['shift'])
       setIsActive(apiStatus === 'ACTIVE')
       setPhoto(staffMember.photo ?? null)
       setCitizenshipFront(staffMember.citizenshipFront ?? null)
       setCitizenshipBack(staffMember.citizenshipBack ?? null)
     }
-  }, [staffMember, apiStaff])
+  }, [staffMember, apiStaff, setValue])
 
   useEffect(() => {
     return () => {
@@ -77,46 +77,10 @@ export default function EditStaffPage() {
     }
   }, [])
 
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentPropertyId || !id) throw new Error('Missing property or staff ID')
+  const { updateStaff, isUpdating } = useUpdateStaff(currentPropertyId, id)
 
-      const uploadIfNeeded = async (val: string | File | null): Promise<string | null> => {
-        if (!val) return null
-        if (typeof val === 'string') return val
-        return uploadStaffImage(currentPropertyId, val)
-      }
-
-      const profileUrl = await uploadIfNeeded(photo)
-      const frontUrl = await uploadIfNeeded(citizenshipFront)
-      const backUrl = await uploadIfNeeded(citizenshipBack)
-
-      return updateStaff(currentPropertyId, id, {
-        full_name: form.fullName,
-        phone_number: form.contactNumber,
-        job_role: toApiJobRole(form.jobRole),
-        monthly_salary: form.monthlySalary ? Number(form.monthlySalary) : 0,
-        joining_date: form.joiningDate,
-        status: toApiStatus(form.status === 'ACTIVE' ? 'Active' : form.status === 'ON LEAVE' ? 'On Leave' : 'Inactive'),
-        shift: form.shift,
-        photos: (profileUrl || frontUrl || backUrl) ? {
-          profile: profileUrl,
-          citizenship_front: frontUrl,
-          citizenship_back: backUrl,
-        } : null,
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.all })
-      navigate('/host/staff')
-    },
-    onError: (error: Error) => {
-      alert(`Failed to update staff: ${error.message}`)
-    },
-  })
-
-  const handleChange = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
+  const handleChange = (field: keyof StaffFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true })
   }
 
   const getPreviewUrl = (val: string | File | null): string | null => {
@@ -140,12 +104,26 @@ export default function EditStaffPage() {
     setter(null)
   }
 
-  const handleSubmit = () => {
-    if (!form.fullName || !form.email) {
-      alert('Please fill in Full Name and Email Address')
-      return
+  const onSubmit = async (data: StaffFormData) => {
+    try {
+      await updateStaff({
+        full_name: data.fullName,
+        phone_number: data.contactNumber,
+        job_role: toApiJobRole(data.jobRole),
+        monthly_salary: data.monthlySalary ? Number(data.monthlySalary) : 0,
+        joining_date: data.joiningDate,
+        status: toApiStatus(data.status === 'ACTIVE' ? 'Active' : data.status === 'ON LEAVE' ? 'On Leave' : 'Inactive'),
+        shift: data.shift,
+        photos: null,
+      }, {
+        photo: photo instanceof File ? photo : undefined,
+        front: citizenshipFront instanceof File ? citizenshipFront : undefined,
+        back: citizenshipBack instanceof File ? citizenshipBack : undefined,
+      })
+      navigate('/host/staff')
+    } catch (error: unknown) {
+      alert(`Failed to update staff: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-    updateMutation.mutate()
   }
 
   const inputStyle: React.CSSProperties = {
@@ -222,8 +200,8 @@ export default function EditStaffPage() {
               <div
                 onClick={() => {
                   setIsActive(v => !v)
-                  setForm(prev => ({ ...prev, status: isActive ? 'INACTIVE' : 'ACTIVE' }))
-                }}
+                   setValue('status', isActive ? 'INACTIVE' : 'ACTIVE')
+                 }}
                 style={{
                   width: 44,
                   height: 24,
@@ -255,15 +233,18 @@ export default function EditStaffPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Full Name</label>
-                <input style={inputStyle} value={form.fullName} onChange={e => handleChange('fullName', e.target.value)} />
+                <input style={inputStyle} {...register('fullName')} />
+                {errors.fullName && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.fullName.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Email Address</label>
-                <input style={inputStyle} type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
+                <input style={inputStyle} type="email" {...register('email')} />
+                {errors.email && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.email.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Contact Number</label>
-                <input style={inputStyle} value={form.contactNumber} onChange={e => handleChange('contactNumber', e.target.value)} />
+                <input style={inputStyle} {...register('contactNumber')} />
+                {errors.contactNumber && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.contactNumber.message}</p>}
               </div>
             </div>
           </div>
@@ -274,33 +255,38 @@ export default function EditStaffPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
               <div>
                 <label style={labelStyle}>Job Role</label>
-                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.jobRole} onChange={e => handleChange('jobRole', e.target.value)}>
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={watch('jobRole')} onChange={e => handleChange('jobRole', e.target.value)}>
                   {roles.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+                {errors.jobRole && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.jobRole.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Monthly Salary ($)</label>
-                <input style={inputStyle} type="number" value={form.monthlySalary} onChange={e => handleChange('monthlySalary', e.target.value)} />
+                <input style={inputStyle} type="number" {...register('monthlySalary')} />
+                {errors.monthlySalary && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.monthlySalary.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Joining Date</label>
-                <input style={inputStyle} type="date" value={form.joiningDate} onChange={e => handleChange('joiningDate', e.target.value)} />
+                <input style={inputStyle} type="date" value={watch('joiningDate')} onChange={e => handleChange('joiningDate', e.target.value)} />
+                {errors.joiningDate && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.joiningDate.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Status</label>
                 <select
                   style={{ ...inputStyle, cursor: 'pointer' }}
-                  value={form.status}
+                  value={watch('status')}
                   onChange={e => { handleChange('status', e.target.value); setIsActive(e.target.value === 'ACTIVE') }}
                 >
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {errors.status && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.status.message}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Shift</label>
-                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.shift} onChange={e => handleChange('shift', e.target.value)}>
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={watch('shift')} onChange={e => handleChange('shift', e.target.value)}>
                   {shifts.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {errors.shift && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.shift.message}</p>}
               </div>
             </div>
           </div>
@@ -389,44 +375,44 @@ export default function EditStaffPage() {
 
           {/* Footer Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-            <button
-              onClick={() => navigate('/host/staff')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: '1px solid #E5E7EB',
-                background: '#fff',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#374151',
-              }}
-            >
-              Discard Changes
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={updateMutation.isPending}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 24px',
-                borderRadius: 8,
-                border: 'none',
-                background: 'var(--primary)',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#fff',
-                opacity: updateMutation.isPending ? 0.6 : 1,
-              }}
-            >
-              {updateMutation.isPending ? 'Updating...' : 'Update Changes'}
-            </button>
+              <button
+                onClick={() => navigate('/host/staff')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: '1px solid #E5E7EB',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: '#374151',
+                }}
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={handleSubmit(onSubmit)}
+                disabled={isUpdating}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 24px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--primary)',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#fff',
+                  opacity: isUpdating ? 0.6 : 1,
+                }}
+              >
+                {isUpdating ? 'Updating...' : 'Update Changes'}
+              </button>
           </div>
         </main>
       </div>

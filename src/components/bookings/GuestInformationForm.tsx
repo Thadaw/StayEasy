@@ -1,51 +1,49 @@
-import { useEffect, useRef } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { BedDouble } from "lucide-react"
 import { allCountries } from "@/data/static/countries"
 import { phoneCodes } from "@/data/static/phoneCodes"
 import { guestInformationSchema, type GuestInformationFormData } from "@/schemas/booking/bookingSchemas"
 
+export const GUEST_INFO_FORM_ID = "guest-information-form"
+
 interface GuestInformationFormProps {
   guest: GuestInformationFormData
-  onGuestChange: (guest: GuestInformationFormData) => void
+  onSubmit: (data: GuestInformationFormData) => void
   roomNames: string
 }
 
 export function GuestInformationForm({
   guest,
-  onGuestChange,
+  onSubmit,
   roomNames,
 }: GuestInformationFormProps) {
-  const { control, setValue, reset } = useForm<GuestInformationFormData>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<GuestInformationFormData>({
     resolver: zodResolver(guestInformationSchema),
     defaultValues: guest,
+    mode: "onTouched",
   })
 
-  const watched = useWatch({ control })
-
-  const isInitialMount = useRef(true)
-  const isResettingFromParent = useRef(false)
-
+  // Re-sync the form whenever the prefill (e.g. the guest profile) arrives.
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    if (isResettingFromParent.current) return
-    onGuestChange(watched as GuestInformationFormData)
-  }, [watched, onGuestChange])
-
-  useEffect(() => {
-    isResettingFromParent.current = true
     reset(guest)
-    requestAnimationFrame(() => {
-      isResettingFromParent.current = false
-    })
-  }, [guest.name, guest.email, guest.phoneCode, guest.phone, guest.country, reset])
+  }, [guest, reset])
+
+  const errorClass = "text-xs text-red-500 mt-1"
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <form
+      id={GUEST_INFO_FORM_ID}
+      noValidate
+      onSubmit={handleSubmit(onSubmit)}
+      className="bg-white rounded-xl border border-gray-200 p-5"
+    >
       <p className="text-sm text-gray-500 mb-5">
         Almost done! Just fill in the <span className="text-red-500">*</span> required info
       </p>
@@ -56,10 +54,10 @@ export function GuestInformationForm({
         </label>
         <input
           type="text"
-          value={watched.name}
-          onChange={e => setValue("name", e.target.value, { shouldDirty: true })}
+          {...register("name")}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900"
         />
+        {errors.name && <p className={errorClass}>{errors.name.message}</p>}
       </div>
 
       <div className="mb-4">
@@ -68,11 +66,11 @@ export function GuestInformationForm({
         </label>
         <input
           type="email"
-          value={watched.email}
-          onChange={e => setValue("email", e.target.value, { shouldDirty: true })}
+          {...register("email")}
           placeholder="Watch out for typos..."
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 placeholder:text-gray-400"
         />
+        {errors.email && <p className={errorClass}>{errors.email.message}</p>}
       </div>
 
       <div className="mb-5">
@@ -81,8 +79,7 @@ export function GuestInformationForm({
         </label>
         <div className="flex gap-2">
           <select
-            value={watched.phoneCode}
-            onChange={e => setValue("phoneCode", e.target.value, { shouldDirty: true })}
+            {...register("phoneCode")}
             className="w-[120px] border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 bg-white shrink-0"
           >
             {Object.entries(phoneCodes).map(([code, dial]) => (
@@ -93,12 +90,18 @@ export function GuestInformationForm({
           </select>
           <input
             type="tel"
-            value={watched.phone}
-            onChange={e => setValue("phone", e.target.value.replace(/\D/g, ""), { shouldDirty: true })}
+            {...register("phone", {
+              onChange: (e) => {
+                e.target.value = e.target.value.replace(/\D/g, "")
+              },
+            })}
             placeholder="+977"
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900"
           />
         </div>
+        {(errors.phoneCode || errors.phone) && (
+          <p className={errorClass}>{errors.phone?.message || errors.phoneCode?.message}</p>
+        )}
       </div>
 
       <div className="mb-5">
@@ -106,8 +109,7 @@ export function GuestInformationForm({
           Country / Region *
         </label>
         <select
-          value={watched.country}
-          onChange={e => setValue("country", e.target.value, { shouldDirty: true })}
+          {...register("country")}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#2E86AB] transition-colors text-gray-900 bg-white"
         >
           <option value="">Select a country</option>
@@ -117,6 +119,7 @@ export function GuestInformationForm({
             </option>
           ))}
         </select>
+        {errors.country && <p className={errorClass}>{errors.country.message}</p>}
       </div>
 
       <div className="border-t border-gray-200 pt-5">
@@ -131,6 +134,6 @@ export function GuestInformationForm({
           </div>
         </div>
       </div>
-    </div>
+    </form>
   )
 }

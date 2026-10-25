@@ -15,7 +15,7 @@ interface ManagerBookingFiltersProps {
   onApply: () => void
 }
 
-const statusOptions = ['All Statuses', 'Confirmed', 'Pending', 'Checked-In', 'Checked-Out', 'Cancelled']
+const statusOptions = ['All Statuses', 'Confirmed', 'Pending', 'Checked-in', 'Checked-out', 'Cancelled']
 const sourceOptions = ['All Sources', 'Direct', 'OTA', 'Phone', 'Walk-in']
 
 export default function ManagerBookingFilters({

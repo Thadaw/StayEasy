@@ -1,146 +1,29 @@
-import { useState } from 'react'
 import { useUIStore } from '@/store/ui/uiStore'
 import { Search } from 'lucide-react'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import IntegrationCard from '@/components/admin/integrations/IntegrationCard'
 import IntegrationDetails from '@/components/admin/integrations/IntegrationDetails'
-import type { Integration } from '@/components/admin/integrations/IntegrationCard'
-
-const initialIntegrations: Integration[] = [
-  {
-    id: 'esewa',
-    name: 'eSewa',
-    description: 'Accept online payments from guests via eSewa wallet',
-    icon: '💳',
-    iconBg: '#EDE9FE',
-    category: 'payment',
-    status: 'connected',
-    merchantId: '************4523',
-    recentActivity: [
-      { action: 'Payment of NPR 18,000 received', time: '5 min ago' },
-      { action: 'Payment of NPR 24,000 received', time: '1 hour ago' },
-      { action: 'Refund processed for #BK-1042', time: '3 hours ago' },
-    ],
-  },
-  {
-    id: 'khalti',
-    name: 'Khalti',
-    description: 'Online payment gateway for seamless guest transactions',
-    icon: '💳',
-    iconBg: '#DBEAFE',
-    category: 'payment',
-    status: 'connected',
-    merchantId: '************7891',
-    recentActivity: [
-      { action: 'Payment of NPR 9,000 received', time: '15 min ago' },
-      { action: 'Payment of NPR 21,000 received', time: '2 hours ago' },
-    ],
-  },
-  {
-    id: 'gmail-smtp',
-    name: 'Gmail SMTP',
-    description: 'Send booking confirmation and notification emails',
-    icon: '📧',
-    iconBg: '#D1FAE5',
-    category: 'email',
-    status: 'connected',
-    lastSync: '5 min ago',
-    syncFrequency: 'Every 5 Minutes',
-    autoSync: true,
-    recentActivity: [
-      { action: 'Booking confirmation sent to john@email.com', time: '10 min ago' },
-      { action: 'Check-in reminder sent to 5 guests', time: '1 hour ago' },
-      { action: 'Invoice sent to emily.j@email.com', time: '3 hours ago' },
-    ],
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Customer messaging and automated notifications',
-    icon: '📱',
-    iconBg: '#D1FAE5',
-    category: 'messaging',
-    status: 'connected',
-    lastSync: '10 min ago',
-    syncFrequency: 'Every 15 Minutes',
-    autoSync: true,
-    recentActivity: [
-      { action: 'Welcome message sent to John Smith', time: '20 min ago' },
-      { action: 'Check-in instructions sent to 3 guests', time: '2 hours ago' },
-    ],
-  },
-  {
-    id: 'google-calendar',
-    name: 'Google Calendar',
-    description: 'Sync hotel bookings automatically',
-    icon: '📅',
-    iconBg: '#DBEAFE',
-    category: 'calendar',
-    status: 'connected',
-    lastSync: '2 Minutes Ago',
-    syncFrequency: 'Every 5 Minutes',
-    calendarId: 'hotel@serveiq.com',
-    autoSync: true,
-    recentActivity: [
-      { action: 'Booking #205 Synced', time: '5 min ago' },
-      { action: 'Booking #204 Updated', time: '15 min ago' },
-      { action: 'Reservation Cancelled', time: '1 hour ago' },
-    ],
-  },
-  {
-    id: 'google-maps',
-    name: 'Google Maps',
-    description: 'Display hotel location on your website and booking confirmations',
-    icon: '📍',
-    iconBg: '#FEF3C7',
-    category: 'maps',
-    status: 'not_connected',
-    benefits: ['Interactive hotel location map', 'Directions for guests', 'Area points of interest'],
-  },
-  {
-    id: 'stripe',
-    name: 'Stripe',
-    description: 'International payment processing for credit/debit cards',
-    icon: '💳',
-    iconBg: '#EDE9FE',
-    category: 'payment',
-    status: 'not_connected',
-    benefits: ['Accept all major credit cards', 'International payments', 'Automatic currency conversion'],
-  },
-  {
-    id: 'sms-gateway',
-    name: 'SMS Gateway',
-    description: 'Send booking confirmations and alerts via SMS',
-    icon: '📩',
-    iconBg: '#D1FAE5',
-    category: 'messaging',
-    status: 'not_connected',
-    benefits: ['SMS booking confirmations', 'Check-in reminders', 'Promotional messages'],
-  },
-  {
-    id: 'google-drive',
-    name: 'Google Drive (Backup)',
-    description: 'Automatic backup of hotel data and reports',
-    icon: '☁️',
-    iconBg: '#DBEAFE',
-    category: 'storage',
-    status: 'not_connected',
-    benefits: ['Automatic daily backups', 'Report storage', 'Data recovery'],
-  },
-]
-
-const categories = ['All', 'Payment', 'Calendar', 'Email', 'Messaging', 'Maps', 'Storage']
-const statuses = ['All', 'Connected', 'Not Connected']
+import {
+  useIntegrationsStore,
+  integrationCategories as categories,
+  integrationStatuses as statuses,
+} from '@/store/admin/integrationsStore'
 
 export default function IntegrationsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [selectedId, setSelectedId] = useState<string>('google-calendar')
-  const [integrations, setIntegrations] = useState<Integration[]>(initialIntegrations)
+  const searchQuery = useIntegrationsStore((s) => s.searchQuery)
+  const setSearchQuery = useIntegrationsStore((s) => s.setSearchQuery)
+  const categoryFilter = useIntegrationsStore((s) => s.categoryFilter)
+  const setCategoryFilter = useIntegrationsStore((s) => s.setCategoryFilter)
+  const statusFilter = useIntegrationsStore((s) => s.statusFilter)
+  const setStatusFilter = useIntegrationsStore((s) => s.setStatusFilter)
+  const selectedId = useIntegrationsStore((s) => s.selectedId)
+  const setSelectedId = useIntegrationsStore((s) => s.setSelectedId)
+  const integrations = useIntegrationsStore((s) => s.integrations)
+  const handleConnect = useIntegrationsStore((s) => s.connectIntegration)
+  const handleDisconnect = useIntegrationsStore((s) => s.disconnectIntegration)
 
   const filtered = integrations.filter((i) => {
     const matchesSearch = i.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -156,40 +39,6 @@ export default function IntegrationsPage() {
   const availableCount = integrations.filter((i) => i.status === 'not_connected').length
 
   const selectedIntegration = integrations.find((i) => i.id === selectedId) || integrations[0]
-
-  const handleConnect = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              status: 'connected' as const,
-              lastSync: 'Just now',
-              syncFrequency: 'Every 5 Minutes',
-              autoSync: true,
-              recentActivity: [],
-            }
-          : i
-      )
-    )
-  }
-
-  const handleDisconnect = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              status: 'not_connected' as const,
-              lastSync: undefined,
-              syncFrequency: undefined,
-              autoSync: undefined,
-              recentActivity: undefined,
-            }
-          : i
-      )
-    )
-  }
 
   const handleTestConnection = () => {
     // Placeholder for future API integration

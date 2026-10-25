@@ -507,7 +507,7 @@ export default function FrontDeskFoliosPage() {
     mutationFn: async (payload: { refNumber: string; tax: string; discount: string }) => {
       const { data: result } = await api.post(
         `/staff/properties/${currentPropertyId}/bookings/${payload.refNumber}/folio`,
-        { tax: payload.tax, discount: payload.discount, idempotency_key: crypto.randomUUID() }
+        { tax: payload.tax, discount: payload.discount }
       )
       return result
     },
@@ -582,9 +582,6 @@ export default function FrontDeskFoliosPage() {
         description: payload.description,
         amount: payload.amount.toFixed(2),
         category: payload.category,
-        payment_method: "CASH",
-        payment_gateway: "CASH",
-        idempotency_key: crypto.randomUUID(),
       }
       const { data: result } = await api.post(
         `/staff/folios/${payload.folioId}/charges`,

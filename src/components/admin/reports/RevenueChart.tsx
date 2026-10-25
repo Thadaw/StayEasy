@@ -1,13 +1,13 @@
-import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { RevenueTrendData } from '@/types/reports'
 
 interface RevenueChartProps {
   data: RevenueTrendData[]
+  period: string
+  onPeriodChange: (period: string) => void
 }
 
-export default function RevenueChart({ data }: RevenueChartProps) {
-  const [period, setPeriod] = useState('Last 7 Days')
+export default function RevenueChart({ data, period, onPeriodChange }: RevenueChartProps) {
 
   return (
     <div
@@ -25,13 +25,13 @@ export default function RevenueChart({ data }: RevenueChartProps) {
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>Revenue Trend</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2E86AB' }} />
-            <span style={{ fontSize: 11, color: '#64748B' }}>Revenue (USD)</span>
+            <span style={{ fontSize: 11, color: '#64748B' }}>Revenue (NPR)</span>
           </div>
         </div>
         <div style={{ position: 'relative' }}>
           <select
             value={period}
-            onChange={e => setPeriod(e.target.value)}
+            onChange={e => onPeriodChange(e.target.value)}
             style={{
               appearance: 'none',
               WebkitAppearance: 'none',
@@ -51,7 +51,6 @@ export default function RevenueChart({ data }: RevenueChartProps) {
             }}
           >
             <option>Last 7 Days</option>
-            <option>This Month</option>
             <option>Last 30 Days</option>
           </select>
         </div>
@@ -76,7 +75,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
             tick={{ fontSize: 11, fill: '#94A3B8' }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={v => `$${v / 1000}k`}
+            tickFormatter={v => `${v / 1000}K`}
           />
           <Tooltip
             contentStyle={{
@@ -86,7 +85,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
               fontSize: 12,
               color: '#334155',
             }}
-            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`$${Number(value ?? 0).toLocaleString()}`, 'Revenue']}
+            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`NPR ${Number(value ?? 0).toLocaleString()}`, 'Revenue']}
           />
           <Area
             type="monotone"

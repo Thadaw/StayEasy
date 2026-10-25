@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
 import { useUIStore } from '@/store/ui/uiStore'
 import { usePropertyStore } from '@/store/properties/propertyStore'
@@ -16,17 +15,9 @@ import RoomRateSettingsForm from '@/components/admin/settings/RoomRateSettingsFo
 import TaxesSettingsTab from '@/components/admin/settings/TaxesSettingsTab'
 import AmenitiesSettingsTab from '@/components/admin/settings/AmenitiesSettingsTab'
 import GallerySettingsTab from '@/components/admin/settings/GallerySettingsTab'
-import { getAllProperties } from '@/api/pms/pmsApi'
-import { propertyKeys } from '@/lib/queryKeys'
-import type {
-  CompanyProfile,
-  LogoBranding as LogoBrandingType,
-  BusinessInfo as BusinessInfoType,
-  ContactPerson as ContactPersonType,
-  GeneralSettings,
-  BookingSettings,
-  RoomRateSettings
-} from '@/types/settings'
+import { useSettingsStore } from '@/store/admin/settingsStore'
+import { useSettingsPropertiesQuery } from '@/services/queries/admin/settingsQueries'
+import { useSaveSettingsMutation } from '@/services/mutations/admin/settingsMutations'
 
 export default function SettingsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
@@ -34,117 +25,32 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'company')
 
+  const companyData = useSettingsStore((s) => s.companyData)
+  const logoData = useSettingsStore((s) => s.logoData)
+  const businessData = useSettingsStore((s) => s.businessData)
+  const contactData = useSettingsStore((s) => s.contactData)
+  const generalData = useSettingsStore((s) => s.generalData)
+  const bookingData = useSettingsStore((s) => s.bookingData)
+  const roomRateData = useSettingsStore((s) => s.roomRateData)
+  const patchCompany = useSettingsStore((s) => s.patchCompany)
+  const patchLogo = useSettingsStore((s) => s.patchLogo)
+  const patchBusiness = useSettingsStore((s) => s.patchBusiness)
+  const patchContact = useSettingsStore((s) => s.patchContact)
+  const patchGeneral = useSettingsStore((s) => s.patchGeneral)
+  const patchBooking = useSettingsStore((s) => s.patchBooking)
+  const patchRoomRate = useSettingsStore((s) => s.patchRoomRate)
+  const saveSettings = useSaveSettingsMutation()
+
   useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab) setActiveTab(tab)
   }, [searchParams])
 
-  const { data: properties = [] } = useQuery({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-  })
+  const { data: properties = [] } = useSettingsPropertiesQuery()
 
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const selectedProperty = properties.find((p) => p.id === currentPropertyId) ?? properties[0]
   const propertyId = selectedProperty?.id ?? ''
-
-  const [companyData, setCompanyData] = useState<CompanyProfile>({
-    propertyName: 'Hotel Blue Pearl',
-    propertyType: 'Hotel',
-    tagline: 'Experience Comfort, Feel at Home',
-    phone: '+977 1 4567890',
-    email: 'info@bluepearlhotel.com',
-    website: 'https://www.bluepearlhotel.com',
-    vatPan: '604123456',
-    address: 'Lazimpat, Kathmandu, Bagmati Province, Nepal',
-    city: 'Kathmandu',
-    state: 'Bagmati Province',
-    postalCode: '44600',
-    country: 'Nepal',
-    currency: 'NPR (Nepalese Rupee)',
-    timeZone: '(GMT+05:45) Kathmandu',
-    language: 'English',
-    dateFormat: 'Jun 1, 2026',
-    timeFormat: '12 Hours (hh:mm AM/PM)',
-  })
-
-  const [logoData, setLogoData] = useState<LogoBrandingType>({
-    logoUrl: '',
-    logoName: 'bluepearl-logo.png',
-    primaryColor: '#1A3C5E',
-    secondaryColor: '#1F2937',
-  })
-
-  const [businessData, setBusinessData] = useState<BusinessInfoType>({
-    registrationNumber: '123456/078/079',
-    licenseNumber: 'HOTEL/KTM/2024/1234',
-    establishedYear: '2018',
-  })
-
-  const [contactData, setContactData] = useState<ContactPersonType>({
-    name: 'Ramesh Thapa',
-    designation: 'General Manager',
-    phone: '+977 9812345678',
-    email: 'ramesh.thapa@bluepearl.com',
-  })
-
-  const [generalData, setGeneralData] = useState<GeneralSettings>({
-    timeZone: '(GMT+05:45) Kathmandu',
-    dateFormat: 'Jun 1, 2026',
-    timeFormat: '12 Hours (hh:mm AM/PM)',
-    currency: 'NPR (Nepalese Rupee)',
-    language: 'English',
-    maintenanceMode: false,
-    allowMultipleLogin: true,
-    showTips: true,
-    autoLogout: '30',
-    defaultDashboard: 'Dashboard v1',
-    itemsPerPage: '10',
-  })
-
-  const [bookingData, setBookingData] = useState<BookingSettings>({
-    enableOnlineBooking: true,
-    autoConfirmBooking: true,
-    bookingConfirmation: 'Email',
-    defaultBookingStatus: 'Confirmed',
-    holdBookingMinutes: '15 Minutes',
-    allowWalkinBooking: true,
-    minimumStayNights: '1',
-    maximumStayNights: '30',
-    applyMaximumStayTo: 'All Bookings',
-    checkinTime: '14:00',
-    checkoutTime: '12:00',
-    earlyCheckin: 'On Request',
-    lateCheckout: 'On Request',
-    cancellationAllowed: true,
-    cancellationCharge: '100% of Total Amount',
-    cancellationDeadline: '24 Hours Before Check-in',
-    requireAdvancePayment: true,
-    advancePaymentType: 'Percentage',
-    advancePercentage: '20',
-  })
-
-  const [roomRateData, setRoomRateData] = useState<RoomRateSettings>({
-    autoRoomNumber: true,
-    roomStatus: true,
-    displayRoomFloor: true,
-    defaultRoomView: 'Grid View',
-    roomImageUpload: true,
-    maxImagesPerRoom: '5 Images',
-    baseRateType: 'Rack Rate',
-    rateDisplay: 'Inclusive of Tax',
-    allowRateOverride: true,
-    rateRounding: '1',
-    currency: 'NPR (Nepalese Rupee)',
-    overbooking: false,
-    inventoryUpdate: true,
-    releaseUnusedRooms: '23:00',
-    minimumSellableRate: '1000',
-    maxRoomsPerBooking: '10 Rooms',
-    closeRoomForCheckinAfter: '22:00',
-    ratePlans: [],
-    seasonalRates: [],
-  })
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
@@ -154,6 +60,8 @@ export default function SettingsPage() {
         <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 24 }}>
             <button
+              onClick={() => saveSettings.mutate()}
+              disabled={saveSettings.isPending}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -165,11 +73,12 @@ export default function SettingsPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
-                cursor: 'pointer',
+                cursor: saveSettings.isPending ? 'default' : 'pointer',
+                opacity: saveSettings.isPending ? 0.7 : 1,
               }}
             >
               <Save size={16} />
-              Save Changes
+              {saveSettings.isPending ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
 
@@ -177,25 +86,25 @@ export default function SettingsPage() {
               {activeTab === 'company' ? (
                 <>
                   <div style={{ flex: '1 1 0', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 24 }}>
-                    <CompanyProfileForm data={companyData} onChange={d => setCompanyData(prev => ({ ...prev, ...d }))} />
+                    <CompanyProfileForm data={companyData} onChange={patchCompany} />
                   </div>
                   <div style={{ width: 320, flexShrink: 0 }}>
-                    <LogoBranding data={logoData} onChange={d => setLogoData(prev => ({ ...prev, ...d }))} />
-                    <BusinessInfo data={businessData} onChange={d => setBusinessData(prev => ({ ...prev, ...d }))} />
-                    <ContactPerson data={contactData} onChange={d => setContactData(prev => ({ ...prev, ...d }))} />
+                    <LogoBranding data={logoData} onChange={patchLogo} />
+                    <BusinessInfo data={businessData} onChange={patchBusiness} />
+                    <ContactPerson data={contactData} onChange={patchContact} />
                   </div>
                 </>
               ) : activeTab === 'general' ? (
                 <div style={{ flex: '1 1 0' }}>
-                  <GeneralSettingsForm data={generalData} onChange={d => setGeneralData(prev => ({ ...prev, ...d }))} propertyId={propertyId} propertyName={selectedProperty?.name} />
+                  <GeneralSettingsForm data={generalData} onChange={patchGeneral} propertyId={propertyId} propertyName={selectedProperty?.name} />
                 </div>
               ) : activeTab === 'booking' ? (
                 <div style={{ flex: '1 1 0' }}>
-                  <BookingSettingsForm data={bookingData} onChange={d => setBookingData(prev => ({ ...prev, ...d }))} />
+                  <BookingSettingsForm data={bookingData} onChange={patchBooking} />
                 </div>
               ) : activeTab === 'room' ? (
                 <div style={{ flex: '1 1 0' }}>
-                  <RoomRateSettingsForm data={roomRateData} onChange={d => setRoomRateData(prev => ({ ...prev, ...d }))} />
+                  <RoomRateSettingsForm data={roomRateData} onChange={patchRoomRate} />
                 </div>
               ) : activeTab === 'taxes' ? (
                 <div style={{ flex: '1 1 0' }}>

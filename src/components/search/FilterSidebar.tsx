@@ -4,9 +4,9 @@ import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { SlidersHorizontal } from "lucide-react"
 import { filterParamsSchema, type FilterParams } from "@/schemas/search/searchParams"
-import { usePropertyRoomTypes } from "@/services/queries/propertyQueries"
-import { usePropertyBedTypes } from "@/services/queries/propertyQueries"
-import { usePropertyAmenities } from "@/services/queries/propertyQueries"
+import { usePropertyRoomTypes } from "@/services/queries/property/propertyQueries"
+import { usePropertyBedTypes } from "@/services/queries/property/propertyQueries"
+import { usePropertyAmenities } from "@/services/queries/property/propertyQueries"
 
 interface FilterSidebarProps {
   maxPrice: number
@@ -60,14 +60,14 @@ export function FilterSidebar({ maxPrice }: FilterSidebarProps) {
       } else {
         next.delete("min_price")
       }
-      if (debouncedPriceRange.max && debouncedPriceRange.max !== "500") {
+      if (debouncedPriceRange.max && debouncedPriceRange.max !== String(maxPrice)) {
         next.set("max_price", debouncedPriceRange.max)
       } else {
         next.delete("max_price")
       }
       return next
     }, { replace: true })
-  }, [debouncedPriceRange, setSearchParams])
+  }, [debouncedPriceRange, maxPrice, setSearchParams])
 
   const syncFilterToUrl = useCallback((key: string, value: string) => {
     setSearchParams((prev) => {

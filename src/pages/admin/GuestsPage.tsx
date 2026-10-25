@@ -1,34 +1,23 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useQueries } from '@tanstack/react-query'
 import { useUIStore } from '@/store/ui/uiStore'
 import { usePropertyStore } from '@/store/properties/propertyStore'
+import { useGuestStore, type Guest } from '@/store/admin/guestStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import StatCard from '@/components/admin/dashboard/StatCard'
-import { getAllProperties, getPropertyBookings } from '@/api/pms/pmsApi'
-import { propertyKeys, bookingKeys } from '@/lib/queryKeys'
 import type { PropertyBooking } from '@/types/pms'
+import {
+  useAdminPropertiesQuery,
+  usePropertyBookingsQuery,
+  useOverallPropertyBookingsQuery,
+} from '@/services/queries/admin/guestQueries'
 import {
   Users, UserPlus, Star, Heart, Gem, Search, Plus,
   Eye, MoreHorizontal, ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
 
-export interface Guest {
-  id: number
-  name: string
-  email: string
-  phone: string
-  country: string
-  location: string
-  lastStay: string
-  roomType: string
-  totalStays: number
-  points: number
-  pointsLabel: string
-  status: 'active' | 'inactive'
-  badge?: 'vip' | 'returning'
-}
+export type { Guest }
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -91,25 +80,34 @@ const emptyForm = { name: '', email: '', phone: '', country: '', location: '', r
 export default function GuestsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; guest: Guest } | null>(null)
-  const [filterType, setFilterType] = useState('All')
-  const [filterNationality, setFilterNationality] = useState('All')
-  const [showModal, setShowModal] = useState(false)
-  const [editingGuest, setEditingGuest] = useState<Guest | null>(null)
-  const [viewingGuest, setViewingGuest] = useState<Guest | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<Guest | null>(null)
   const [form, setForm] = useState(emptyForm)
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
-  const [overallMode, setOverallMode] = useState(() => currentPropertyId === null)
+  const {
+    searchTerm,
+    filterType,
+    filterNationality,
+    currentPage,
+    overallMode,
+    showModal,
+    editingGuest,
+    viewingGuest,
+    confirmDelete,
+    setSearchTerm,
+    setFilterType,
+    setFilterNationality,
+    setCurrentPage,
+    setOverallMode,
+    setShowModal,
+    setEditingGuest,
+    setViewingGuest,
+    setConfirmDelete,
+    resetFilters,
+  } = useGuestStore()
   const pageSize = 10
   const navigate = useNavigate()
 
-  const { data: properties = [] } = useQuery({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-  })
+  const { data: properties = [] } = useAdminPropertiesQuery()
 
   const activePropertyIds = useMemo(
     () => properties.filter((p) => p.is_active !== false).map((p) => p.id),
@@ -121,14 +119,7 @@ export default function GuestsPage() {
     [properties]
   )
 
-  const overallBookingQueries = useQueries({
-    queries: activePropertyIds.map((id: string) => ({
-      queryKey: bookingKeys.byProperty(id),
-      queryFn: () => getPropertyBookings(id),
-      select: (data: PropertyBooking[]) => (Array.isArray(data) ? data : []),
-      enabled: overallMode && activePropertyIds.length > 0,
-    })),
-  })
+  const overallBookingQueries = useOverallPropertyBookingsQuery(activePropertyIds, overallMode)
 
   const overallBookings: BookingWithProperty[] = useMemo(
     () => overallBookingQueries.flatMap((q, i) =>
@@ -142,12 +133,7 @@ export default function GuestsPage() {
   const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
   const propertyId = overallMode ? null : property?.id
 
-  const { data: singleBookings = [], isLoading: singleLoading } = useQuery<PropertyBooking[]>({
-    queryKey: bookingKeys.byProperty(propertyId ?? ''),
-    queryFn: () => getPropertyBookings(propertyId!),
-    enabled: !overallMode && !!propertyId,
-    select: (data) => Array.isArray(data) ? data : [],
-  })
+  const { data: singleBookings = [], isLoading: singleLoading } = usePropertyBookingsQuery(propertyId, !overallMode && !!propertyId)
 
   const singleBookingsWithProperty: BookingWithProperty[] = useMemo(
     () => (propertyId ? singleBookings.map((b) => ({ ...b, _propertyId: propertyId })) : []),
@@ -174,10 +160,7 @@ export default function GuestsPage() {
   const end = Math.min(currentPage * pageSize, filtered.length)
 
   const clearFilters = () => {
-    setFilterType('All')
-    setFilterNationality('All')
-    setSearchTerm('')
-    setCurrentPage(1)
+    resetFilters()
   }
 
   const openAddModal = () => {

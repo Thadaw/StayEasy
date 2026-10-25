@@ -1,5 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Check } from 'lucide-react'
+import { bulkAssignSchema, type BulkAssignFormData } from '@/schemas/admin/housekeepingSchema'
 import type { HousekeepingRoom, Priority, ApiStaffOption, ApiRoomOption, ApiTaskTypeOption, BulkAssignTaskItem } from '@/types/housekeeping'
 
 interface BulkActionModalProps {
@@ -41,63 +44,70 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
     ? taskTypes
     : [{ value: 'ROOM_CLEANING', label: 'Room Cleaning' }]
   const statusOptions = TARGET_STATUSES.filter(s => rooms.some(r => r.status === s))
-  const [selectedTaskType, setSelectedTaskType] = useState<string>(taskTypeOptions[0].value)
-  const [selectedStatus, setSelectedStatus] = useState<string>(statusOptions[0] ?? 'Dirty')
-  const [selectedRoomIds, setSelectedRoomIds] = useState<Set<number>>(new Set())
-  const [assignments, setAssignments] = useState<Map<number, RoomAssignment>>(new Map())
+
+  const { watch, getValues, setValue, handleSubmit } = useForm<BulkAssignFormData>({
+    resolver: zodResolver(bulkAssignSchema),
+    defaultValues: {
+      taskType: taskTypeOptions[0].value,
+      status: statusOptions[0] ?? 'Dirty',
+      selectedRoomIds: [],
+      assignments: {},
+    },
+  })
+
+  const values = watch()
+  const selectedTaskType = values.taskType
+  const selectedStatus = values.status
+  const selectedRoomIds = values.selectedRoomIds
+  const assignments = values.assignments
 
   const filteredRooms = useMemo(() => {
     return rooms.filter(r => r.status === selectedStatus)
   }, [rooms, selectedStatus])
 
   const toggleRoom = (roomId: number) => {
-    setSelectedRoomIds(prev => {
-      const next = new Set(prev)
-      if (next.has(roomId)) {
-        next.delete(roomId)
-        setAssignments(a => { const m = new Map(a); m.delete(roomId); return m })
-      } else {
-        next.add(roomId)
-        setAssignments(a => {
-          const m = new Map(a)
-          if (!m.has(roomId)) m.set(roomId, { ...defaultAssignment })
-          return m
-        })
-      }
-      return next
-    })
+    const ids = getValues('selectedRoomIds')
+    const nextAssignments = { ...getValues('assignments') }
+    if (ids.includes(roomId)) {
+      setValue('selectedRoomIds', ids.filter(id => id !== roomId))
+      delete nextAssignments[String(roomId)]
+      setValue('assignments', nextAssignments)
+    } else {
+      setValue('selectedRoomIds', [...ids, roomId])
+      if (!nextAssignments[String(roomId)]) nextAssignments[String(roomId)] = { ...defaultAssignment }
+      setValue('assignments', nextAssignments)
+    }
   }
 
   const toggleAll = () => {
-    if (selectedRoomIds.size === filteredRooms.length) {
-      setSelectedRoomIds(new Set())
-      setAssignments(new Map())
+    if (selectedRoomIds.length === filteredRooms.length) {
+      setValue('selectedRoomIds', [])
+      setValue('assignments', {})
     } else {
-      const allIds = new Set(filteredRooms.map(r => r.id))
-      setSelectedRoomIds(allIds)
-      setAssignments(prev => {
-        const m = new Map(prev)
-        filteredRooms.forEach(r => { if (!m.has(r.id)) m.set(r.id, { ...defaultAssignment }) })
-        return m
-      })
+      const allIds = filteredRooms.map(r => r.id)
+      const nextAssignments = { ...getValues('assignments') }
+      filteredRooms.forEach(r => { if (!nextAssignments[String(r.id)]) nextAssignments[String(r.id)] = { ...defaultAssignment } })
+      setValue('selectedRoomIds', allIds)
+      setValue('assignments', nextAssignments)
     }
   }
 
   const updateAssignment = (roomId: number, field: keyof RoomAssignment, value: string) => {
-    setAssignments(prev => {
-      const m = new Map(prev)
-      const existing = m.get(roomId) || { ...defaultAssignment }
-      m.set(roomId, { ...existing, [field]: value })
-      return m
-    })
+    const current = getValues('assignments')
+    const existing = current[String(roomId)] || { ...defaultAssignment }
+    const updated: RoomAssignment = { ...existing }
+    if (field === 'priority') updated.priority = value as Priority
+    else if (field === 'housekeeperId') updated.housekeeperId = value
+    else updated.notes = value
+    setValue('assignments', { ...current, [String(roomId)]: updated })
   }
 
   const handleApply = () => {
     const bulkTasks: BulkAssignTaskItem[] = []
     filteredRooms
-      .filter(r => selectedRoomIds.has(r.id))
+      .filter(r => selectedRoomIds.includes(r.id))
       .forEach(room => {
-        const assignment = assignments.get(room.id)
+        const assignment = assignments[String(room.id)]
         if (!assignment || !assignment.housekeeperId) return
         const apiRoom = roomOptions.find(ro => ro.name === `Room ${room.roomNumber}` || ro.name === room.roomNumber)
         if (!apiRoom) return
@@ -114,8 +124,8 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
       onBulkAssign(bulkTasks)
     }
     onClose()
-    setSelectedRoomIds(new Set())
-    setAssignments(new Map())
+    setValue('selectedRoomIds', [])
+    setValue('assignments', {})
   }
 
   if (!isOpen) return null
@@ -134,8 +144,9 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
         padding: 20,
       }}
     >
-      <div
+      <form
         onClick={e => e.stopPropagation()}
+        onSubmit={handleSubmit(handleApply)}
         style={{
           background: '#fff',
           borderRadius: 16,
@@ -153,6 +164,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
               Assign Bulk Room Operations
             </h2>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 width: 32,
@@ -183,9 +195,9 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
             <select
               value={selectedTaskType}
               onChange={e => {
-                setSelectedTaskType(e.target.value)
-                setSelectedRoomIds(new Set())
-                setAssignments(new Map())
+                setValue('taskType', e.target.value)
+                setValue('selectedRoomIds', [])
+                setValue('assignments', {})
               }}
               style={{
                 ...inputStyle,
@@ -206,7 +218,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
               <label style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>
                 2. Select Rooms
               </label>
-              {selectedRoomIds.size > 0 && (
+              {selectedRoomIds.length > 0 && (
                 <span style={{
                   padding: '4px 10px',
                   borderRadius: 6,
@@ -215,7 +227,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
                   background: '#EFF6FF',
                   color: '#2563EB',
                 }}>
-                  {selectedRoomIds.size} Room{selectedRoomIds.size !== 1 ? 's' : ''} Selected
+                  {selectedRoomIds.length} Room{selectedRoomIds.length !== 1 ? 's' : ''} Selected
                 </span>
               )}
             </div>
@@ -227,10 +239,11 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
                 return (
                   <button
                     key={s}
+                    type="button"
                     onClick={() => {
-                      setSelectedStatus(s)
-                      setSelectedRoomIds(new Set())
-                      setAssignments(new Map())
+                      setValue('status', s)
+                      setValue('selectedRoomIds', [])
+                      setValue('assignments', {})
                     }}
                     style={{
                       padding: '5px 12px',
@@ -270,7 +283,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
                 >
                   <input
                     type="checkbox"
-                    checked={selectedRoomIds.size === filteredRooms.length && filteredRooms.length > 0}
+                    checked={selectedRoomIds.length === filteredRooms.length && filteredRooms.length > 0}
                     onChange={toggleAll}
                     style={{ width: 16, height: 16, accentColor: '#2563EB', cursor: 'pointer' }}
                   />
@@ -278,7 +291,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {filteredRooms.map(room => {
-                    const isSelected = selectedRoomIds.has(room.id)
+                    const isSelected = selectedRoomIds.includes(room.id)
                     return (
                       <label
                         key={room.id}
@@ -325,7 +338,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
           </div>
 
           {/* Section 3: Assign Housekeepers */}
-          {selectedRoomIds.size > 0 && (
+          {selectedRoomIds.length > 0 && (
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 10 }}>
                 3. Assign Housekeepers (Dynamic rows based on selected rooms)
@@ -347,9 +360,9 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
                 </div>
                 {/* Table Rows */}
                 {filteredRooms
-                  .filter(r => selectedRoomIds.has(r.id))
+                  .filter(r => selectedRoomIds.includes(r.id))
                   .map(room => {
-                    const assignment = assignments.get(room.id) || defaultAssignment
+                    const assignment = assignments[String(room.id)] || defaultAssignment
                     return (
                       <div
                         key={room.id}
@@ -406,6 +419,7 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
           }}
         >
           <button
+            type="button"
             onClick={onClose}
             style={{
               padding: '9px 20px',
@@ -421,23 +435,23 @@ export default function BulkActionModal({ isOpen, onClose, rooms, staffOptions, 
             Cancel
           </button>
           <button
-            onClick={handleApply}
-            disabled={selectedRoomIds.size === 0}
+            type="submit"
+            disabled={selectedRoomIds.length === 0}
             style={{
               padding: '9px 20px',
               borderRadius: 8,
               border: 'none',
-              background: selectedRoomIds.size > 0 ? '#1E293B' : '#D1D5DB',
+              background: selectedRoomIds.length > 0 ? '#1E293B' : '#D1D5DB',
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',
-              cursor: selectedRoomIds.size > 0 ? 'pointer' : 'not-allowed',
+              cursor: selectedRoomIds.length > 0 ? 'pointer' : 'not-allowed',
             }}
           >
-            Apply Bulk Assignments ({selectedRoomIds.size} Task{selectedRoomIds.size !== 1 ? 's' : ''})
+            Apply Bulk Assignments ({selectedRoomIds.length} Task{selectedRoomIds.length !== 1 ? 's' : ''})
           </button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }

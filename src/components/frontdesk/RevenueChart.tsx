@@ -18,15 +18,16 @@ export function RevenueChart({
   growth,
   formatAmount
 }: RevenueChartProps) {
-  const maxRevenue = Math.max(...data.map(d => d.revenue))
+  const maxRevenue = Math.max(...data.map(d => d.revenue), 0)
   const chartHeight = 100
 
   const getYPosition = (value: number) => {
+    if (maxRevenue <= 0) return chartHeight
     return chartHeight - (value / maxRevenue) * chartHeight
   }
 
   const pathData = data.map((point, index) => {
-    const x = (index / (data.length - 1)) * 100
+    const x = data.length > 1 ? (index / (data.length - 1)) * 100 : 0
     const y = getYPosition(point.revenue)
     return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
   }).join(' ')

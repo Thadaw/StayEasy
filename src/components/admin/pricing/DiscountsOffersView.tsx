@@ -1,17 +1,26 @@
-import { useState, useMemo } from 'react'
-import { Search, ChevronDown, Download, Eye, Pencil, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Search, ChevronDown, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Tag, CheckCircle2, Clock, Ban } from 'lucide-react'
+import { isAxiosError } from 'axios'
+import toast from 'react-hot-toast'
 import DiscountDetailPanel from '@/components/admin/pricing/DiscountDetailPanel'
-import type { DiscountOffer, OfferDetail } from '@/types/pricing'
+import OfferFormModal from '@/components/admin/pricing/OfferFormModal'
+import { useCreateSpecialOffers, useDeleteSpecialOffer, useUpdateSpecialOffer } from '@/services/mutations/admin/pricingMutations'
+import type { DiscountOffer, OfferStatus } from '@/types/pricing'
+import type { SpecialOfferResponse, SpecialOfferUpdatePayload } from '@/types/pms'
+import { todayISO, type SpecialOfferFormData } from '@/schemas/admin/specialOfferSchema'
 
 interface DiscountsOffersViewProps {
-  offers: DiscountOffer[]
-  offerDetails: OfferDetail[]
+  propertyId?: string | null
+  offers: SpecialOfferResponse[]
+  isLoading?: boolean
+  isError?: boolean
 }
 
-const statusColors: Record<string, { bg: string; text: string }> = {
+const statusColors: Record<OfferStatus, { bg: string; text: string }> = {
   Active: { bg: '#D1FAE5', text: '#065F46' },
   Upcoming: { bg: '#DBEAFE', text: '#1E40AF' },
   Expired: { bg: '#F3F4F6', text: '#6B7280' },
+  Inactive: { bg: '#FEF3C7', text: '#92400E' },
 }
 
 const selectStyle: React.CSSProperties = {
@@ -21,33 +30,175 @@ const selectStyle: React.CSSProperties = {
   fontWeight: 500, cursor: 'pointer', outline: 'none', backgroundImage: 'none', minWidth: 130,
 }
 
-export default function DiscountsOffersView({ offers, offerDetails }: DiscountsOffersViewProps) {
+function getErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as { error?: string; message?: string; detail?: string } | undefined
+    const detail = typeof data?.detail === 'string' ? data.detail : undefined
+    return data?.error || data?.message || detail || error.message
+  }
+  return error instanceof Error ? error.message : 'Unknown error'
+}
+
+function deriveStatus(offer: SpecialOfferResponse): OfferStatus {
+  const today = todayISO()
+  if (offer.end_date < today) return 'Expired'
+  if (offer.start_date > today) return 'Upcoming'
+  return offer.is_active ? 'Active' : 'Inactive'
+}
+
+function mapOffer(offer: SpecialOfferResponse): DiscountOffer {
+  return {
+    id: offer.id,
+    name: offer.title,
+    description: offer.description ?? '',
+    type: 'Percentage',
+    applicableTo: 'All Room Types',
+    discount: `${offer.discount_percentage}%`,
+    discountPercentage: offer.discount_percentage,
+    validity: `${offer.start_date} – ${offer.end_date}`,
+    status: deriveStatus(offer),
+    isActive: offer.is_active,
+    isCustom: offer.is_custom,
+    startDate: offer.start_date,
+    endDate: offer.end_date,
+    iconBg: '#D1FAE5',
+    iconColor: '#059669',
+    icon: '🏷️',
+  }
+}
+
+export default function DiscountsOffersView({ propertyId, offers: rawOffers, isLoading, isError }: DiscountsOffersViewProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [activeTab, setActiveTab] = useState('All Offers')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedOffer, setSelectedOffer] = useState<OfferDetail | null>(null)
+  const [selectedOffer, setSelectedOffer] = useState<DiscountOffer | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingOffer, setEditingOffer] = useState<DiscountOffer | null>(null)
   const itemsPerPage = 7
+
+  const { createSpecialOffers, isCreating } = useCreateSpecialOffers(propertyId)
+  const { updateSpecialOffer, isUpdating } = useUpdateSpecialOffer(propertyId)
+  const { deleteSpecialOffer, isDeleting } = useDeleteSpecialOffer(propertyId)
+  const isMutating = isCreating || isUpdating || isDeleting
+
+  const offers = useMemo(() => rawOffers.map(mapOffer), [rawOffers])
+
+  const stats = useMemo(() => ({
+    total: offers.length,
+    active: offers.filter((o) => o.status === 'Active').length,
+    upcoming: offers.filter((o) => o.status === 'Upcoming').length,
+    inactive: offers.filter((o) => o.status === 'Expired' || o.status === 'Inactive').length,
+  }), [offers])
 
   const tabs = ['All Offers', 'Active', 'Upcoming', 'Expired']
 
   const filteredOffers = useMemo(() => {
-    return offers.filter(offer => {
-      const matchSearch = !search || offer.name.toLowerCase().includes(search.toLowerCase()) || offer.code.toLowerCase().includes(search.toLowerCase())
+    const term = search.trim().toLowerCase()
+    return offers.filter((offer) => {
+      const matchSearch = !term || offer.name.toLowerCase().includes(term)
       const matchTab = activeTab === 'All Offers' || offer.status === activeTab
-      return matchSearch && matchTab
+      const matchStatus = !statusFilter || statusFilter === 'All' || offer.status === statusFilter
+      return matchSearch && matchTab && matchStatus
     })
-  }, [offers, search, activeTab])
+  }, [offers, search, activeTab, statusFilter])
 
-  const totalPages = Math.ceil(filteredOffers.length / itemsPerPage)
-  const paginatedOffers = filteredOffers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-  const startItem = (currentPage - 1) * itemsPerPage + 1
-  const endItem = Math.min(currentPage * itemsPerPage, filteredOffers.length)
+  useEffect(() => { setCurrentPage(1) }, [search, activeTab, statusFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredOffers.length / itemsPerPage))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginatedOffers = filteredOffers.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage)
+  const startItem = filteredOffers.length === 0 ? 0 : (safePage - 1) * itemsPerPage + 1
+  const endItem = Math.min(safePage * itemsPerPage, filteredOffers.length)
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  const openCreate = () => { setEditingOffer(null); setFormOpen(true) }
+  const openEdit = (offer: DiscountOffer) => { setEditingOffer(offer); setFormOpen(true); setSelectedOffer(null) }
+  const closeForm = () => { setFormOpen(false); setEditingOffer(null) }
+
+  const handleSave = async (values: SpecialOfferFormData) => {
+    const discount = Number(values.discountPercentage)
+    const description = values.description?.trim() ?? ''
+    try {
+      if (editingOffer) {
+        const payload: SpecialOfferUpdatePayload = {}
+        if (values.title.trim() !== editingOffer.name) payload.title = values.title.trim()
+        if (description !== editingOffer.description) payload.description = description
+        if (discount !== editingOffer.discountPercentage) payload.discount_percentage = discount
+        if (values.startDate !== editingOffer.startDate) payload.start_date = values.startDate
+        if (values.endDate !== editingOffer.endDate) payload.end_date = values.endDate
+        if (values.isActive !== editingOffer.isActive) payload.is_active = values.isActive
+
+        if (Object.keys(payload).length === 0) {
+          toast('No changes to save')
+          closeForm()
+          return
+        }
+        await updateSpecialOffer(editingOffer.id, payload)
+        toast.success('Offer updated')
+      } else {
+        if (values.startDate < todayISO()) {
+          toast.error('Start date cannot be in the past')
+          return
+        }
+        await createSpecialOffers([{
+          title: values.title.trim(),
+          description,
+          discount_percentage: discount,
+          start_date: values.startDate,
+          end_date: values.endDate,
+          is_active: values.isActive,
+          is_custom: false,
+        }])
+        toast.success('Offer created')
+      }
+      closeForm()
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }
+
+  const handleDelete = async (offer: DiscountOffer) => {
+    if (!window.confirm(`Delete the offer "${offer.name}"? This action cannot be undone.`)) return
+    try {
+      await deleteSpecialOffer(offer.id)
+      toast.success('Offer deleted')
+      setSelectedOffer(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }
+
+  const handleToggleActive = async (offer: DiscountOffer) => {
+    try {
+      await updateSpecialOffer(offer.id, { is_active: !offer.isActive })
+      toast.success(offer.isActive ? 'Offer deactivated' : 'Offer activated')
+      setSelectedOffer((prev) => {
+        if (!prev) return prev
+        const isActive = !prev.isActive
+        let status: OfferStatus
+        const today = todayISO()
+        if (prev.endDate < today) status = 'Expired'
+        else if (prev.startDate > today) status = 'Upcoming'
+        else status = isActive ? 'Active' : 'Inactive'
+        return { ...prev, isActive, status }
+      })
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }
+
+  const statCards = [
+    { label: 'Total Offers', value: stats.total, subtitle: 'All created offers', bg: '#F3E8FF', color: '#7C3AED', Icon: Tag },
+    { label: 'Active Offers', value: stats.active, subtitle: 'Currently running', bg: '#D1FAE5', color: '#059669', Icon: CheckCircle2 },
+    { label: 'Upcoming Offers', value: stats.upcoming, subtitle: 'Starting soon', bg: '#FEF3C7', color: '#D97706', Icon: Clock },
+    { label: 'Expired / Inactive', value: stats.inactive, subtitle: 'No longer running', bg: '#FCE7F3', color: '#DB2777', Icon: Ban },
+  ]
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>Discounts & Offers</h2>
           <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Create and manage special discounts, offers and promotional deals.</p>
@@ -56,7 +207,7 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
           <div style={{ position: 'relative' }}>
             <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
             <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search offers..."
               style={{
                 padding: '10px 14px 10px 38px', border: '1px solid #E5E7EB', borderRadius: 8,
@@ -64,11 +215,16 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
               }}
             />
           </div>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
-            border: 'none', borderRadius: 8, background: 'var(--primary)',
-            fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer',
-          }}>
+          <button
+            onClick={openCreate}
+            disabled={!propertyId}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
+              border: 'none', borderRadius: 8, background: 'var(--primary)',
+              fontSize: 14, fontWeight: 600, color: '#fff',
+              cursor: propertyId ? 'pointer' : 'not-allowed', opacity: propertyId ? 1 : 0.6,
+            }}
+          >
             + Create New Offer
           </button>
         </div>
@@ -76,15 +232,10 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {[
-          { label: 'Total Offers', value: 15, subtitle: 'All created offers', bg: '#F3E8FF', color: 'var(--primary)' },
-          { label: 'Active Offers', value: 7, subtitle: 'Currently running', bg: '#D1FAE5', color: '#059669' },
-          { label: 'Upcoming Offers', value: 3, subtitle: 'Starting soon', bg: '#FEF3C7', color: '#D97706' },
-          { label: 'Total Usage', value: '1,248', subtitle: 'Times used', bg: '#FCE7F3', color: '#DB2777' },
-        ].map(s => (
+        {statCards.map((s) => (
           <div key={s.label} style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 20 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 18, color: s.color }}>📊</span>
+              <s.Icon size={18} color={s.color} />
             </div>
             <p style={{ fontSize: 13, color: '#6B7280', margin: 0, fontWeight: 500 }}>{s.label}</p>
             <p style={{ fontSize: 24, fontWeight: 700, color: '#111827', margin: '4px 0 2px' }}>{s.value}</p>
@@ -98,8 +249,8 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
         <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 320 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
           <input
-            type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by offer name or code..."
+            type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by offer name..."
             style={{
               width: '100%', padding: '10px 14px 10px 38px', border: '1px solid #E5E7EB',
               borderRadius: 8, fontSize: 14, color: '#374151', outline: 'none', background: '#fff',
@@ -107,50 +258,25 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
           />
         </div>
         <div style={{ position: 'relative' }}>
-          <select style={selectStyle}>
-            <option>Offer Type</option>
-            <option>All</option>
-            <option>Percentage</option>
-            <option>Fixed Benefit</option>
-          </select>
-          <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }} />
-        </div>
-        <div style={{ position: 'relative' }}>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectStyle}>
             <option value="">Status</option>
             <option value="All">All</option>
             <option value="Active">Active</option>
             <option value="Upcoming">Upcoming</option>
             <option value="Expired">Expired</option>
+            <option value="Inactive">Inactive</option>
           </select>
           <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }} />
-        </div>
-        <div style={{ position: 'relative' }}>
-          <select style={selectStyle}>
-            <option>Applicable To</option>
-            <option>All</option>
-            <option>All Rooms</option>
-            <option>Deluxe</option>
-            <option>Suite</option>
-          </select>
-          <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }} />
-        </div>
-        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-          <input type="text" placeholder="Select date range" style={{
-            padding: '10px 14px 10px 36px', border: '1px solid #E5E7EB', borderRadius: 8,
-            fontSize: 14, color: '#374151', outline: 'none', background: '#fff', minWidth: 170,
-          }} />
-          <span style={{ position: 'absolute', left: 12, pointerEvents: 'none', color: '#9CA3AF', fontSize: 14 }}>📅</span>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E5E7EB', marginBottom: 0 }}>
         <div style={{ display: 'flex', gap: 0 }}>
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setCurrentPage(1) }}
+              onClick={() => setActiveTab(tab)}
               style={{
                 padding: '12px 16px', border: 'none', background: 'transparent',
                 fontSize: 14, fontWeight: 500,
@@ -164,13 +290,6 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
             </button>
           ))}
         </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-          border: '1px solid #E5E7EB', borderRadius: 8, background: '#fff',
-          fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer',
-        }}>
-          <Download size={14} /> Export
-        </button>
       </div>
 
       {/* Table */}
@@ -178,7 +297,7 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-              {['Offer Name', 'Offer Code', 'Type', 'Applicable To', 'Discount', 'Validity', 'Status', 'Usage', 'Actions'].map(col => (
+              {['Offer Name', 'Discount', 'Type', 'Applicable To', 'Validity', 'Status', 'Actions'].map((col) => (
                 <th key={col} style={{
                   padding: '12px 14px', fontSize: 11, fontWeight: 600,
                   color: '#6B7280', textTransform: 'uppercase' as const,
@@ -190,18 +309,26 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
             </tr>
           </thead>
           <tbody>
-            {paginatedOffers.map(offer => {
+            {isLoading && (
+              <tr><td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#6B7280', fontSize: 14 }}>Loading offers...</td></tr>
+            )}
+            {!isLoading && isError && (
+              <tr><td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#DC2626', fontSize: 14 }}>Failed to load special offers. Please try again.</td></tr>
+            )}
+            {!isLoading && !isError && paginatedOffers.length === 0 && (
+              <tr><td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#6B7280', fontSize: 14 }}>No special offers found. Create one to get started.</td></tr>
+            )}
+            {paginatedOffers.map((offer) => {
               const sc = statusColors[offer.status] || statusColors.Active
               return (
                 <tr key={offer.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
-                        width: 36, height: 36, borderRadius: 8,
-                        background: offer.iconBg, display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        width: 36, height: 36, borderRadius: 8, background: offer.iconBg,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16,
                       }}>
-                        <span style={{ fontSize: 16 }}>{offer.icon}</span>
+                        {offer.icon}
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{offer.name}</div>
@@ -209,35 +336,25 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span style={{
-                      padding: '3px 8px', borderRadius: 6, fontSize: 12,
-                      fontWeight: 600, background: '#D1FAE5', color: '#065F46',
-                      fontFamily: 'monospace',
-                    }}>
-                      {offer.code}
-                    </span>
-                  </td>
+                  <td style={{ padding: '12px 14px', fontSize: 14, fontWeight: 600, color: '#059669' }}>{offer.discount}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: '#374151' }}>{offer.type}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: '#374151' }}>{offer.applicableTo}</td>
-                  <td style={{ padding: '12px 14px', fontSize: 14, fontWeight: 600, color: '#059669' }}>{offer.discount}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{offer.validity}</td>
                   <td style={{ padding: '12px 14px' }}>
                     <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: sc.bg, color: sc.text }}>
                       {offer.status}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 14px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{offer.usage}</td>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <button onClick={() => setSelectedOffer(offerDetails.find(d => d.id === offer.id) || null)} style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
+                      <button onClick={() => setSelectedOffer(offer)} title="View" style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
                         <Eye size={15} />
                       </button>
-                      <button style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
+                      <button onClick={() => openEdit(offer)} title="Edit" style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
                         <Pencil size={15} />
                       </button>
-                      <button style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
-                        <MoreVertical size={15} />
+                      <button onClick={() => handleDelete(offer)} disabled={isMutating} title="Delete" style={{ width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 6, cursor: isMutating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626' }}>
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </td>
@@ -253,15 +370,15 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
             Showing {startItem} to {endItem} of {filteredOffers.length} entries
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ width: 32, height: 32, border: '1px solid #E5E7EB', borderRadius: 6, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage === 1 ? '#D1D5DB' : '#6B7280' }}>
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} style={{ width: 32, height: 32, border: '1px solid #E5E7EB', borderRadius: 6, background: '#fff', cursor: safePage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: safePage === 1 ? '#D1D5DB' : '#6B7280' }}>
               <ChevronLeft size={14} />
             </button>
-            {[1, 2].map(page => (
-              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === currentPage ? '1px solid var(--primary)' : '1px solid #E5E7EB', borderRadius: 6, background: page === currentPage ? 'var(--primary)' : '#fff', color: page === currentPage ? '#fff' : '#374151', fontWeight: page === currentPage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {pageNumbers.map((page) => (
+              <button key={page} onClick={() => setCurrentPage(page)} style={{ width: 32, height: 32, border: page === safePage ? '1px solid var(--primary)' : '1px solid #E5E7EB', borderRadius: 6, background: page === safePage ? 'var(--primary)' : '#fff', color: page === safePage ? '#fff' : '#374151', fontWeight: page === safePage ? 600 : 400, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {page}
               </button>
             ))}
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ width: 32, height: 32, border: '1px solid #E5E7EB', borderRadius: 6, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage === totalPages ? '#D1D5DB' : '#6B7280' }}>
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} style={{ width: 32, height: 32, border: '1px solid #E5E7EB', borderRadius: 6, background: '#fff', cursor: safePage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: safePage === totalPages ? '#D1D5DB' : '#6B7280' }}>
               <ChevronRight size={14} />
             </button>
           </div>
@@ -269,7 +386,25 @@ export default function DiscountsOffersView({ offers, offerDetails }: DiscountsO
       </div>
 
       {/* Detail Panel */}
-      {selectedOffer && <DiscountDetailPanel offer={selectedOffer} onClose={() => setSelectedOffer(null)} />}
+      {selectedOffer && (
+        <DiscountDetailPanel
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          onEdit={() => openEdit(selectedOffer)}
+          onToggleActive={() => handleToggleActive(selectedOffer)}
+          onDelete={() => handleDelete(selectedOffer)}
+          isMutating={isMutating}
+        />
+      )}
+
+      {/* Create / Edit Modal */}
+      <OfferFormModal
+        open={formOpen}
+        initial={editingOffer}
+        isSaving={isMutating}
+        onClose={closeForm}
+        onSubmit={handleSave}
+      />
     </div>
   )
 }

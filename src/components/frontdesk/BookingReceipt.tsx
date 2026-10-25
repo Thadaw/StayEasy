@@ -1,55 +1,8 @@
 import { useEffect } from "react"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery } from "@tanstack/react-query"
-import api, { type AuthRequestConfig } from "@/api/axiosInstance"
+import { usePropertyQuery } from "@/services/queries/property/propertyDetailQueries"
+import { useBookingReceiptQuery } from "@/services/queries/frontdesk/frontdeskBookingQueries"
 import { InvoiceReceipt } from "@/components/frontdesk/InvoiceReceipt"
-
-interface BookingRoom {
-  room_id: string
-  room_name: string
-  room_type: string
-  bed_type: string
-  base_rate: number
-}
-
-interface BookingFolio {
-  folio_id: string
-  status: string
-  subtotal: number
-  tax: number
-  discount: number
-  total: number
-  amount_paid: number
-  remaining_balance: number
-  charges_count: number
-  settled_at: string | null
-  charges?: Array<{
-    charge_id: string
-    description: string
-    amount: number
-    category?: string
-    posted_by_name?: string
-    created_at: string
-  }>
-}
-
-interface Booking {
-  booking_id: string
-  guest_name: string
-  guest_email: string
-  guest_phone: string
-  guest_nationality: string
-  ref_number: string
-  status: string
-  checkin_date: string
-  checkout_date: string
-  total_amount: number
-  amount_paid: number
-  amount_due: number
-  rooms: BookingRoom[]
-  folio: BookingFolio | null
-  payment_method?: string
-}
 
 interface BookingReceiptProps {
   bookingId: string
@@ -74,37 +27,9 @@ export function BookingReceipt({
 }: BookingReceiptProps) {
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: property } = useQuery({
-    queryKey: ["property", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return null
-      try {
-        const { data } = await api.get(`/properties/${currentPropertyId}`, { skipAuthRedirect: true } as AuthRequestConfig)
-        return data?.data || data
-      } catch {
-        return null
-      }
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: property } = usePropertyQuery(currentPropertyId, { skipAuthRedirect: true })
 
-  const { data: booking, isLoading } = useQuery({
-    queryKey: ["booking-receipt", currentPropertyId, bookingId],
-    queryFn: async (): Promise<Booking | null> => {
-      if (!currentPropertyId || !bookingId) return null
-      try {
-        const { data: result } = await api.get(
-          `/staff/properties/${currentPropertyId}/bookings/${bookingId}/guest-folio`,
-          { skipAuthRedirect: true } as AuthRequestConfig
-        )
-        const wrapped = result as { data?: Booking }
-        return (wrapped?.data ?? result) as Booking
-      } catch {
-        return null
-      }
-    },
-    enabled: !!currentPropertyId && !!bookingId,
-  })
+  const { data: booking, isLoading } = useBookingReceiptQuery(currentPropertyId, bookingId)
 
   useEffect(() => {
     if (autoPrint && booking) window.print()

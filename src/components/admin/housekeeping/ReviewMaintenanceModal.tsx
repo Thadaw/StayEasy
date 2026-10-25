@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { X } from 'lucide-react'
+import { reviewMaintenanceSchema, type ReviewMaintenanceFormData } from '@/schemas/admin/housekeepingSchema'
 
 interface ReviewMaintenanceModalProps {
   isOpen: boolean
@@ -10,12 +12,20 @@ const priorities = ['Low', 'Medium', 'Urgent'] as const
 const categories = ['Plumbing', 'Electrical', 'HVAC', 'Carpentry', 'Painting', 'Appliance Repair']
 
 export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMaintenanceModalProps) {
-  const [selectedPriority, setSelectedPriority] = useState<string>('Urgent')
-  const [category, setCategory] = useState('Plumbing')
-  const [technician, setTechnician] = useState('Ramesh Kumar')
-  const [returnDate, setReturnDate] = useState('2026-11-09')
-  const [instructions, setInstructions] = useState('')
-  const [blockRoom, setBlockRoom] = useState(true)
+  const { register, handleSubmit, watch, setValue } = useForm<ReviewMaintenanceFormData>({
+    resolver: zodResolver(reviewMaintenanceSchema),
+    defaultValues: {
+      priority: 'Urgent',
+      category: 'Plumbing',
+      technician: 'Ramesh Kumar',
+      returnDate: '2026-11-09',
+      instructions: '',
+      blockRoom: true,
+    },
+    mode: 'onTouched',
+  })
+
+  const selectedPriority = watch('priority')
 
   if (!isOpen) return null
 
@@ -33,8 +43,9 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
         padding: 20,
       }}
     >
-      <div
+      <form
         onClick={e => e.stopPropagation()}
+        onSubmit={handleSubmit(() => onClose())}
         style={{
           background: '#fff',
           borderRadius: 16,
@@ -75,6 +86,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
               </p>
             </div>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 width: 32,
@@ -193,7 +205,8 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
                   return (
                     <button
                       key={p}
-                      onClick={() => setSelectedPriority(p)}
+                      type="button"
+                      onClick={() => setValue('priority', p)}
                       style={{
                         flex: 1,
                         padding: '8px 0',
@@ -226,8 +239,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
                 Category Override
               </label>
               <select
-                value={category}
-                onChange={e => setCategory(e.target.value)}
+                {...register('category')}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -253,9 +265,8 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
               </label>
               <input
                 type="text"
-                value={technician}
-                onChange={e => setTechnician(e.target.value)}
                 placeholder="Enter technician name"
+                {...register('technician')}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -276,8 +287,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
               </label>
               <input
                 type="date"
-                value={returnDate}
-                onChange={e => setReturnDate(e.target.value)}
+                {...register('returnDate')}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -297,10 +307,9 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
                 Additional Instructions
               </label>
               <textarea
-                value={instructions}
-                onChange={e => setInstructions(e.target.value)}
                 placeholder="e.g. Please bring extra floor towels and check the exterior drainage pipe..."
                 rows={3}
+                {...register('instructions')}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -342,8 +351,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
           >
             <input
               type="checkbox"
-              checked={blockRoom}
-              onChange={e => setBlockRoom(e.target.checked)}
+              {...register('blockRoom')}
               style={{
                 width: 18,
                 height: 18,
@@ -366,6 +374,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 padding: '9px 20px',
@@ -381,7 +390,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
               Cancel
             </button>
             <button
-              onClick={onClose}
+              type="submit"
               style={{
                 padding: '9px 20px',
                 borderRadius: 8,
@@ -397,7 +406,7 @@ export default function ReviewMaintenanceModal({ isOpen, onClose }: ReviewMainte
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   )
 }

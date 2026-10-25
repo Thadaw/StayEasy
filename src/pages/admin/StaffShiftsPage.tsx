@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { useUIStore } from '@/store/ui/uiStore'
+import { useStaffShiftsStore } from '@/store/admin/staffShiftsStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import AttendanceStats from '@/components/admin/staff/AttendanceStats'
@@ -11,7 +11,8 @@ import RecentAlerts from '@/components/admin/staff/RecentAlerts'
 export default function StaffShiftsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [activeTab, setActiveTab] = useState<'daily' | 'requests'>('daily')
+  const activeTab = useStaffShiftsStore((s) => s.activeTab)
+  const setActiveTab = useStaffShiftsStore((s) => s.setActiveTab)
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '@/store/ui/uiStore'
 import { usePropertyStore } from '@/store/properties/propertyStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
@@ -13,11 +12,15 @@ import RecentBookings from '@/components/admin/dashboard/RecentBookings'
 import RoomsStatus from '@/components/admin/dashboard/RoomsStatus'
 import RestaurantOverview from '@/components/admin/dashboard/RestaurantOverview'
 import QuickActions from '@/components/admin/dashboard/QuickActions'
-import { getAllProperties, getRooms, getPropertyBookings } from '@/api/pms/pmsApi'
-import { propertyKeys, roomKeys, bookingKeys } from '@/lib/queryKeys'
+import {
+  useAdminActivePropertiesQuery,
+  useRoomsByPropertyQuery,
+  usePropertyBookingsQuery,
+  usePropertyAnalyticsQuery,
+  useRevenueTrendQuery,
+} from '@/services/queries/admin/dashboardQueries'
 import { useDateRangeStore, isWithinRange } from '@/store/bookings/dateRangeStore'
 import { Wallet, Bed, Calendar, TrendingUp, BarChart, ArrowLeft } from 'lucide-react'
-import type { GeneralInfoResponse } from '@/types/pms'
 
 export default function PropertyDashboardPage() {
   const { propertyId } = useParams<{ propertyId: string }>()
@@ -35,35 +38,22 @@ export default function PropertyDashboardPage() {
     }
   }, [propertyId, setCurrentPropertyId])
 
-  const { data: allProperties = [], isLoading: loadingProperty } = useQuery<GeneralInfoResponse[]>({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-    select: (data) => {
-      const list = Array.isArray(data) ? data : []
-      return list.filter((p) => p.is_active !== false)
-    },
-  })
+  const { data: allProperties = [], isLoading: loadingProperty } = useAdminActivePropertiesQuery()
   const property = allProperties.find((p) => p.id === propertyId)
 
-  const { data: rooms = [], isLoading: loadingRooms } = useQuery({
-    queryKey: roomKeys.byProperty(propertyId!),
-    queryFn: () => getRooms(propertyId!),
-    enabled: !!propertyId,
-    select: (data) => Array.isArray(data) ? data : [],
-  })
+  const { data: rooms = [], isLoading: loadingRooms } = useRoomsByPropertyQuery(propertyId, !!propertyId)
 
-  const { data: allBookings = [] } = useQuery({
-    queryKey: bookingKeys.byProperty(propertyId!),
-    queryFn: () => getPropertyBookings(propertyId!),
-    enabled: !!propertyId,
-    select: (data) => Array.isArray(data) ? data : [],
-  })
+  const { data: allBookings = [] } = usePropertyBookingsQuery(propertyId, !!propertyId)
   const bookings = useMemo(
     () => allBookings.filter((b) => isWithinRange(b.created_at, dateFrom, dateTo)),
     [allBookings, dateFrom, dateTo],
   )
 
-  const loading = loadingProperty || loadingRooms
+  // Analytics API (GET /properties/{id}/analytics*)
+  const { data: analytics, isLoading: loadingAnalytics } = usePropertyAnalyticsQuery(propertyId)
+  const { data: revenueTrend = [] } = useRevenueTrendQuery(propertyId, 30)
+
+  const loading = loadingProperty || loadingRooms || loadingAnalytics
 
   const totalRooms = property?.total_rooms || rooms.length || 0
   const availableRooms = rooms.filter(r => r.status === 'AVAILABLE').length
@@ -76,6 +66,20 @@ export default function PropertyDashboardPage() {
   const adr = soldRooms > 0 ? Math.round(totalRevenue / soldRooms) : 0
   const revpar = totalRooms > 0 ? Math.round(totalRevenue / totalRooms) : 0
   const location = property ? [property.city, property.state, property.country].filter(Boolean).join(', ') : ''
+
+  // Prefer server-computed analytics; fall back to client-computed values.
+  const analyticsRevenue = analytics ? Number(analytics.total_revenue) : totalRevenue
+  const analyticsArr = analytics ? Number(analytics.arr) : 0
+  const analyticsOccupancy = analytics ? Math.round(analytics.occupancy_rate) : occupancyRate
+  const bookingsToday = analytics?.bookings_today ?? 0
+
+  const revenueTrendData = useMemo(
+    () => revenueTrend.map(p => ({
+      day: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      revenue: Number(p.revenue) || 0,
+    })),
+    [revenueTrend],
+  )
 
   if (loading) {
     return (
@@ -152,52 +156,40 @@ export default function PropertyDashboardPage() {
               icon={<Wallet size={20} color="#2563eb" />}
               iconBg="#eff6ff"
               label="Total Revenue"
-              value={`NPR ${totalRevenue.toLocaleString()}`}
-              change="12.1%"
-              changeLabel={`vs ${dateRangeLabel}`}
-              positive={true}
+              value={`NPR ${Math.round(analyticsRevenue).toLocaleString()}`}
+            />
+            <StatCard
+              icon={<TrendingUp size={20} color="#2563eb" />}
+              iconBg="#eff6ff"
+              label="Annual Revenue (ARR)"
+              value={`NPR ${Math.round(analyticsArr).toLocaleString()}`}
             />
             <StatCard
               icon={<Bed size={20} color="#2563eb" />}
               iconBg="#eff6ff"
               label="Occupancy Rate"
-              value={`${occupancyRate}%`}
-              change="3.2%"
-              changeLabel={`vs ${dateRangeLabel}`}
-              positive={occupancyRate > 50}
+              value={`${analyticsOccupancy}%`}
+              positive={analyticsOccupancy > 50}
             />
             <StatCard
               icon={<Calendar size={20} color="#2563eb" />}
               iconBg="#eff6ff"
-              label="Total Bookings"
-              value={String(occupiedRooms + availableRooms)}
-              change="13.7%"
-              changeLabel={`vs ${dateRangeLabel}`}
-              positive={false}
-            />
-            <StatCard
-              icon={<TrendingUp size={20} color="#2563eb" />}
-              iconBg="#eff6ff"
-              label="ADR (Avg. Room Rate)"
-              value={`NPR ${adr.toLocaleString()}`}
-              change="1.2%"
-              changeLabel={`vs ${dateRangeLabel}`}
-              positive={true}
+              label="Bookings Today"
+              value={String(bookingsToday)}
+              positive={bookingsToday > 0}
             />
             <StatCard
               icon={<BarChart size={20} color="#2563eb" />}
               iconBg="#eff6ff"
               label="RevPAR"
               value={`NPR ${revpar.toLocaleString()}`}
-              change="20.4%"
-              changeLabel={`vs ${dateRangeLabel}`}
               positive={revpar > 0}
             />
           </div>
 
           {/* Charts Row */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-            <RevenueChart />
+            <RevenueChart revenueTrend={revenueTrendData} />
             <OccupancyChart
               occupied={occupiedRooms}
               available={availableRooms}

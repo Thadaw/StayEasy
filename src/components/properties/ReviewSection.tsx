@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import { Hotel } from "@/data/static/hotels";
-import { usePropertyReviews } from "@/services/queries/propertyQueries";
+import { usePropertyReviews } from "@/services/queries/property/propertyQueries";
 import { ReviewSectionSkeleton } from "@/components/properties/ReviewSectionSkeleton";
 
 interface ReviewSectionProps {

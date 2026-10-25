@@ -2,7 +2,10 @@ import { useMemo } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { mapPropertyToHotel } from "@/utils/propertyMapper"
 import { allCountries } from "@/data/static/countries"
-import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "@/services/queries/bookingQueries"
+import { useBookingQuery } from "@/services/queries/booking/bookingDetailQueries"
+import { usePropertyQuery } from "@/services/queries/property/propertyDetailQueries"
+import { useAvailableRoomsQuery } from "@/services/queries/booking/availableRoomsQueries"
+import { useGuestBookingStore } from "@/store/bookings/guestBookingStore"
 
 // Loads and derives everything the reserve page needs to render: the booking
 // (by ref), the property, the available rooms, the mapped hotel, and the guest
@@ -41,9 +44,12 @@ export function useReservationData() {
   const checkIn = booking?.check_in || searchParams.get('checkIn') || ''
   const checkOut = booking?.check_out || searchParams.get('checkOut') || ''
 
-  const guestName = searchParams.get('guestName') || booking?.guest_name || ''
-  const guestEmail = searchParams.get('guestEmail') || booking?.guest_email || ''
-  const guestPhone = searchParams.get('guestPhone') || booking?.guest_phone || ''
+  const { guest: storedGuest } = useGuestBookingStore()
+
+  const guestName = searchParams.get('guestName') || booking?.guest_name || storedGuest.name || ''
+  const guestEmail = searchParams.get('guestEmail') || booking?.guest_email || storedGuest.email || ''
+  const guestPhone = searchParams.get('guestPhone') || booking?.guest_phone
+    || (storedGuest.phone ? `${storedGuest.phoneCode}${storedGuest.phone}` : '')
   const guestNationality = searchParams.get('guestCountry')
     ? allCountries.find(c => c.code === searchParams.get('guestCountry'))?.name || ''
     : ''

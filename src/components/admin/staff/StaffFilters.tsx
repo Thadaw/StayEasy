@@ -1,5 +1,4 @@
-import { Search, ChevronDown, Plus, BarChart3 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 
 interface StaffFiltersProps {
   search: string
@@ -13,34 +12,27 @@ interface StaffFiltersProps {
   onAddStaff: () => void
 }
 
-const selectStyle: React.CSSProperties = {
-  appearance: 'none',
-  WebkitAppearance: 'none',
-  MozAppearance: 'none',
-  background: '#fff',
-  border: '1px solid #E5E7EB',
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px 10px 36px',
   borderRadius: 8,
-  padding: '10px 36px 10px 14px',
-  fontSize: 14,
+  border: '1px solid #E5E7EB',
+  background: '#fff',
+  fontSize: 13,
   color: '#374151',
-  fontWeight: 500,
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const selectStyle: React.CSSProperties = {
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1px solid #E5E7EB',
+  background: '#fff',
+  fontSize: 13,
+  color: '#374151',
   cursor: 'pointer',
   outline: 'none',
-  backgroundImage: 'none',
-  minWidth: 140,
-}
-
-const dropdownWrapperStyle: React.CSSProperties = {
-  position: 'relative',
-  display: 'inline-flex',
-  alignItems: 'center',
-}
-
-const dropdownIconStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 12,
-  pointerEvents: 'none',
-  color: '#9CA3AF',
 }
 
 export default function StaffFilters({
@@ -54,140 +46,38 @@ export default function StaffFilters({
   onStatusChange,
   onAddStaff,
 }: StaffFiltersProps) {
-  const navigate = useNavigate()
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 20,
-      }}
-    >
-      <div
-        style={{
-          position: 'relative',
-          flex: '1 1 200px',
-          maxWidth: 260,
-        }}
-      >
-        <Search
-          size={18}
-          style={{
-            position: 'absolute',
-            left: 14,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#9CA3AF',
-          }}
-        />
-        <input
-          type="text"
-          value={search}
-          onChange={e => onSearchChange(e.target.value)}
-          placeholder="Search by name, email or phone..."
-          style={{
-            width: '100%',
-            padding: '10px 14px 10px 42px',
-            border: '1px solid #E5E7EB',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#374151',
-            outline: 'none',
-            background: '#fff',
-          }}
-        />
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 16, marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+      <div style={{ position: 'relative', flex: '1 1 240px' }}>
+        <Search size={16} color="#9CA3AF" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+        <input style={inputStyle} placeholder="Search staff by name, email, or contact" value={search} onChange={(e) => onSearchChange(e.target.value)} />
       </div>
-
-      <div style={dropdownWrapperStyle}>
-        <select
-          value={department}
-          onChange={e => onDepartmentChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="">All Departments</option>
-          <option value="Front Office">Front Office</option>
-          <option value="Housekeeping">Housekeeping</option>
-          <option value="Kitchen">Kitchen</option>
-          <option value="Restaurant">Restaurant</option>
-          <option value="Accounts">Accounts</option>
-          <option value="Maintenance">Maintenance</option>
-        </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
-      </div>
-
-      <div style={dropdownWrapperStyle}>
-        <select
-          value={role}
-          onChange={e => onRoleChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="">All Roles</option>
-          <option value="Manager">Manager</option>
-          <option value="Receptionist">Receptionist</option>
-          <option value="Housekeeping Staff">Housekeeping Staff</option>
-          <option value="Housekeeping Supervisor">Housekeeping Supervisor</option>
-          <option value="Chef">Chef</option>
-          <option value="Waiter">Waiter</option>
-          <option value="Cashier">Cashier</option>
-          <option value="Maintenance Staff">Maintenance Staff</option>
-        </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
-      </div>
-
-      <div style={dropdownWrapperStyle}>
-        <select
-          value={status}
-          onChange={e => onStatusChange(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="">All Status</option>
-          <option value="Active">Active</option>
-          <option value="On Leave">On Leave</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-        <ChevronDown size={16} style={dropdownIconStyle} />
-      </div>
-
-      <button
-        onClick={() => navigate('/host/staff/performance')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '10px 20px',
-          border: '1px solid #E5E7EB',
-          borderRadius: 8,
-          background: '#fff',
-          fontSize: 14,
-          fontWeight: 500,
-          color: '#374151',
-          cursor: 'pointer',
-        }}
-      >
-        <BarChart3 size={16} />
-        Staff Performance
-      </button>
-
-      <button
-        onClick={onAddStaff}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: 8,
-          background: 'var(--primary)',
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#fff',
-          cursor: 'pointer',
-          marginLeft: 'auto',
-        }}
-      >
-        <Plus size={18} />
-        Add Staff
+      <select style={selectStyle} value={department} onChange={(e) => onDepartmentChange(e.target.value)}>
+        <option value="">All Departments</option>
+        <option value="Management">Management</option>
+        <option value="Front Office">Front Office</option>
+        <option value="Housekeeping">Housekeeping</option>
+        <option value="Restaurant">Restaurant</option>
+        <option value="Kitchen">Kitchen</option>
+        <option value="Maintenance">Maintenance</option>
+      </select>
+      <select style={selectStyle} value={role} onChange={(e) => onRoleChange(e.target.value)}>
+        <option value="">All Roles</option>
+        <option value="Manager">Manager</option>
+        <option value="Front Desk">Front Desk</option>
+        <option value="Housekeeping">Housekeeping</option>
+        <option value="Waiter">Waiter</option>
+        <option value="Kitchen">Kitchen</option>
+        <option value="Maintenance">Maintenance</option>
+      </select>
+      <select style={selectStyle} value={status} onChange={(e) => onStatusChange(e.target.value)}>
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="On Leave">On Leave</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+      <button onClick={onAddStaff} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+        + Add Staff
       </button>
     </div>
   )

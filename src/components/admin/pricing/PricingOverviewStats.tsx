@@ -48,7 +48,7 @@ export default function PricingOverviewStats({ stats, onNavigate }: PricingOverv
               </div>
             </div>
             <button
-              onClick={() => onNavigate(stat.linkText)}
+              onClick={() => onNavigate(stat.viewKey)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'none', border: 'none', padding: 0,

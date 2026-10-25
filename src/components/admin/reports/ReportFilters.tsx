@@ -7,6 +7,8 @@ interface ReportFiltersProps {
   onRoomTypeChange: (value: string) => void
   bookingChannel: string
   onBookingChannelChange: (value: string) => void
+  roomTypes: string[]
+  bookingChannels: string[]
   onApply: () => void
   onReset: () => void
   onExport: () => void
@@ -47,6 +49,8 @@ export default function ReportFilters({
   onRoomTypeChange,
   bookingChannel,
   onBookingChannelChange,
+  roomTypes,
+  bookingChannels,
   onApply,
   onReset,
   onExport,
@@ -93,10 +97,9 @@ export default function ReportFilters({
             style={selectStyle}
           >
             <option>All Room Types</option>
-            <option>Standard</option>
-            <option>Deluxe</option>
-            <option>Suite</option>
-            <option>Premium</option>
+            {roomTypes.map(type => (
+              <option key={type}>{type}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -110,10 +113,9 @@ export default function ReportFilters({
             style={selectStyle}
           >
             <option>All Booking Channel</option>
-            <option>Direct</option>
-            <option>OTA</option>
-            <option>Walk-in</option>
-            <option>Phone</option>
+            {bookingChannels.map(channel => (
+              <option key={channel}>{channel}</option>
+            ))}
           </select>
         </div>
       </div>

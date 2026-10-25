@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ActivityLog } from '@/types/activity'
+import { useActivityStore } from '@/store/admin/activityStore'
 
 interface ActivityTableProps {
   activities: ActivityLog[]
@@ -15,8 +15,10 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 }
 
 export default function ActivityTable({ activities, onSelectActivity, selectedActivity }: ActivityTableProps) {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(10)
+  const currentPage = useActivityStore((s) => s.currentPage)
+  const perPage = useActivityStore((s) => s.perPage)
+  const setCurrentPage = useActivityStore((s) => s.setCurrentPage)
+  const setPerPage = useActivityStore((s) => s.setPerPage)
   const totalItems = 1248
   const totalPages = Math.ceil(totalItems / perPage)
   const startItem = (currentPage - 1) * perPage + 1

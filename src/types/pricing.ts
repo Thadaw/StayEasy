@@ -9,6 +9,7 @@ export interface PricingOverviewStat {
   iconBg: string
   iconColor: string
   linkText: string
+  viewKey: string
 }
 
 export interface PricingFeatureCard {
@@ -67,38 +68,27 @@ export interface SeasonalPricingEntry {
   status: 'Active' | 'Upcoming' | 'Expired'
 }
 
-// ===== Discount Types =====
+// ===== Discount / Special Offer Types =====
+
+export type OfferStatus = 'Active' | 'Upcoming' | 'Expired' | 'Inactive'
 
 export interface DiscountOffer {
-  id: number
+  id: string
   name: string
   description: string
-  code: string
   type: string
   applicableTo: string
   discount: string
+  discountPercentage: number
   validity: string
-  status: 'Active' | 'Upcoming' | 'Expired'
-  usage: number
+  status: OfferStatus
+  isActive: boolean
+  isCustom: boolean
+  startDate: string
+  endDate: string
   iconBg: string
   iconColor: string
   icon: string
-}
-
-export interface OfferDetail {
-  id: number
-  name: string
-  status: 'Active' | 'Upcoming' | 'Expired'
-  code: string
-  type: string
-  discount: string
-  applicableTo: string
-  minimumStay: string
-  maximumDiscount: string
-  validityPeriod: string
-  usageLimit: string
-  used: string
-  description: string
 }
 
 // ===== Package Types =====

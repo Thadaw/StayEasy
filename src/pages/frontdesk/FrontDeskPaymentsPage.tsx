@@ -13,53 +13,12 @@ import { ResetButton } from "@/components/frontdesk/ResetButton"
 import { ExportButton } from "@/components/frontdesk/ExportButton"
 import { FrontdeskGridSkeleton } from "@/components/frontdesk/FrontdeskTableSkeleton"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
-import { useQuery } from "@tanstack/react-query"
 import api from "@/api/axiosInstance"
-import { getPaymentGateways, getPaymentMethods, getPaymentStatuses } from "@/api/pms/pmsApi"
+import { usePaymentMethodsQuery, usePaymentGatewaysQuery, usePaymentStatusesQuery } from "@/services/queries/frontdesk/frontdeskEnumQueries"
+import { useFrontdeskTransactionsQuery } from "@/services/queries/frontdesk/frontdeskPaymentQueries"
+import type { PaymentBooking as Booking, Transaction } from "@/services/queries/frontdesk/frontdeskPaymentQueries"
 import { FrontDeskPagination } from "@/components/frontdesk/FrontDeskPagination"
 import { BookingReceipt } from "@/components/frontdesk/BookingReceipt"
-
-interface Booking {
-  id: string
-  guest_name: string
-  guest_email: string
-  booking_number: string
-  room_names: string[]
-  checkin_date: string
-  checkout_date: string
-  status: string
-  payment_gateway: string
-  payment_method?: string
-  payment_status?: string
-  booking_type?: string
-  subtotal: string
-  total_amount: string
-  amount_paid?: string
-  amount_due?: string
-  created_at: string
-}
-
-interface Transaction {
-  id: string
-  reference_number: string
-  guest_name: string
-  guest_email: string
-  booking_number: string
-  room_number: string
-  payment_method: string
-  payment_gateway: string
-  booking_type: string
-  amount: number
-  type: "payment" | "refund"
-  status: string
-  checkin_date: string
-  checkout_date: string
-  subtotal: number
-  total_amount: number
-  amount_paid: number
-  amount_due: number
-  created_at: string
-}
 
 type TabKey = "all" | "refunds"
 
@@ -126,93 +85,20 @@ export default function FrontDeskPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState("")
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null)
 
-  const { data: paymentMethodOptions = [] } = useQuery({
-    queryKey: ["payment-methods"],
-    queryFn: getPaymentMethods,
-  })
+  const { data: paymentMethodOptions = [] } = usePaymentMethodsQuery()
 
-  const { data: paymentGatewayOptions = [] } = useQuery({
-    queryKey: ["payment-gateways"],
-    queryFn: getPaymentGateways,
-  })
+  const { data: paymentGatewayOptions = [] } = usePaymentGatewaysQuery()
 
-  const { data: paymentStatusOptions = [] } = useQuery({
-    queryKey: ["payment-statuses"],
-    queryFn: getPaymentStatuses,
-  })
+  const { data: paymentStatusOptions = [] } = usePaymentStatusesQuery()
 
-  const { data: transactionsData, isLoading, isError } = useQuery({
-    queryKey: [
-      "frontdesk-transactions",
-      currentPropertyId,
-      activeTab,
-      searchQuery,
-      methodFilter,
-      gatewayFilter,
-      statusFilter,
-      dateRange,
-      currentPage,
-    ],
-    queryFn: async () => {
-      if (!currentPropertyId) {
-        return { data: EMPTY_TRANSACTIONS, total: 0, has_more: false }
-      }
-      const skip = (currentPage - 1) * PAGE_SIZE
-      const params: Record<string, string> = {
-        limit: String(PAGE_SIZE),
-        skip: String(skip),
-      }
-      if (searchQuery.trim()) params.search = searchQuery.trim()
-      if (methodFilter) params.payment_method = methodFilter
-      if (gatewayFilter) params.payment_gateway = gatewayFilter
-      if (statusFilter) params.payment_status = statusFilter
-      if (dateRange[0]) params.start_date = dateRange[0].toISOString().split("T")[0]
-      if (dateRange[1]) params.end_date = dateRange[1].toISOString().split("T")[0]
-
-      const { data: result } = await api.get(
-        `/properties/${currentPropertyId}/bookings`,
-        { params }
-      )
-      const wrapped = result as {
-        data?: Booking[]
-        meta?: { total?: number; has_more?: boolean }
-        total?: number
-        has_more?: boolean
-      }
-      const apiData = (wrapped?.data ?? result) as Booking[]
-      const total = wrapped?.meta?.total ?? wrapped?.total ?? apiData.length
-      const has_more = wrapped?.meta?.has_more ?? wrapped?.has_more ?? false
-
-      let filtered = apiData
-      if (activeTab === "refunds") {
-        filtered = apiData.filter((b) => b.payment_status === "refunded")
-      }
-
-      const transactions: Transaction[] = filtered.map((b) => ({
-        id: b.id,
-        reference_number: b.booking_number,
-        guest_name: b.guest_name,
-        guest_email: b.guest_email,
-        booking_number: b.booking_number,
-        room_number: b.room_names?.[0] || "—",
-        payment_method: b.payment_method || "—",
-        payment_gateway: b.payment_gateway || "—",
-        booking_type: b.booking_type || "—",
-        amount: parseFloat(b.total_amount) || 0,
-        type: b.payment_status === "refunded" ? "refund" as const : "payment" as const,
-        status: b.payment_status || "pending",
-        checkin_date: b.checkin_date,
-        checkout_date: b.checkout_date,
-        subtotal: parseFloat(b.subtotal) || 0,
-        total_amount: parseFloat(b.total_amount) || 0,
-        amount_paid: parseFloat(b.amount_paid || "0") || 0,
-        amount_due: parseFloat(b.amount_due || "0") || 0,
-        created_at: b.created_at,
-      }))
-
-      return { data: transactions, total, has_more }
-    },
-    enabled: !!currentPropertyId,
+  const { data: transactionsData, isLoading, isError } = useFrontdeskTransactionsQuery(currentPropertyId, {
+    activeTab,
+    searchQuery,
+    methodFilter,
+    gatewayFilter,
+    statusFilter,
+    dateRange,
+    currentPage,
   })
 
   const transactions = transactionsData?.data ?? EMPTY_TRANSACTIONS

@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import type { Integration } from '@/components/admin/integrations/IntegrationCard'
+import { integrationSettingsSchema, type IntegrationSettingsFormData } from '@/schemas/admin/integrationSettingsSchema'
+import { useIntegrationsStore } from '@/store/admin/integrationsStore'
 
 interface IntegrationDetailsProps {
   integration: Integration
@@ -12,10 +16,26 @@ interface IntegrationDetailsProps {
 const syncFrequencies = ['Every 5 Minutes', 'Every 15 Minutes', 'Every 30 Minutes', 'Every Hour', 'Every 6 Hours', 'Daily']
 
 export default function IntegrationDetails({ integration, onConnect, onDisconnect, onTestConnection }: IntegrationDetailsProps) {
-  const [syncFrequency, setSyncFrequency] = useState(integration.syncFrequency || 'Every 5 Minutes')
-  const [autoSync, setAutoSync] = useState(integration.autoSync ?? true)
-  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
+  const { register, watch } = useForm<IntegrationSettingsFormData>({
+    resolver: zodResolver(integrationSettingsSchema),
+    defaultValues: {
+      syncFrequency: integration.syncFrequency || 'Every 5 Minutes',
+      autoSync: integration.autoSync ?? true,
+    },
+  })
+
+  const syncFrequency = watch('syncFrequency')
+  const autoSync = watch('autoSync')
+
+  const showDisconnectConfirm = useIntegrationsStore((s) => s.showDisconnectConfirm)
+  const setShowDisconnectConfirm = useIntegrationsStore((s) => s.setShowDisconnectConfirm)
+  const testResult = useIntegrationsStore((s) => s.testResult)
+  const setTestResult = useIntegrationsStore((s) => s.setTestResult)
+  const setIntegrationSettings = useIntegrationsStore((s) => s.setIntegrationSettings)
+
+  useEffect(() => {
+    setIntegrationSettings(integration.id, { syncFrequency, autoSync })
+  }, [integration.id, syncFrequency, autoSync, setIntegrationSettings])
 
   const handleTestConnection = () => {
     onTestConnection(integration.id)
@@ -118,8 +138,7 @@ export default function IntegrationDetails({ integration, onConnect, onDisconnec
         <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted-foreground)', display: 'block', marginBottom: 6 }}>Sync Frequency</label>
         <div style={{ position: 'relative' }}>
           <select
-            value={syncFrequency}
-            onChange={(e) => setSyncFrequency(e.target.value)}
+            {...register('syncFrequency')}
             style={{
               width: '100%',
               padding: '10px 14px',
@@ -168,8 +187,7 @@ export default function IntegrationDetails({ integration, onConnect, onDisconnec
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, color: 'var(--foreground)' }}>
           <input
             type="checkbox"
-            checked={autoSync}
-            onChange={(e) => setAutoSync(e.target.checked)}
+            {...register('autoSync')}
             style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
           />
           Auto Sync

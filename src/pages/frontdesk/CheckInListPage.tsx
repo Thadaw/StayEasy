@@ -9,8 +9,8 @@ import { FrontdeskTableSkeleton } from "@/components/frontdesk/FrontdeskTableSke
 import { useBookingCheckInStore } from "@/store/frontdesk/bookingCheckInStore"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getTodayArrivals, checkInGuest, uploadCitizenshipPhotos } from "@/api/pms/pmsApi"
+import { useTodayArrivalsQuery } from "@/services/queries/frontdesk/frontdeskArrivalQueries"
+import { useCheckInGuestMutation } from "@/services/mutations/frontdesk/frontdeskCheckInMutations"
 import { collectPaymentSchema } from "@/schemas/frontdesk/paymentSchema"
 import type { ArrivalGuest } from "@/types/pms"
 
@@ -59,11 +59,9 @@ export default function CheckInListPage() {
   const { checkIn, isCheckedIn } = useBookingCheckInStore()
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
-  const queryClient = useQueryClient()
 
   const {
     register,
-    watch,
     reset,
     formState: { errors },
   } = useForm({
@@ -75,43 +73,9 @@ export default function CheckInListPage() {
     },
   })
 
-  const paymentAmount = watch("paymentAmount")
-  const paymentGateway = watch("paymentGateway")
+  const { data: arrivals = [], isLoading, isError } = useTodayArrivalsQuery(currentPropertyId)
 
-  const { data: arrivals = [], isLoading, isError } = useQuery({
-    queryKey: ["today-arrivals", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return []
-      return await getTodayArrivals(currentPropertyId)
-    },
-    enabled: !!currentPropertyId,
-  })
-
-  const checkInMutation = useMutation({
-    mutationFn: async ({ refNumber, amount, paymentGateway }: { refNumber: string; amount: number; paymentGateway: string }) => {
-      await checkInGuest(refNumber)
-      if (frontFile || backFile) {
-        await uploadCitizenshipPhotos(refNumber, frontFile, backFile)
-      }
-      return { refNumber, amount, paymentGateway }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["today-arrivals", currentPropertyId] })
-      queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
-      if (selectedBooking) checkIn(selectedBooking.booking_id)
-      setSelectedBooking(null)
-      reset({ paymentAmount: "", paymentGateway: "CASH", transactionId: "" })
-      setFrontFile(null)
-      setBackFile(null)
-      setFrontPreview(null)
-      setBackPreview(null)
-    },
-    onError: (error: Error & { response?: { data?: { message?: string; detail?: string } } }) => {
-      const msg = error.response?.data?.detail || error.response?.data?.message || "Check-in failed. Please try again."
-      toast.error(msg)
-      setSelectedBooking(null)
-    },
-  })
+  const checkInMutation = useCheckInGuestMutation(currentPropertyId)
 
   const search = searchQuery.trim().toLowerCase()
   const filtered = arrivals.filter((departure) => {
@@ -161,11 +125,26 @@ export default function CheckInListPage() {
 
   const onCheckIn = () => {
     if (!selectedBooking) return
-    checkInMutation.mutate({
-      refNumber: selectedBooking.ref_number,
-      amount: parseFloat(paymentAmount) || 0,
-      paymentGateway,
-    })
+    const booking = selectedBooking
+    checkInMutation.mutate(
+      { refNumber: booking.ref_number, frontFile, backFile },
+      {
+        onSuccess: () => {
+          checkIn(booking.booking_id)
+          setSelectedBooking(null)
+          reset({ paymentAmount: "", paymentGateway: "CASH", transactionId: "" })
+          setFrontFile(null)
+          setBackFile(null)
+          setFrontPreview(null)
+          setBackPreview(null)
+        },
+        onError: (error: Error & { response?: { data?: { message?: string; detail?: string } } }) => {
+          const msg = error.response?.data?.detail || error.response?.data?.message || "Check-in failed. Please try again."
+          toast.error(msg)
+          setSelectedBooking(null)
+        },
+      }
+    )
   }
 
   return (

@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useRestaurantStore } from '@/store/admin/restaurantStore'
 
 const hours = ['12 AM', '4 AM', '8 AM', '12 PM', '4 PM', '8 PM']
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -19,7 +19,7 @@ const getColor = (level: number) => {
 }
 
 export default function BusyHoursHeatmap() {
-  const [period] = useState('This Week')
+  const period = useRestaurantStore((s) => s.period)
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: 20 }}>

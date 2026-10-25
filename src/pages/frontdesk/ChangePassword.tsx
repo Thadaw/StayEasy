@@ -53,7 +53,11 @@ export default function ChangePassword() {
     if (result.success) {
       setSuccess(true)
       navigateTimerRef.current = setTimeout(() => {
-        navigate(role === 'manager' ? '/manager/dashboard' : '/frontdesk')
+        navigate(
+          role === 'manager' ? '/manager/dashboard'
+            : role === 'host' ? '/host/overall-dashboard'
+              : '/frontdesk'
+        )
       }, 1500)
     } else {
       setError(result.error || 'Failed to change password. Please try again.')

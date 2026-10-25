@@ -108,6 +108,7 @@ export function AppRoutes() {
       <Route path="/host/admin-profile" element={<ProtectedRoute allowedRoles={['host']}><AdminProfilePage /></ProtectedRoute>} />
       <Route path="/host/portal" element={<ProtectedRoute allowedRoles={['host']}><HostPortalPageNew /></ProtectedRoute>} />
       <Route path="/host/tenant-setup" element={<ProtectedRoute allowedRoles={['host']}><TenantSetupPage /></ProtectedRoute>} />
+      <Route path="/host/change-password" element={<ProtectedRoute allowedRoles={['host']}><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/host/overall-dashboard" element={<ProtectedRoute allowedRoles={['host']}><OverallDashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties" element={<ProtectedRoute allowedRoles={['host']}><DashboardPage /></ProtectedRoute>} />
       <Route path="/host/my-properties/dashboard" element={<Navigate to="/host/my-properties" replace />} />
@@ -132,11 +133,10 @@ export function AppRoutes() {
       <Route path="/host/notifications" element={<ProtectedRoute allowedRoles={['host']}><HostNotificationsPage /></ProtectedRoute>} />
       <Route path="/host/activity" element={<ProtectedRoute allowedRoles={['host']}><ActivityLogsPage /></ProtectedRoute>} />
       <Route path="/host/support" element={<ProtectedRoute allowedRoles={['host']}><SupportPage /></ProtectedRoute>} />
-      <Route path="/host/admin-profile" element={<ProtectedRoute allowedRoles={['host']}><AdminProfilePage /></ProtectedRoute>} />
       <Route path="/host/restaurant" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
       <Route path="/host/restaurant/orders" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
       <Route path="/host/restaurant/tables" element={<ProtectedRoute allowedRoles={['host']}><RestaurantPosPage /></ProtectedRoute>} />
-      <Route path="/manager/login" element={<LoginPage />} />
+      <Route path="/manager/login" element={<RedirectIfLoggedIn><LoginPage /></RedirectIfLoggedIn>} />
       <Route path="/manager/dashboard" element={<ManagerRoute><ManagerDashboardPage /></ManagerRoute>} />
       <Route path="/manager/bookings" element={<ManagerRoute><ManagerBookingsPage /></ManagerRoute>} />
       <Route path="/manager/bookings/new" element={<ManagerRoute><ManagerNewBookingPage /></ManagerRoute>} />

@@ -8,25 +8,10 @@ import { usePropertyStore } from "@/store/properties/propertyStore"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "@/components/frontdesk/FrontDeskSidebar"
 import { ResetButton } from "@/components/frontdesk/ResetButton"
 import { FrontdeskGridSkeleton } from "@/components/frontdesk/FrontdeskTableSkeleton"
-import { useQuery } from "@tanstack/react-query"
-import api from "@/api/axiosInstance"
+import { useGuestBookingsQuery, useInHouseGuestsQuery } from "@/services/queries/frontdesk/frontdeskGuestQueries"
+import type { GuestBooking as Booking, InHouseGuest } from "@/services/queries/frontdesk/frontdeskGuestQueries"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { FrontDeskPagination } from "@/components/frontdesk/FrontDeskPagination"
-
-interface Booking {
-  id: string
-  guest_name: string
-  guest_email: string
-  guest_phone?: string
-  booking_number: string
-  room_names: string[]
-  checkin_date: string
-  checkout_date: string
-  status: string
-  payment_status?: string
-  total_amount: string
-  created_at: string
-}
 
 interface GuestProfile {
   id: string
@@ -112,8 +97,6 @@ function deriveGuestsFromBookings(bookings: Booking[]): GuestProfile[] {
   )
 }
 
-const EMPTY_BOOKINGS: Booking[] = []
-
 export default function FrontDeskGuestsPage() {
   const { currentPropertyId } = usePropertyStore()
   const { formatAmount } = usePropertyCurrency()
@@ -124,69 +107,9 @@ export default function FrontDeskGuestsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState("recent")
 
-  const { data: bookingsData, isLoading: isLoadingBookings, isError } = useQuery({
-    queryKey: ["frontdesk-guests", currentPropertyId, searchQuery],
-    queryFn: async () => {
-      if (!currentPropertyId) return EMPTY_BOOKINGS
-      let allBookings: Booking[] = []
-      let skip = 0
-      let hasMore = true
-      let iterations = 0
-      const MAX_ITERATIONS = 100
+  const { data: bookingsData, isLoading: isLoadingBookings, isError } = useGuestBookingsQuery(currentPropertyId, searchQuery)
 
-      while (hasMore && iterations < MAX_ITERATIONS) {
-        iterations++
-        const params: Record<string, string> = { limit: "50", skip: String(skip) }
-        if (searchQuery.trim()) params.search = searchQuery.trim()
-
-        const { data: result } = await api.get(
-          `/properties/${currentPropertyId}/bookings`,
-          { params }
-        )
-        const wrapped = result as {
-          data?: Booking[]
-          meta?: { has_more?: boolean }
-          has_more?: boolean
-        }
-        const apiData = (wrapped?.data ?? result) as Booking[]
-        allBookings = [...allBookings, ...apiData]
-        hasMore = wrapped?.meta?.has_more ?? wrapped?.has_more ?? false
-        skip += 50
-      }
-
-      return allBookings
-    },
-    enabled: !!currentPropertyId,
-  })
-
-  interface InHouseGuest {
-    guest_id: string | null
-    booking_guest_id: string | null
-    full_name: string
-    email: string
-    phone: string
-    nationality: string
-    ref_number: string
-    checkin_date: string
-    checkout_date: string
-  }
-
-  const { data: inHouseGuestsData = [], isLoading: isLoadingInHouse } = useQuery({
-    queryKey: ["in-house-guests", currentPropertyId],
-    queryFn: async (): Promise<InHouseGuest[]> => {
-      if (!currentPropertyId) return []
-      try {
-        const { data: result } = await api.get(`/staff/properties/${currentPropertyId}/booking-guests`, {
-          params: { skip: 0, limit: 100 },
-        })
-        const wrapped = result as { data?: InHouseGuest[] }
-        return wrapped?.data || []
-      } catch {
-        return []
-      }
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: inHouseGuestsData = [], isLoading: isLoadingInHouse } = useInHouseGuestsQuery(currentPropertyId)
 
   const allGuests = useMemo(() => deriveGuestsFromBookings(bookingsData ?? []), [bookingsData])
 

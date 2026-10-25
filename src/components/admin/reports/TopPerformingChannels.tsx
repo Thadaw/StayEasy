@@ -6,6 +6,12 @@ interface TopPerformingChannelsProps {
   totalRevenue: number
 }
 
+function formatCompact(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`
+  return String(Math.round(value))
+}
+
 export default function TopPerformingChannels({ data, totalRevenue }: TopPerformingChannelsProps) {
   return (
     <div
@@ -50,8 +56,8 @@ export default function TopPerformingChannels({ data, totalRevenue }: TopPerform
               textAlign: 'center',
             }}
           >
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.2 }}>
-              ${totalRevenue.toLocaleString()}
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.2 }}>
+              NPR {formatCompact(totalRevenue)}
             </p>
             <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>Total</p>
           </div>

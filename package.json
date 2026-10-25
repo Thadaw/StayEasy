@@ -17,6 +17,7 @@
     "@tanstack/react-query": "^5.101.0",
     "axios": "^1.17.0",
     "i18next": "^26.3.6",
+    "knip": "^6.41.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
     "qrcode": "^1.5.4",

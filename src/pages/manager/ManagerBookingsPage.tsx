@@ -108,16 +108,16 @@ export default function ManagerBookingsPage() {
   }, [allBookings, searchQuery, statusFilter, sourceFilter, roomTypeFilter])
 
   const stats = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = formatDate(new Date().toISOString())
     return {
       total: allBookings.length,
       arrivals: allBookings.filter((b) => {
         const d = b.checkIn
-        return d.includes(todayStr)
+        return d === todayStr
       }).length,
       departures: allBookings.filter((b) => {
         const d = b.checkOut
-        return d.includes(todayStr)
+        return d === todayStr
       }).length,
       pending: allBookings.filter((b) => b.status === 'Pending').length,
     }

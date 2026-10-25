@@ -40,7 +40,7 @@ import BulkActionModal from '@/components/admin/housekeeping/BulkActionModal'
 import ReviewMaintenanceModal from '@/components/admin/housekeeping/ReviewMaintenanceModal'
 import AssignTaskModal, { type AssignTaskValues } from '@/components/manager/staff/AssignTaskModal'
 import { useManagerPropertyStore } from '@/store/manager/managerPropertyStore'
-import { getAllProperties, getHousekeepingRooms, getRoomStatusSummary, getTasks, getHousekeepingStaffOptions, getTaskRoomOptions, getStaffWorkSummary, getTaskTypes, getRoomTypes, bulkAssignTasks } from '@/api/pms/pmsApi'
+import { getAllProperties, getHousekeepingRooms, getRoomStatusSummary, getTasks, getHousekeepingStaffOptions, getTaskRoomOptions, getStaffWorkSummary, getTaskTypes, getRoomTypes, bulkAssignTasks, completeTask } from '@/api/pms/pmsApi'
 import { propertyKeys, housekeepingKeys, roomTypeKeys } from '@/lib/queryKeys'
 import type {
   ApiRoomStatus,
@@ -174,6 +174,15 @@ export default function ManagerHousekeepingPage() {
     onError: () => toast.error('Failed to apply bulk assignments'),
   })
 
+  const completeTaskMutation = useMutation({
+    mutationFn: (taskId: string) => completeTask(propertyId, taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: housekeepingKeys.tasks(propertyId) })
+      toast.success('Task marked complete')
+    },
+    onError: () => toast.error('Failed to complete task'),
+  })
+
   const demoRows = useMemo(() => buildDemoSchedule(), [])
 
   const rows: ScheduleRow[] = useMemo(() => {
@@ -305,6 +314,7 @@ export default function ManagerHousekeepingPage() {
   const tasks = apiTasks.length > 0
     ? apiTasks.map<HousekeepingTask>(t => ({
         id: t.id.slice(0, 8),
+        apiId: t.id,
         room: t.room_name,
         taskType: 'Cleaning',
         priority: t.priority === 'HIGH' ? 'High' : t.priority === 'LOW' ? 'Low' : 'Medium',
@@ -349,13 +359,18 @@ export default function ManagerHousekeepingPage() {
 
   const handleAssignTask = (values: AssignTaskValues) => {
     setShowAssignTask(false)
-    toast.success(`Task assigned to ${values.employee.split(' – ')[0]}`)
+    toast.success(`Task assigned to ${values.employee.split('·')[0].trim()}`)
   }
 
   const handleCompleteTask = (taskId: string) => {
-    setCompletedTaskIds(prev => [...prev, taskId])
+    const task = tasks.find(t => t.id === taskId)
+    if (task?.apiId) {
+      completeTaskMutation.mutate(task.apiId)
+    } else {
+      setCompletedTaskIds(prev => [...prev, taskId])
+      toast.success('Task marked complete')
+    }
     setViewingTask(null)
-    toast.success('Task marked complete')
   }
 
   const progressPercent = stats.total > 0 ? Math.round((stats.clean / stats.total) * 100) : 0

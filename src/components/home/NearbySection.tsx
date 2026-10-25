@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNearbyProperties } from "@/services/queries/propertyQueries";
+import { useNearbyProperties } from "@/services/queries/property/propertyQueries";
 import { useLocation } from "@/context/LocationContext";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { PropertySection } from "@/components/home/PropertySection";

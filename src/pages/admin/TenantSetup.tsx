@@ -1,67 +1,47 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { AxiosError } from 'axios'
-import * as pmsApi from '@/api/pms/pmsApi'
 import { useAuth } from '@/context/AuthContext'
+import { useTenantQuery } from '@/services/queries/admin/tenantQuery'
+import { useCreateTenantMutation } from '@/services/mutations/admin/tenantMutations'
+import { tenantNameSchema, type TenantNameFormData } from '@/schemas/admin/tenantSchema'
+import { ROUTES } from '@/constants/routes'
 
 export default function TenantSetup() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [name, setName] = useState('')
+  const { data: tenant, isLoading: checking } = useTenantQuery()
+  const { mutateAsync: createTenant, isPending: loading } = useCreateTenantMutation()
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [checking, setChecking] = useState(true)
+  const [created, setCreated] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<TenantNameFormData>({
+    resolver: zodResolver(tenantNameSchema),
+    defaultValues: { name: '' },
+    mode: 'onTouched',
+  })
 
   useEffect(() => {
-    ;(async () => {
-      try {
-        const tenant = await pmsApi.getTenant()
-        if (tenant && tenant.name) {
-          navigate('/', { replace: true })
-          return
-        }
-      } catch {
-        // no tenant yet — show form
-      }
-      setChecking(false)
-    })()
-  }, [navigate])
-
-  const validate = (value: string): string | null => {
-    const trimmed = value.trim()
-
-    if (!trimmed) {
-      return 'Tenant / brand name is required.'
+    // Already set up? Nothing to do here — send the host to their dashboard.
+    // Skipped right after a create so the explicit post-create redirect wins.
+    if (!created && tenant && tenant.name) {
+      navigate(ROUTES.hostOverallDashboard, { replace: true })
     }
+  }, [tenant, navigate, created])
 
-    if (/^\d+$/.test(trimmed)) {
-      return 'Tenant name cannot contain only numbers.'
-    }
-
-    if (trimmed.length < 2) {
-      return 'Tenant name must be at least 2 characters.'
-    }
-
-    if (trimmed.length > 50) {
-      return 'Tenant name must be 50 characters or less.'
-    }
-
-    return null
-  }
-
-  const handleSubmit = async () => {
-    const trimmed = name.trim()
-    const validationError = validate(trimmed)
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
-    setLoading(true)
+  const onSubmit = async (data: TenantNameFormData) => {
+    const trimmed = data.name.trim()
     setError('')
 
     try {
-      await pmsApi.createTenant(trimmed)
+      await createTenant(trimmed)
+      setCreated(true)
       try {
         const draftKey = `serveIQDraft_${user?.id || user?.email || 'anon'}`
         localStorage.removeItem(draftKey)
@@ -115,10 +95,10 @@ export default function TenantSetup() {
       }
 
       setError(message)
-    } finally {
-      setLoading(false)
     }
   }
+
+  const displayError = error || errors.name?.message
 
   if (checking) {
     return (
@@ -168,90 +148,88 @@ export default function TenantSetup() {
           This will be your tenant name for managing properties
         </div>
 
-        <div style={{ marginBottom: 13 }}>
-          <label style={{
-            fontSize: 11,
-            color: 'var(--muted-foreground)',
-            marginBottom: 3,
-            display: 'block',
-            textTransform: 'uppercase',
-            letterSpacing: '0.4px',
-          }}>
-            Tenant / Brand name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => {
-              setName(e.target.value)
-              if (error) setError('')
-            }}
-            placeholder="e.g. Sunset Hospitality"
-            autoComplete="off"
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div style={{ marginBottom: 13 }}>
+            <label style={{
+              fontSize: 11,
+              color: 'var(--muted-foreground)',
+              marginBottom: 3,
+              display: 'block',
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+            }}>
+              Tenant / Brand name
+            </label>
+            <input
+              type="text"
+              {...register('name', { onChange: () => { if (error) setError('') } })}
+              placeholder="e.g. Sunset Hospitality"
+              autoComplete="off"
+              disabled={loading}
+              style={{
+                width: '100%',
+                border: 'none',
+                borderBottom: displayError ? '1.5px solid var(--destructive)' : '1.5px solid var(--border)',
+                padding: '7px 4px 7px 0',
+                fontSize: 14,
+                color: 'var(--foreground)',
+                outline: 'none',
+                background: 'transparent',
+              }}
+            />
+          </div>
+
+          {displayError && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 8,
+              marginBottom: 12,
+            }}>
+              <span style={{ color: '#991b1b', fontSize: 14 }}>&#9888;</span>
+              <p style={{ color: '#991b1b', fontSize: 12, margin: 0 }}>{displayError}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
             disabled={loading}
             style={{
               width: '100%',
+              padding: 11,
+              background: loading ? 'var(--muted)' : 'var(--foreground)',
               border: 'none',
-              borderBottom: error ? '1.5px solid var(--destructive)' : '1.5px solid var(--border)',
-              padding: '7px 4px 7px 0',
+              borderRadius: 8,
+              color: '#fff',
               fontSize: 14,
-              color: 'var(--foreground)',
-              outline: 'none',
-              background: 'transparent',
+              fontWeight: 600,
+              cursor: loading ? 'default' : 'pointer',
+              marginTop: 2,
+              opacity: loading ? 0.7 : 1,
             }}
-          />
-        </div>
-
-        {error && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 14px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: 8,
-            marginBottom: 12,
-          }}>
-            <span style={{ color: '#991b1b', fontSize: 14 }}>&#9888;</span>
-            <p style={{ color: '#991b1b', fontSize: 12, margin: 0 }}>{error}</p>
-          </div>
-        )}
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: 11,
-            background: loading ? 'var(--muted)' : 'var(--foreground)',
-            border: 'none',
-            borderRadius: 8,
-            color: '#fff',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: loading ? 'default' : 'pointer',
-            marginTop: 2,
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? (
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{
-                width: 14,
-                height: 14,
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderTopColor: '#fff',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-                display: 'inline-block',
-              }} />
-              Setting up...
-            </span>
-          ) : (
-            'Continue'
-          )}
-        </button>
+          >
+            {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{
+                  width: 14,
+                  height: 14,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#fff',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                  display: 'inline-block',
+                }} />
+                Setting up...
+              </span>
+            ) : (
+              'Continue'
+            )}
+          </button>
+        </form>
       </div>
     </div>
   )

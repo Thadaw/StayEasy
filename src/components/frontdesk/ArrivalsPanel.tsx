@@ -3,8 +3,8 @@ import { ArrowLeft, Search, CheckCircle, Loader2 } from "lucide-react"
 import { useBookingCheckInStore } from "@/store/frontdesk/bookingCheckInStore"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getTodayArrivals, checkInGuest } from "@/api/pms/pmsApi"
+import { useTodayArrivalsQuery } from "@/services/queries/frontdesk/frontdeskArrivalQueries"
+import { useCheckInGuestMutation } from "@/services/mutations/frontdesk/frontdeskCheckInMutations"
 import type { ArrivalGuest } from "@/types/pms"
 
 interface ArrivalsPanelProps {
@@ -56,24 +56,10 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
   const { checkIn, isCheckedIn } = useBookingCheckInStore()
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
-  const queryClient = useQueryClient()
 
-  const checkInMutation = useMutation({
-    mutationFn: (refNumber: string) => checkInGuest(refNumber),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["today-arrivals", currentPropertyId] })
-      queryClient.invalidateQueries({ queryKey: ["arrivals-for-folio", currentPropertyId] })
-    },
-  })
+  const checkInMutation = useCheckInGuestMutation(currentPropertyId)
 
-  const { data: arrivals = [], isLoading, isError } = useQuery({
-    queryKey: ["today-arrivals", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return []
-      return await getTodayArrivals(currentPropertyId)
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: arrivals = [], isLoading, isError } = useTodayArrivalsQuery(currentPropertyId)
 
   const search = searchQuery.trim().toLowerCase()
   const filtered = arrivals.filter((departure) => {
@@ -230,7 +216,7 @@ export function ArrivalsPanel({ onClose }: ArrivalsPanelProps) {
                         <button
                           onClick={() => {
                             checkIn(booking.booking_id)
-                            checkInMutation.mutate(booking.ref_number)
+                            checkInMutation.mutate({ refNumber: booking.ref_number })
                           }}
                           disabled={checkInMutation.isPending}
                           className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"

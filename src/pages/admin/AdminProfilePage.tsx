@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
+import { profileSchema, passwordSchema, type ProfileFormData, type PasswordFormData } from '@/schemas/admin/profileSchemas'
+import { useUpdateProfileMutation, useUpdatePasswordMutation } from '@/services/mutations/admin/profileMutations'
+import { useProfileStore } from '@/store/admin/profileStore'
 import {
   User,
   Shield,
@@ -43,37 +48,69 @@ export default function AdminProfilePage() {
   const initials = (firstName?.[0] || '') + (lastName?.[0] || '')
   const displayInitials = initials.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'A'
 
-  const [activeTab, setActiveTab] = useState('profile')
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const activeTab = useProfileStore((s) => s.activeTab)
+  const setActiveTab = useProfileStore((s) => s.setActiveTab)
+  const showCurrentPassword = useProfileStore((s) => s.showCurrentPassword)
+  const showNewPassword = useProfileStore((s) => s.showNewPassword)
+  const showConfirmPassword = useProfileStore((s) => s.showConfirmPassword)
+  const toggleCurrentPassword = useProfileStore((s) => s.toggleCurrentPassword)
+  const toggleNewPassword = useProfileStore((s) => s.toggleNewPassword)
+  const toggleConfirmPassword = useProfileStore((s) => s.toggleConfirmPassword)
 
-  const [formData, setFormData] = useState({
-    fullName: `${firstName} ${lastName}`.trim() || 'Admin',
-    username: firstName.toLowerCase(),
-    email: user?.email || 'admin@serveiq.com',
-    altEmail: 'admin.contact@serveiq.com',
-    phoneCode: '+977',
-    phoneNumber: '9841234567',
-    timezone: '(GMT+05:45) Asia/Kathmandu',
-    role: user?.role || 'Super Administrator',
-    dateFormat: 'May 24, 2025 (MMM DD, YYYY)',
-    language: 'English',
-    timeFormat: '10:30 AM (12 Hours)',
+  const updateProfileMutation = useUpdateProfileMutation()
+  const updatePasswordMutation = useUpdatePasswordMutation()
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      fullName: `${firstName} ${lastName}`.trim() || 'Admin',
+      username: firstName.toLowerCase(),
+      email: user?.email || 'admin@serveiq.com',
+      altEmail: 'admin.contact@serveiq.com',
+      phoneCode: '+977',
+      phoneNumber: '9841234567',
+      timezone: '(GMT+05:45) Asia/Kathmandu',
+      role: user?.role || 'Super Administrator',
+      dateFormat: 'May 24, 2025 (MMM DD, YYYY)',
+      language: 'English',
+      timeFormat: '10:30 AM (12 Hours)',
+    },
   })
 
-  const [passwords, setPasswords] = useState({
-    current: '',
-    newPass: '',
-    confirm: '',
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    reset: resetPassword,
+  } = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { current: '', newPass: '', confirm: '' },
   })
 
-  const handleFormChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  const role = watch('role')
+  const email = watch('email')
+
+  const onProfileSubmit = (data: ProfileFormData) => {
+    updateProfileMutation.mutate(
+      { ...data, altEmail: data.altEmail ?? '' },
+      { onSuccess: () => toast.success('Profile updated successfully') }
+    )
   }
 
-  const handlePasswordChange = (field: string, value: string) => {
-    setPasswords(prev => ({ ...prev, [field]: value }))
+  const onPasswordSubmit = (data: PasswordFormData) => {
+    updatePasswordMutation.mutate(
+      data,
+      {
+        onSuccess: () => {
+          toast.success('Password updated successfully')
+          resetPassword()
+        },
+      }
+    )
   }
 
   return (
@@ -151,11 +188,11 @@ export default function AdminProfilePage() {
                       background: '#dcfce7',
                       color: '#16a34a',
                     }}>
-                      {formData.role}
+                      {role}
                     </span>
                   </div>
                   <p style={{ fontSize: 14, color: '#6b7280', margin: '4px 0 12px' }}>
-                    {formData.email}
+                    {email}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: '#6b7280' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -233,8 +270,7 @@ export default function AdminProfilePage() {
                           </label>
                           <input
                             type="text"
-                            value={formData.fullName}
-                            onChange={(e) => handleFormChange('fullName', e.target.value)}
+                            {...register('fullName')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -256,8 +292,7 @@ export default function AdminProfilePage() {
                           </label>
                           <input
                             type="text"
-                            value={formData.username}
-                            onChange={(e) => handleFormChange('username', e.target.value)}
+                            {...register('username')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -279,8 +314,7 @@ export default function AdminProfilePage() {
                           </label>
                           <input
                             type="email"
-                            value={formData.email}
-                            onChange={(e) => handleFormChange('email', e.target.value)}
+                            {...register('email')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -302,8 +336,7 @@ export default function AdminProfilePage() {
                           </label>
                           <input
                             type="email"
-                            value={formData.altEmail}
-                            onChange={(e) => handleFormChange('altEmail', e.target.value)}
+                            {...register('altEmail')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -325,8 +358,7 @@ export default function AdminProfilePage() {
                           </label>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <select
-                              value={formData.phoneCode}
-                              onChange={(e) => handleFormChange('phoneCode', e.target.value)}
+                              {...register('phoneCode')}
                               style={{
                                 padding: '10px 12px',
                                 borderRadius: 8,
@@ -347,8 +379,7 @@ export default function AdminProfilePage() {
                             </select>
                             <input
                               type="tel"
-                              value={formData.phoneNumber}
-                              onChange={(e) => handleFormChange('phoneNumber', e.target.value)}
+                              {...register('phoneNumber')}
                               style={{
                                 flex: 1,
                                 padding: '10px 14px',
@@ -370,8 +401,7 @@ export default function AdminProfilePage() {
                             Timezone
                           </label>
                           <select
-                            value={formData.timezone}
-                            onChange={(e) => handleFormChange('timezone', e.target.value)}
+                            {...register('timezone')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -400,7 +430,7 @@ export default function AdminProfilePage() {
                           </label>
                           <input
                             type="text"
-                            value={formData.role}
+                            value={role}
                             disabled
                             style={{
                               width: '100%',
@@ -423,8 +453,7 @@ export default function AdminProfilePage() {
                             Date Format
                           </label>
                           <select
-                            value={formData.dateFormat}
-                            onChange={(e) => handleFormChange('dateFormat', e.target.value)}
+                            {...register('dateFormat')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -451,8 +480,7 @@ export default function AdminProfilePage() {
                             Language
                           </label>
                           <select
-                            value={formData.language}
-                            onChange={(e) => handleFormChange('language', e.target.value)}
+                            {...register('language')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -478,8 +506,7 @@ export default function AdminProfilePage() {
                             Time Format
                           </label>
                           <select
-                            value={formData.timeFormat}
-                            onChange={(e) => handleFormChange('timeFormat', e.target.value)}
+                            {...register('timeFormat')}
                             style={{
                               width: '100%',
                               padding: '10px 14px',
@@ -501,7 +528,9 @@ export default function AdminProfilePage() {
 
                       {/* Action Buttons */}
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 32 }}>
-                        <button style={{
+                        <button
+                          onClick={handleSubmit(onProfileSubmit)}
+                          style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: 8,
@@ -517,7 +546,9 @@ export default function AdminProfilePage() {
                           <Save size={16} />
                           Save Changes
                         </button>
-                        <button style={{
+                        <button
+                          onClick={() => reset()}
+                          style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: 8,
@@ -799,9 +830,8 @@ export default function AdminProfilePage() {
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showCurrentPassword ? 'text' : 'password'}
-                        value={passwords.current}
-                        onChange={(e) => handlePasswordChange('current', e.target.value)}
                         placeholder="Enter current password"
+                        {...registerPassword('current')}
                         style={{
                           width: '100%',
                           padding: '10px 40px 10px 14px',
@@ -815,7 +845,7 @@ export default function AdminProfilePage() {
                         }}
                       />
                       <button
-                        onClick={() => setShowCurrentPassword(v => !v)}
+                        onClick={toggleCurrentPassword}
                         style={{
                           position: 'absolute',
                           right: 8,
@@ -842,9 +872,8 @@ export default function AdminProfilePage() {
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showNewPassword ? 'text' : 'password'}
-                        value={passwords.newPass}
-                        onChange={(e) => handlePasswordChange('newPass', e.target.value)}
                         placeholder="Enter new password"
+                        {...registerPassword('newPass')}
                         style={{
                           width: '100%',
                           padding: '10px 40px 10px 14px',
@@ -858,7 +887,7 @@ export default function AdminProfilePage() {
                         }}
                       />
                       <button
-                        onClick={() => setShowNewPassword(v => !v)}
+                        onClick={toggleNewPassword}
                         style={{
                           position: 'absolute',
                           right: 8,
@@ -885,9 +914,8 @@ export default function AdminProfilePage() {
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
-                        value={passwords.confirm}
-                        onChange={(e) => handlePasswordChange('confirm', e.target.value)}
                         placeholder="Confirm new password"
+                        {...registerPassword('confirm')}
                         style={{
                           width: '100%',
                           padding: '10px 40px 10px 14px',
@@ -901,7 +929,7 @@ export default function AdminProfilePage() {
                         }}
                       />
                       <button
-                        onClick={() => setShowConfirmPassword(v => !v)}
+                        onClick={toggleConfirmPassword}
                         style={{
                           position: 'absolute',
                           right: 8,
@@ -921,7 +949,9 @@ export default function AdminProfilePage() {
                   </div>
                 </div>
 
-                <button style={{
+                <button
+                  onClick={handlePasswordSubmit(onPasswordSubmit)}
+                  style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,

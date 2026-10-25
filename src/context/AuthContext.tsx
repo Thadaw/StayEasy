@@ -102,7 +102,7 @@ function migrateSharedSession() {
   try {
     if (localStorage.getItem(TOKEN_KEY)) return
     const role = localStorage.getItem(ROLE_KEY) || sessionStorage.getItem(ROLE_KEY)
-    if (role !== 'host' && role !== 'staff' && role !== 'guest') return
+    if (role !== 'host' && role !== 'staff' && role !== 'guest' && role !== 'manager') return
     const token = sessionStorage.getItem(TOKEN_KEY)
     if (!token) return
     localStorage.setItem(REMEMBER_KEY, 'true')
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
-      window.removeEventListener('visibilitychange', onVisible)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [token])
 

@@ -33,20 +33,19 @@ export type StayDetailsFormData = z.infer<typeof stayDetailsSchema>
 export type CreateBookingFormData = z.infer<typeof createBookingSchema>
 
 export const editBookingSchema = z.object({
-  guestName: z.string().min(1, "Full name is required"),
-  email: z.string().min(1, "Email is required").email("Invalid email format"),
-  phone: z.string().min(1, "Phone number is required"),
   checkinDate: z.string().min(1, "Check-in date is required"),
   checkoutDate: z.string().min(1, "Check-out date is required"),
   adults: z.number().min(1, "At least 1 adult required"),
   children: z.number().min(0),
   specialRequests: z.string().optional(),
+  reason: z.string().min(1, "Reason for change is required"),
 })
 
 export type EditBookingFormData = z.infer<typeof editBookingSchema>
 
 export const walkInBookingSchema = z.object({
   guestName: z.string().min(1, "Guest name is required"),
+  guestEmail: z.string().min(1, "Email is required").email("Invalid email format"),
   phone: z.string().optional(),
   nationality: z.string().optional(),
   adults: z.number().min(1, "At least 1 adult required"),

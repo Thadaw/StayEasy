@@ -216,9 +216,22 @@ export interface SpecialOfferPayload {
   is_custom: boolean
 }
 
-export interface SpecialOfferResponse extends SpecialOfferPayload {
+export interface SpecialOfferUpdatePayload {
+  title?: string
+  description?: string
+  discount_percentage?: number
+  start_date?: string
+  end_date?: string
+  is_active?: boolean
+}
+
+export interface SpecialOfferResponse
+  extends Omit<SpecialOfferPayload, 'description' | 'start_date' | 'end_date'> {
   id: string
   property_id: string
+  description: string | null
+  start_date: string
+  end_date: string
   created_at?: string
   updated_at?: string
 }

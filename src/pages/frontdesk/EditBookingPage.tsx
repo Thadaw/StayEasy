@@ -1,54 +1,22 @@
 import { useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import toast from "react-hot-toast"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import api from "@/api/axiosInstance"
+import { useBookingDetailQuery } from "@/services/queries/frontdesk/frontdeskBookingQueries"
+import { useUpdateBookingMutation } from "@/services/mutations/frontdesk/frontdeskBookingMutations"
 import { FormField } from "@/components/frontdesk/FormField"
 import { editBookingSchema } from "@/schemas/frontdesk/bookingSchema"
 import type { EditBookingFormData } from "@/schemas/frontdesk/bookingSchema"
-
-interface BookingDetail {
-  id: string
-  ref_number: string
-  guest: {
-    full_name: string
-    email: string
-    phone: string
-    nationality?: string
-  }
-  rooms: { room_name: string; room_type: string; base_rate: string }[]
-  checkin_date: string
-  checkout_date: string
-  number_of_adults: number
-  number_of_children: number
-  status: string
-  payment_status: string
-  booking_type: string
-  total_amount: string
-  amount_paid: string
-  amount_due: string
-}
 
 export default function EditBookingPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const { currentPropertyId } = usePropertyStore()
-  const queryClient = useQueryClient()
 
-  const { data: booking, isLoading, isError } = useQuery({
-    queryKey: ["booking-detail", id],
-    queryFn: async () => {
-      if (!currentPropertyId || !id) return null
-      const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings/${id}`)
-      const wrapped = result as { data?: BookingDetail }
-      return (wrapped?.data ?? result) as BookingDetail
-    },
-    enabled: !!currentPropertyId && !!id,
-  })
+  const { data: booking, isLoading, isError } = useBookingDetailQuery(currentPropertyId, id)
 
   const {
     register,
@@ -62,44 +30,17 @@ export default function EditBookingPage() {
   useEffect(() => {
     if (booking) {
       reset({
-        guestName: booking.guest?.full_name || "",
-        email: booking.guest?.email || "",
-        phone: booking.guest?.phone || "",
         checkinDate: booking.checkin_date || "",
         checkoutDate: booking.checkout_date || "",
         adults: booking.number_of_adults || 1,
         children: booking.number_of_children || 0,
-        specialRequests: "",
+        specialRequests: booking.special_requests || "",
+        reason: "",
       })
     }
   }, [booking, reset])
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: EditBookingFormData) => {
-      if (!currentPropertyId || !id) throw new Error("Missing params")
-      const payload = {
-        guest_name: data.guestName,
-        email: data.email,
-        phone: data.phone,
-        checkin_date: data.checkinDate,
-        checkout_date: data.checkoutDate,
-        number_of_adults: data.adults,
-        number_of_children: data.children,
-        special_requests: data.specialRequests,
-      }
-      const { data: result } = await api.patch(`/properties/${currentPropertyId}/bookings/${id}`, payload)
-      return result
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["booking-detail", id] })
-      queryClient.invalidateQueries({ queryKey: ["frontdesk-bookings", currentPropertyId] })
-      toast.success("Booking updated successfully")
-      navigate(-1)
-    },
-    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
-      toast.error(error.response?.data?.message || "Failed to update booking. Please try again.")
-    },
-  })
+  const updateMutation = useUpdateBookingMutation(currentPropertyId, id)
 
   const handleGoBack = () => {
     navigate(-1)
@@ -124,6 +65,9 @@ export default function EditBookingPage() {
     )
   }
 
+  const guest = booking.guest || booking.booking_guest
+  const readOnlyInput = "w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-6 py-6">
@@ -137,37 +81,42 @@ export default function EditBookingPage() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Booking</h1>
 
-        <form onSubmit={handleSubmit((data) => updateMutation.mutate(data))} className="space-y-6">
+        <form
+          onSubmit={handleSubmit((data) =>
+            updateMutation.mutate(data, {
+              onSuccess: () => {
+                toast.success("Booking updated successfully")
+                navigate(-1)
+              },
+              onError: (error: Error & { response?: { data?: { message?: string; detail?: string } } }) => {
+                toast.error(
+                  error.response?.data?.detail ||
+                    error.response?.data?.message ||
+                    "Failed to update booking. Please try again."
+                )
+              },
+            })
+          )}
+          className="space-y-6"
+        >
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-base font-bold text-gray-900 mb-4">Guest Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Full Name" error={errors.guestName?.message} required>
-                <input
-                  type="text"
-                  {...register("guestName")}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+              <FormField label="Full Name">
+                <input type="text" value={guest?.full_name || "—"} disabled className={readOnlyInput} />
               </FormField>
-              <FormField label="Email" error={errors.email?.message} required>
-                <input
-                  type="email"
-                  {...register("email")}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+              <FormField label="Email">
+                <input type="text" value={guest?.email || "—"} disabled className={readOnlyInput} />
               </FormField>
-              <FormField label="Phone" error={errors.phone?.message} required>
-                <input
-                  type="tel"
-                  {...register("phone")}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+              <FormField label="Phone">
+                <input type="text" value={guest?.phone || "—"} disabled className={readOnlyInput} />
               </FormField>
               <FormField label="Booking Type">
                 <input
                   type="text"
                   value={booking.booking_type?.replace("_", " ") || "—"}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
+                  className={readOnlyInput}
                 />
               </FormField>
             </div>
@@ -212,7 +161,16 @@ export default function EditBookingPage() {
                     type="text"
                     value={booking.rooms?.map((r) => r.room_name).join(", ") || "—"}
                     disabled
-                    className="w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
+                    className={readOnlyInput}
+                  />
+                </FormField>
+              </div>
+              <div className="col-span-2">
+                <FormField label="Special Requests" error={errors.specialRequests?.message}>
+                  <textarea
+                    rows={3}
+                    {...register("specialRequests")}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
                   />
                 </FormField>
               </div>
@@ -223,30 +181,27 @@ export default function EditBookingPage() {
             <h3 className="text-base font-bold text-gray-900 mb-4">Payment Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField label="Total Amount">
-                <input
-                  type="text"
-                  value={booking.total_amount || "—"}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
-                />
+                <input type="text" value={booking.total_amount ?? "—"} disabled className={readOnlyInput} />
               </FormField>
               <FormField label="Amount Paid">
-                <input
-                  type="text"
-                  value={booking.amount_paid || "—"}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
-                />
+                <input type="text" value={booking.amount_paid ?? "—"} disabled className={readOnlyInput} />
               </FormField>
               <FormField label="Amount Due">
-                <input
-                  type="text"
-                  value={booking.amount_due || "—"}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-gray-500"
-                />
+                <input type="text" value={booking.amount_due ?? "—"} disabled className={readOnlyInput} />
               </FormField>
             </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-base font-bold text-gray-900 mb-4">Reason for Change</h3>
+            <FormField label="Reason" error={errors.reason?.message} required>
+              <textarea
+                rows={2}
+                {...register("reason")}
+                placeholder="Why is this booking being modified?"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              />
+            </FormField>
           </div>
 
           <div className="flex justify-end gap-3">

@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useRestaurantStore } from '@/store/admin/restaurantStore'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const weeklyData = [
@@ -13,7 +13,7 @@ const weeklyData = [
 ]
 
 export default function SalesOverviewChart() {
-  const [period] = useState('This Week')
+  const period = useRestaurantStore((s) => s.period)
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: 20 }}>

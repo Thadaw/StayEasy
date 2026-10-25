@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { useUIStore } from '@/store/ui/uiStore'
+import { useStaffPerformanceStore } from '@/store/admin/staffPerformanceStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import {
@@ -101,10 +101,14 @@ export default function StaffPerformancePage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
 
-  const [search, setSearch] = useState('')
-  const [deptFilter, setDeptFilter] = useState('')
-  const [shiftFilter, setShiftFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const search = useStaffPerformanceStore((s) => s.search)
+  const setSearch = useStaffPerformanceStore((s) => s.setSearch)
+  const deptFilter = useStaffPerformanceStore((s) => s.deptFilter)
+  const setDeptFilter = useStaffPerformanceStore((s) => s.setDeptFilter)
+  const shiftFilter = useStaffPerformanceStore((s) => s.shiftFilter)
+  const setShiftFilter = useStaffPerformanceStore((s) => s.setShiftFilter)
+  const statusFilter = useStaffPerformanceStore((s) => s.statusFilter)
+  const setStatusFilter = useStaffPerformanceStore((s) => s.setStatusFilter)
 
   const filteredStaff = staffTable.filter(s => {
     if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false

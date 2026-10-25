@@ -55,7 +55,7 @@ function KpiIcon({ type, bg, color }: { type: KpiCardData['iconType']; bg: strin
 
 export default function ReportStats({ stats }: ReportStatsProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
       {stats.map(card => (
         <div
           key={card.label}
@@ -74,13 +74,15 @@ export default function ReportStats({ stats }: ReportStatsProps) {
           </div>
           <p style={{ fontSize: 13, color: '#64748B', margin: 0, fontWeight: 500 }}>{card.label}</p>
           <p style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: '4px 0 8px', lineHeight: 1.2 }}>{card.value}</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <TrendingUp size={13} color="#1E8449" />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#1E8449' }}>
-              +{card.growth}%
-            </span>
-            <span style={{ fontSize: 12, color: '#94A3B8' }}>vs yesterday</span>
-          </div>
+          {card.growth !== undefined && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <TrendingUp size={13} color="#1E8449" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#1E8449' }}>
+                +{card.growth}%
+              </span>
+              <span style={{ fontSize: 12, color: '#94A3B8' }}>vs yesterday</span>
+            </div>
+          )}
         </div>
       ))}
     </div>

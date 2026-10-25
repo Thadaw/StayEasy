@@ -6,23 +6,25 @@ import { Navbar } from "@/components/layout/Navbar"
 import { Footer } from "@/components/layout/Footer"
 import { PageMessage } from "@/components/ui/PageMessage"
 import { GuestBookingDetailsSkeleton } from "@/components/bookings/GuestBookingDetailsSkeleton"
-import { GuestInformationForm } from "@/components/bookings/GuestInformationForm"
+import { GuestInformationForm, GUEST_INFO_FORM_ID } from "@/components/bookings/GuestInformationForm"
 import type { GuestInformationFormData } from "@/schemas/booking/bookingSchemas"
-import { useGuestProfile } from "@/services/queries/userQueries"
+import { useGuestProfile } from "@/services/queries/user/userQueries"
 import { formatDate } from "@/utils/format"
 import { mapPropertyToHotel } from "@/utils/propertyMapper"
-import { useBookingCreation } from "@/services/mutations/bookingMutations"
-import { useBookingQuery, usePropertyQuery, useAvailableRoomsQuery } from "@/services/queries/bookingQueries"
+import { useBookingCreation } from "@/services/mutations/booking/bookingCreationMutations"
+import { useBookingSpecialRequests } from "@/services/mutations/booking/bookingSpecialRequestsMutations"
+import { useBookingQuery } from "@/services/queries/booking/bookingDetailQueries"
+import { useAvailableRoomsQuery } from "@/services/queries/booking/availableRoomsQueries"
+import { usePropertyQuery } from "@/services/queries/property/propertyDetailQueries"
+import { useGuestBookingStore } from "@/store/bookings/guestBookingStore"
 import { parseJSON } from "@/utils/helpers"
 import { getDefaultDates } from "@/utils/date"
 import { allCountries } from "@/data/static/countries"
 import { calculateNights } from "@/utils/time"
-import api from "@/api/axiosInstance"
 import toast from "react-hot-toast"
 
 const HOTEL_IMAGE_HEIGHT = "h-44 sm:h-56"
 const MAX_AMENITIES_DISPLAY = 5
-const DEFAULT_PHONE_CODE = "+977"
 
 export default function BookingDetailsPage() {
   const { id } = useParams()
@@ -82,50 +84,42 @@ export default function BookingDetailsPage() {
     || Object.values(guestAllocation).reduce((s, c) => s + c, 0)
     || bookingParams.adults + bookingParams.children
 
-  const [guest, setGuest] = useState<GuestInformationFormData>({
-    name: "",
-    email: "",
-    phoneCode: DEFAULT_PHONE_CODE,
-    phone: "",
-    country: "",
-  })
-
-  const [specialRequest, setSpecialRequest] = useState("")
+  const { guest, specialRequest, setGuest, updateGuest, setSpecialRequest } = useGuestBookingStore()
 
   useEffect(() => {
     if (!guestProfile) return
-    setGuest(prev => {
-      const next = { ...prev }
-      if (guestProfile.full_name) next.name = guestProfile.full_name
-      if (guestProfile.email) next.email = guestProfile.email
-      if (guestProfile.phone) {
-        const match = guestProfile.phone.match(/^(\+\d+)(.*)$/)
-        if (match) {
-          next.phoneCode = match[1]
-          next.phone = match[2].replace(/\D/g, '')
-        } else {
-          next.phone = guestProfile.phone.replace(/\D/g, '')
-        }
+    const patch: Partial<GuestInformationFormData> = {}
+    if (guestProfile.full_name) patch.name = guestProfile.full_name
+    if (guestProfile.email) patch.email = guestProfile.email
+    if (guestProfile.phone) {
+      const match = guestProfile.phone.match(/^(\+\d+)(.*)$/)
+      if (match) {
+        patch.phoneCode = match[1]
+        patch.phone = match[2].replace(/\D/g, "")
+      } else {
+        patch.phone = guestProfile.phone.replace(/\D/g, "")
       }
-      if (guestProfile.nationality) {
-        const nat = guestProfile.nationality.trim().toLowerCase()
-        const found = allCountries.find(c =>
+    }
+    if (guestProfile.nationality) {
+      const nat = guestProfile.nationality.trim().toLowerCase()
+      const found = allCountries.find(
+        c =>
           c.name.toLowerCase() === nat ||
           c.code.toLowerCase() === nat ||
           c.name.toLowerCase().includes(nat) ||
           nat.includes(c.name.toLowerCase())
-        )
-        if (found) next.country = found.code
-      }
-      return next
-    })
-  }, [guestProfile])
+      )
+      if (found) patch.country = found.code
+    }
+    if (Object.keys(patch).length > 0) updateGuest(patch)
+  }, [guestProfile, updateGuest])
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
 
   const { createBooking } = useBookingCreation()
+  const { updateSpecialRequests } = useBookingSpecialRequests()
 
   useEffect(() => {
     if (!id || refNumber || creationStartedRef.current) return
@@ -223,16 +217,15 @@ export default function BookingDetailsPage() {
   const couponCode = bookingData?.coupon_code || null
   const total = bookingData?.total_amount || subtotal
 
-  const handleNext = async () => {
+  const handleGuestSubmit = async (data: GuestInformationFormData) => {
     if (!refNumber) {
       toast.error("Your reservation is still being created. Please wait a moment.")
       return
     }
-    if (specialRequest.trim() && refNumber) {
+    setGuest(data)
+    if (specialRequest.trim()) {
       try {
-        await api.patch(`/bookings/${refNumber}/special-requests`, {
-          special_requests: specialRequest.trim()
-        })
+        await updateSpecialRequests({ refNumber, specialRequests: specialRequest.trim() })
       } catch {
         // Continue even if special request fails
       }
@@ -244,10 +237,10 @@ export default function BookingDetailsPage() {
     if (guestCountsParam) params.set("guestCounts", guestCountsParam)
     params.set("adults", String(bookingParams.adults))
     params.set("children", String(bookingParams.children))
-    params.set("guestName", guest.name)
-    params.set("guestEmail", guest.email)
-    params.set("guestPhone", `${guest.phoneCode}${guest.phone}`)
-    if (guest.country) params.set("guestCountry", guest.country)
+    params.set("guestName", data.name)
+    params.set("guestEmail", data.email)
+    params.set("guestPhone", `${data.phoneCode}${data.phone}`)
+    if (data.country) params.set("guestCountry", data.country)
     if (refNumber) params.set("ref", refNumber)
     navigate(`/reserve/${id}?${params.toString()}`)
   }
@@ -479,7 +472,7 @@ export default function BookingDetailsPage() {
           <div className="order-2 lg:order-2 w-full lg:max-w-[600px] lg:sticky lg:top-6 lg:self-start">
             <GuestInformationForm
               guest={guest}
-              onGuestChange={setGuest}
+              onSubmit={handleGuestSubmit}
               roomNames={roomLines.map(l => l.room.name).join(", ")}
             />
 
@@ -496,7 +489,8 @@ export default function BookingDetailsPage() {
             </div>
 
             <button
-              onClick={handleNext}
+              type="submit"
+              form={GUEST_INFO_FORM_ID}
               disabled={creatingBooking || !refNumber}
               className="w-full mt-5 py-3.5 rounded-xl bg-[#1A3C5E] text-white font-semibold text-sm hover:bg-[#163552] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#1A3C5E]"
             >

@@ -1,13 +1,13 @@
-import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { BookingTrendData } from '@/types/reports'
 
 interface BookingsTrendProps {
   data: BookingTrendData[]
+  period: string
+  onPeriodChange: (period: string) => void
 }
 
-export default function BookingsTrend({ data }: BookingsTrendProps) {
-  const [period, setPeriod] = useState('Last 7 Days')
+export default function BookingsTrend({ data, period, onPeriodChange }: BookingsTrendProps) {
 
   return (
     <div
@@ -31,7 +31,7 @@ export default function BookingsTrend({ data }: BookingsTrendProps) {
         <div>
           <select
             value={period}
-            onChange={e => setPeriod(e.target.value)}
+            onChange={e => onPeriodChange(e.target.value)}
             style={{
               appearance: 'none',
               WebkitAppearance: 'none',
@@ -51,7 +51,6 @@ export default function BookingsTrend({ data }: BookingsTrendProps) {
             }}
           >
             <option>Last 7 Days</option>
-            <option>This Month</option>
             <option>Last 30 Days</option>
           </select>
         </div>
@@ -70,7 +69,7 @@ export default function BookingsTrend({ data }: BookingsTrendProps) {
             tick={{ fontSize: 11, fill: '#94A3B8' }}
             tickLine={false}
             axisLine={false}
-            domain={[80, 140]}
+            allowDecimals={false}
           />
           <Tooltip
             contentStyle={{

@@ -1,7 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Copy, ImagePlus, Send, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { supportTicketSchema, type SupportTicketFormData } from '@/schemas/admin/supportSchema'
 
 interface UploadedImage {
   file: File
@@ -12,8 +15,19 @@ export default function SupportForm() {
   const location = useLocation()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [summary, setSummary] = useState('')
-  const [description, setDescription] = useState('')
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<SupportTicketFormData>({
+    resolver: zodResolver(supportTicketSchema),
+    defaultValues: { summary: '', description: '' },
+  })
+
+  const summary = watch('summary')
+  const description = watch('description')
   const [images, setImages] = useState<UploadedImage[]>([])
   const [copied, setCopied] = useState(false)
 
@@ -71,24 +85,14 @@ export default function SupportForm() {
     })
   }
 
-  const handleSubmit = () => {
-    if (!summary.trim()) {
-      toast.error('Please provide a summary of the issue')
-      return
-    }
-    if (!description.trim()) {
-      toast.error('Please describe what happened')
-      return
-    }
+  const onSubmit = () => {
     toast.success('Ticket submitted successfully!')
-    setSummary('')
-    setDescription('')
+    reset()
     setImages([])
   }
 
   const handleCancel = () => {
-    setSummary('')
-    setDescription('')
+    reset()
     setImages([])
     toast('Form cleared')
   }
@@ -154,9 +158,9 @@ export default function SupportForm() {
         </label>
         <input
           type="text"
-          value={summary}
-          onChange={(e) => setSummary(e.target.value.slice(0, 100))}
+          maxLength={100}
           placeholder="Example: Unable to save room details"
+          {...register('summary')}
           style={{
             width: '100%',
             padding: '10px 14px',
@@ -169,6 +173,9 @@ export default function SupportForm() {
             boxSizing: 'border-box',
           }}
         />
+        {errors.summary && (
+          <div style={{ fontSize: 12, color: 'var(--destructive)', marginTop: 4 }}>{errors.summary.message}</div>
+        )}
         <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
           {summary.length}/100
         </div>
@@ -180,10 +187,10 @@ export default function SupportForm() {
           Describe what happened and what you expected <span style={{ color: 'var(--destructive)' }}>*</span>
         </label>
         <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
+          maxLength={1000}
           placeholder="Please provide as much detail as possible..."
           rows={6}
+          {...register('description')}
           style={{
             width: '100%',
             padding: '10px 14px',
@@ -198,6 +205,9 @@ export default function SupportForm() {
             boxSizing: 'border-box',
           }}
         />
+        {errors.description && (
+          <div style={{ fontSize: 12, color: 'var(--destructive)', marginTop: 4 }}>{errors.description.message}</div>
+        )}
         <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
           {description.length}/1000
         </div>
@@ -335,7 +345,7 @@ export default function SupportForm() {
           Cancel
         </button>
         <button
-          onClick={handleSubmit}
+          onClick={handleSubmit(onSubmit)}
           style={{
             display: 'flex',
             alignItems: 'center',

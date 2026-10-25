@@ -27,6 +27,7 @@ export type StaffAvailability = 'Available' | 'Busy'
 
 export interface HousekeepingTask {
   id: string
+  apiId?: string
   room: string
   taskType: TaskType
   priority: Priority

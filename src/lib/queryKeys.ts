@@ -35,6 +35,14 @@ export const tenantKeys = {
   all: ['tenant'] as const,
 }
 
+export const analyticsKeys = {
+  all: ['analytics'] as const,
+  overview: (propertyId: string) => ['analytics', 'overview', propertyId] as const,
+  revenueTrend: (propertyId: string, days: number) => ['analytics', 'revenue-trend', propertyId, days] as const,
+  revenueByRoomType: (propertyId: string, days: number) => ['analytics', 'revenue-by-room-type', propertyId, days] as const,
+  bookingTrend: (propertyId: string, days: number) => ['analytics', 'booking-trend', propertyId, days] as const,
+}
+
 export const bookingKeys = {
   all: ['bookings'] as const,
   byProperty: (propertyId: string) => ['bookings', propertyId] as const,
@@ -99,4 +107,57 @@ export const nearbyKeys = {
       p.children,
       p.rooms,
     ] as const,
+}
+
+// ─── Front Desk (PMS / staff) ─────────────────────────────
+export const frontdeskKeys = {
+  all: ['frontdesk'] as const,
+
+  // Summary & dashboard
+  summary: (propertyId: string) => ['front-desk-summary', propertyId] as const,
+  revenueBookings: (propertyId: string) => ['revenue-bookings', propertyId] as const,
+
+  // Arrivals / departures / check-in / check-out
+  arrivals: (propertyId: string) => ['today-arrivals', propertyId] as const,
+  arrivalsForFolio: (propertyId: string) => ['arrivals-for-folio', propertyId] as const,
+  departures: (propertyId: string) => ['today-departures', propertyId] as const,
+  checkoutBookings: (propertyId: string) => ['checkout-bookings', propertyId] as const,
+  checkoutBooking: (propertyId: string, id?: string) => ['checkout-booking', propertyId, id] as const,
+
+  // Bookings
+  bookings: (propertyId: string) => ['frontdesk-bookings', propertyId] as const,
+  bookingDetail: (id?: string) => ['booking-detail', id] as const,
+
+  // Folios
+  folios: (propertyId: string) => ['frontdesk-folios', propertyId] as const,
+  folioDetail: (folioId?: string) => ['folio-detail', folioId] as const,
+
+  // Guests / in-house
+  guests: (propertyId: string) => ['frontdesk-guests', propertyId] as const,
+  inHouse: (propertyId: string) => ['in-house-guests', propertyId] as const,
+
+  // Payments
+  payments: (propertyId: string) => ['frontdesk-payments', propertyId] as const,
+
+  // Activities
+  activities: (propertyId: string) => ['frontdesk-activities', propertyId] as const,
+
+  // Room status / calendar
+  roomCalendar: (propertyId: string) => ['room-calendar', propertyId] as const,
+  roomsWithRates: (propertyId: string) => ['rooms-with-rates', propertyId] as const,
+
+  // Enums (static dropdowns)
+  enums: {
+    all: ['frontdesk', 'enums'] as const,
+    bookingStatuses: ['frontdesk', 'enums', 'booking-statuses'] as const,
+    paymentStatuses: ['frontdesk', 'enums', 'payment-statuses'] as const,
+    paymentGateways: ['frontdesk', 'enums', 'payment-gateways'] as const,
+    paymentMethods: ['frontdesk', 'enums', 'payment-methods'] as const,
+    bookingTypes: ['frontdesk', 'enums', 'booking-types'] as const,
+  },
+
+  // Notifications
+  notifications: (propertyId: string) => ['notifications', propertyId] as const,
+  notificationsDropdown: (propertyId: string) => ['staff-notifications-dropdown', propertyId] as const,
+  unreadCount: (propertyId: string) => ['unread-notifications-count', propertyId] as const,
 }

@@ -1,13 +1,82 @@
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Pencil, LogIn, XCircle, MapPin, Mail, Phone, Globe, IdCard, Award, Clock, FileText, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ManagerLayout from '@/components/manager/ManagerLayout'
 import CheckInOverlay from '@/components/manager/checkin/CheckInOverlay'
-import { getDemoBookingDetail, DEMO_BOOKINGS, STATUS_PILL, formatNPR } from '@/data/demo/demoBookings'
+import { getDemoBookingDetail, DEMO_BOOKINGS, STATUS_PILL, formatNPR, type BookingDetail } from '@/data/demo/demoBookings'
+import type { BookingRow } from '@/components/manager/bookings/ManagerBookingTable'
+import { useManagerPropertyStore } from '@/store/manager/managerPropertyStore'
+import { getAllProperties, getPropertyBookings } from '@/api/pms/pmsApi'
+import { propertyKeys, bookingKeys } from '@/lib/queryKeys'
+import type { PropertyBooking } from '@/types/pms'
+import { normalizeStatus, formatDate } from '@/components/admin/bookings/bookingUtils'
 import { useBookingStatusStore } from '@/store/bookings/bookingStatusStore'
 import { useEditBookingStore } from '@/store/bookings/editBookingStore'
 import { useBookingEditStore, applyBookingEdit } from '@/store/bookings/bookingEditStore'
+
+function mapApiBookingToDetail(b: PropertyBooking): { row: BookingRow; detail: BookingDetail } {
+  const status = normalizeStatus(b.status)
+  let paymentStatus = 'Paid'
+  if (status === 'Cancelled') paymentStatus = 'Refunded'
+  else if (status === 'Pending') paymentStatus = 'Unpaid'
+
+  const roomName = b.room_names?.[0] || '–'
+
+  let source = 'Direct'
+  if (b.payment_gateway?.toLowerCase().includes('ota')) source = 'OTA'
+  else if (b.payment_gateway?.toLowerCase().includes('phone')) source = 'Phone'
+  else if (b.payment_gateway?.toLowerCase().includes('walk')) source = 'Walk-in'
+
+  const subtotal = Number.parseFloat(b.subtotal || '') || 0
+  const total = Number.parseFloat(b.total_amount || '') || 0
+  const paid = Number.parseFloat(b.amount_paid || '') || 0
+  const balance = Number.parseFloat(b.amount_due || '') || 0
+
+  const row: BookingRow = {
+    id: b.booking_number || b.id,
+    guest: b.guest_name || '–',
+    room: roomName,
+    roomType: roomName,
+    checkIn: formatDate(b.checkin_date),
+    checkOut: formatDate(b.checkout_date),
+    guests: b.guest_nationality ? 1 : 2,
+    source,
+    paymentStatus,
+    status,
+    createdAt: formatDate(b.created_at),
+  }
+
+  const detail: BookingDetail = {
+    roomSummary: b.room_names?.join(', ') || '–',
+    checkInAt: formatDate(b.checkin_date),
+    checkOutAt: formatDate(b.checkout_date),
+    guestsSummary: '–',
+    ratePlan: '–',
+    roomStatus: '–',
+    guestName: b.guest_name || '–',
+    guestEmail: b.guest_email || '–',
+    guestPhone: b.guest_phone || '–',
+    guestNationality: b.guest_nationality || '–',
+    guestIdPassport: '–',
+    guestLoyalty: '–',
+    roomCharges: subtotal,
+    taxesFees: Math.max(0, total - subtotal),
+    total,
+    paid,
+    balance,
+    paymentMethod: b.payment_method || b.payment_gateway || '–',
+    timeline: [
+      { label: 'Booking created', timestamp: formatDate(b.created_at) },
+      { label: 'Check-in', timestamp: formatDate(b.checkin_date) },
+      { label: 'Check-out', timestamp: formatDate(b.checkout_date) },
+    ],
+    notes: '–',
+  }
+
+  return { row, detail }
+}
 
 const cardStyle: React.CSSProperties = {
   background: '#fff',
@@ -46,8 +115,33 @@ export default function ManagerBookingDetailPage() {
   const openEditBooking = useEditBookingStore((s) => s.open)
   const savedEdit = useBookingEditStore((s) => s.edits[id])
 
-  const baseRow = useMemo(() => DEMO_BOOKINGS.find((b) => b.id === id), [id])
-  const baseDetail = useMemo(() => getDemoBookingDetail(id), [id])
+  const assignedPropertyId = useManagerPropertyStore((s) => s.assignedPropertyId)
+  const { data: properties = [] } = useQuery({
+    queryKey: propertyKeys.all,
+    queryFn: getAllProperties,
+  })
+  const property = properties.find((p) => p.id === assignedPropertyId) ?? properties[0] ?? null
+  const effectivePropertyId = property?.id ?? ''
+  const { data: apiBookings = [] } = useQuery({
+    queryKey: bookingKeys.byProperty(effectivePropertyId),
+    queryFn: () => getPropertyBookings(effectivePropertyId),
+    enabled: !!effectivePropertyId,
+    select: (data: unknown) => (Array.isArray(data) ? data : []) as PropertyBooking[],
+  })
+
+  const apiMapped = useMemo(() => {
+    const match = apiBookings.find((b) => (b.booking_number || b.id) === id)
+    return match ? mapApiBookingToDetail(match) : null
+  }, [apiBookings, id])
+
+  const baseRow = useMemo(
+    () => apiMapped?.row ?? DEMO_BOOKINGS.find((b) => b.id === id),
+    [apiMapped, id],
+  )
+  const baseDetail = useMemo(
+    () => apiMapped?.detail ?? getDemoBookingDetail(id),
+    [apiMapped, id],
+  )
   const { row, detail } = useMemo(() => {
     if (!baseRow || !baseDetail) return { row: baseRow, detail: baseDetail }
     return applyBookingEdit(baseRow, baseDetail, savedEdit)

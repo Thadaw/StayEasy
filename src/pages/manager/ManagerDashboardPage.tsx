@@ -114,7 +114,7 @@ export default function ManagerDashboardPage() {
           icon={<DollarSign size={20} color="#10b981" />}
           iconBg="#dcfce7"
           label="Revenue Today"
-          value={`$${todayRevenue.toLocaleString()}`}
+          value={`NPR ${todayRevenue.toLocaleString()}`}
           change="+15%"
           positive={true}
         />
@@ -122,7 +122,7 @@ export default function ManagerDashboardPage() {
           icon={<TrendingUp size={20} color="#3b82f6" />}
           iconBg="#dbeafe"
           label="Monthly Revenue"
-          value={`$${monthlyRevenue.toLocaleString()}`}
+          value={`NPR ${monthlyRevenue.toLocaleString()}`}
           change="+8%"
           positive={true}
         />

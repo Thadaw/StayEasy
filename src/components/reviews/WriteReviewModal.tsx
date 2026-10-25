@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Star } from "lucide-react"
 import toast from "react-hot-toast"
-import { useSubmitReview } from "@/services/mutations/propertyMutations"
+import { useSubmitReview } from "@/services/mutations/review/reviewMutations"
 
 interface WriteReviewModalProps {
   propertyId: string

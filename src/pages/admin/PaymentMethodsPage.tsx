@@ -1,5 +1,16 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import toast from 'react-hot-toast'
 import { useUIStore } from '@/store/ui/uiStore'
+import {
+  paymentRulesSchema,
+  refundSettingsSchema,
+  invoiceSettingsSchema,
+  type PaymentRulesFormData,
+  type RefundSettingsFormData,
+  type InvoiceSettingsFormData,
+} from '@/schemas/admin/paymentSettingsSchema'
+import { usePaymentSettingsStore } from '@/store/admin/paymentSettingsStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import {
@@ -69,57 +80,65 @@ const tabs = ['Payment Methods', 'Payment Rules', 'Refund Settings', 'Invoice Se
 export default function PaymentMethodsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [activeTab, setActiveTab] = useState<string>('Payment Methods')
-  const [selectedMethod, setSelectedMethod] = useState<string>('khalti')
+  const activeTab = usePaymentSettingsStore((s) => s.activeTab)
+  const setActiveTab = usePaymentSettingsStore((s) => s.setActiveTab)
+  const selectedMethod = usePaymentSettingsStore((s) => s.selectedMethod)
+  const setSelectedMethod = usePaymentSettingsStore((s) => s.setSelectedMethod)
+  const storedRules = usePaymentSettingsStore((s) => s.rules)
+  const storedRefundSettings = usePaymentSettingsStore((s) => s.refundSettings)
+  const storedInvoiceSettings = usePaymentSettingsStore((s) => s.invoiceSettings)
+  const setRules = usePaymentSettingsStore((s) => s.setRules)
+  const setRefundSettings = usePaymentSettingsStore((s) => s.setRefundSettings)
+  const setInvoiceSettings = usePaymentSettingsStore((s) => s.setInvoiceSettings)
 
-  // Payment Rules state
-  const [rules, setRules] = useState({
-    minTransaction: '100',
-    maxTransaction: '500000',
-    dailyLimit: '2000000',
-    currency: 'NPR',
-    timeout: '15',
-    autoRetry: true,
-    retryAttempts: '3',
-    receiptAutoGenerate: true,
-    receiptFormat: 'PDF',
-    requireConfirmation: false,
+  const {
+    register: registerRule,
+    handleSubmit: submitRule,
+    watch: watchRule,
+    setValue: setRuleValue,
+  } = useForm<PaymentRulesFormData>({
+    resolver: zodResolver(paymentRulesSchema),
+    defaultValues: storedRules,
   })
 
-  // Refund Settings state
-  const [refundSettings, setRefundSettings] = useState({
-    allowRefunds: true,
-    refundWindow: '48',
-    autoRefund: false,
-    partialRefund: true,
-    cancellationFee: '10',
-    cancellationType: 'percentage' as 'percentage' | 'flat',
-    refundProcessingTime: '5-7',
-    notifyGuest: true,
-    notifyAdmin: true,
-    refundMethod: 'original',
-    nonRefundableDeposits: false,
-    peakSeasonPolicy: true,
+  const {
+    register: registerRefund,
+    handleSubmit: submitRefund,
+    watch: watchRefund,
+    setValue: setRefundValue,
+  } = useForm<RefundSettingsFormData>({
+    resolver: zodResolver(refundSettingsSchema),
+    defaultValues: storedRefundSettings,
   })
 
-  // Invoice Settings state
-  const [invoiceSettings, setInvoiceSettings] = useState({
-    autoGenerate: true,
-    template: 'standard',
-    prefix: 'INV',
-    nextNumber: '1001',
-    includeTax: true,
-    taxRate: '13',
-    taxLabel: 'VAT',
-    company_name: 'ServeIQ Hotel',
-    company_address: 'Lazimpat, Kathmandu, Nepal',
-    company_phone: '+977 1 4567890',
-    company_email: 'billing@serveiq.com',
-    footerNote: 'Thank you for staying with us!',
-    downloadFormat: 'PDF',
-    includeLogo: true,
-    showPaymentMethod: true,
+  const {
+    register: registerInvoice,
+    handleSubmit: submitInvoice,
+    watch: watchInvoice,
+    setValue: setInvoiceValue,
+  } = useForm<InvoiceSettingsFormData>({
+    resolver: zodResolver(invoiceSettingsSchema),
+    defaultValues: storedInvoiceSettings,
   })
+
+  const rules = watchRule()
+  const refundSettings = watchRefund()
+  const invoiceSettings = watchInvoice()
+
+  const onSaveRules = (data: PaymentRulesFormData) => {
+    setRules(data)
+    toast.success('Payment rules saved successfully')
+  }
+
+  const onSaveRefundSettings = (data: RefundSettingsFormData) => {
+    setRefundSettings(data)
+    toast.success('Refund settings saved successfully')
+  }
+
+  const onSaveInvoiceSettings = (data: InvoiceSettingsFormData) => {
+    setInvoiceSettings(data)
+    toast.success('Invoice settings saved successfully')
+  }
 
   const selected = paymentMethods.find(m => m.id === selectedMethod) || paymentMethods[1]
 
@@ -383,19 +402,19 @@ export default function PaymentMethodsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Minimum Transaction Amount (NPR)</label>
-                    <input value={rules.minTransaction} onChange={e => setRules(p => ({ ...p, minTransaction: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRule('minTransaction')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Maximum Transaction Amount (NPR)</label>
-                    <input value={rules.maxTransaction} onChange={e => setRules(p => ({ ...p, maxTransaction: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRule('maxTransaction')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Daily Transaction Limit (NPR)</label>
-                    <input value={rules.dailyLimit} onChange={e => setRules(p => ({ ...p, dailyLimit: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRule('dailyLimit')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Currency</label>
-                    <select value={rules.currency} onChange={e => setRules(p => ({ ...p, currency: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                    <select {...registerRule('currency')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                       <option>NPR</option>
                       <option>USD</option>
                       <option>EUR</option>
@@ -416,21 +435,21 @@ export default function PaymentMethodsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Payment Timeout (minutes)</label>
-                    <input value={rules.timeout} onChange={e => setRules(p => ({ ...p, timeout: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRule('timeout')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Auto-Retry Failed Payments</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Automatically retry if a payment fails</div>
                     </div>
-                    <button onClick={() => setRules(p => ({ ...p, autoRetry: !p.autoRetry }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.autoRetry ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRuleValue('autoRetry', !rules.autoRetry)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.autoRetry ? 'var(--primary)' : '#D1D5DB' }}>
                       {rules.autoRetry ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
                   {rules.autoRetry && (
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Retry Attempts</label>
-                      <input value={rules.retryAttempts} onChange={e => setRules(p => ({ ...p, retryAttempts: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerRule('retryAttempts')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
@@ -438,7 +457,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Require Payment Confirmation</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Require manual confirmation for each payment</div>
                     </div>
-                    <button onClick={() => setRules(p => ({ ...p, requireConfirmation: !p.requireConfirmation }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.requireConfirmation ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRuleValue('requireConfirmation', !rules.requireConfirmation)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.requireConfirmation ? 'var(--primary)' : '#D1D5DB' }}>
                       {rules.requireConfirmation ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -460,13 +479,13 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Auto-Generate Receipts</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Send receipts automatically after payment</div>
                     </div>
-                    <button onClick={() => setRules(p => ({ ...p, receiptAutoGenerate: !p.receiptAutoGenerate }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.receiptAutoGenerate ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRuleValue('receiptAutoGenerate', !rules.receiptAutoGenerate)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: rules.receiptAutoGenerate ? 'var(--primary)' : '#D1D5DB' }}>
                       {rules.receiptAutoGenerate ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Receipt Format</label>
-                    <select value={rules.receiptFormat} onChange={e => setRules(p => ({ ...p, receiptFormat: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                    <select {...registerRule('receiptFormat')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                       <option>PDF</option>
                       <option>Email</option>
                       <option>Both</option>
@@ -477,7 +496,7 @@ export default function PaymentMethodsPage() {
 
               {/* Save */}
               <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                <button onClick={submitRule(onSaveRules)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
                   <Save size={16} /> Save Rules
                 </button>
               </div>
@@ -502,20 +521,20 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Allow Refunds</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Enable refund processing for bookings</div>
                     </div>
-                    <button onClick={() => setRefundSettings(p => ({ ...p, allowRefunds: !p.allowRefunds }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.allowRefunds ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRefundValue('allowRefunds', !refundSettings.allowRefunds)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.allowRefunds ? 'var(--primary)' : '#D1D5DB' }}>
                       {refundSettings.allowRefunds ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Refund Window (hours before check-in)</label>
-                    <input value={refundSettings.refundWindow} onChange={e => setRefundSettings(p => ({ ...p, refundWindow: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRefund('refundWindow')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Allow Partial Refunds</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Enable partial refund for multi-night bookings</div>
                     </div>
-                    <button onClick={() => setRefundSettings(p => ({ ...p, partialRefund: !p.partialRefund }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.partialRefund ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRefundValue('partialRefund', !refundSettings.partialRefund)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.partialRefund ? 'var(--primary)' : '#D1D5DB' }}>
                       {refundSettings.partialRefund ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -535,11 +554,11 @@ export default function PaymentMethodsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Fee Amount</label>
-                      <input value={refundSettings.cancellationFee} onChange={e => setRefundSettings(p => ({ ...p, cancellationFee: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerRefund('cancellationFee')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Fee Type</label>
-                      <select value={refundSettings.cancellationType} onChange={e => setRefundSettings(p => ({ ...p, cancellationType: e.target.value as 'percentage' | 'flat' }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                      <select {...registerRefund('cancellationType')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                         <option value="percentage">Percentage (%)</option>
                         <option value="flat">Flat Amount (NPR)</option>
                       </select>
@@ -547,11 +566,11 @@ export default function PaymentMethodsPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Refund Processing Time (business days)</label>
-                    <input value={refundSettings.refundProcessingTime} onChange={e => setRefundSettings(p => ({ ...p, refundProcessingTime: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerRefund('refundProcessingTime')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Refund Method</label>
-                    <select value={refundSettings.refundMethod} onChange={e => setRefundSettings(p => ({ ...p, refundMethod: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                    <select {...registerRefund('refundMethod')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                       <option value="original">Original Payment Method</option>
                       <option value="bank">Bank Transfer</option>
                       <option value="credit">Store Credit</option>
@@ -575,7 +594,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Notify Guest</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Send email on refund processed</div>
                     </div>
-                    <button onClick={() => setRefundSettings(p => ({ ...p, notifyGuest: !p.notifyGuest }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.notifyGuest ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRefundValue('notifyGuest', !refundSettings.notifyGuest)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.notifyGuest ? 'var(--primary)' : '#D1D5DB' }}>
                       {refundSettings.notifyGuest ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -584,7 +603,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Notify Admin</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Send alert on refund request</div>
                     </div>
-                    <button onClick={() => setRefundSettings(p => ({ ...p, notifyAdmin: !p.notifyAdmin }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.notifyAdmin ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRefundValue('notifyAdmin', !refundSettings.notifyAdmin)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.notifyAdmin ? 'var(--primary)' : '#D1D5DB' }}>
                       {refundSettings.notifyAdmin ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -593,7 +612,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Peak Season Policy</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Stricter rules during peak season</div>
                     </div>
-                    <button onClick={() => setRefundSettings(p => ({ ...p, peakSeasonPolicy: !p.peakSeasonPolicy }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.peakSeasonPolicy ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setRefundValue('peakSeasonPolicy', !refundSettings.peakSeasonPolicy)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: refundSettings.peakSeasonPolicy ? 'var(--primary)' : '#D1D5DB' }}>
                       {refundSettings.peakSeasonPolicy ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -602,7 +621,7 @@ export default function PaymentMethodsPage() {
 
               {/* Save */}
               <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                <button onClick={submitRefund(onSaveRefundSettings)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
                   <Save size={16} /> Save Refund Settings
                 </button>
               </div>
@@ -627,23 +646,23 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Auto-Generate Invoices</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Create invoices automatically after checkout</div>
                     </div>
-                    <button onClick={() => setInvoiceSettings(p => ({ ...p, autoGenerate: !p.autoGenerate }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.autoGenerate ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setInvoiceValue('autoGenerate', !invoiceSettings.autoGenerate)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.autoGenerate ? 'var(--primary)' : '#D1D5DB' }}>
                       {invoiceSettings.autoGenerate ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Invoice Prefix</label>
-                      <input value={invoiceSettings.prefix} onChange={e => setInvoiceSettings(p => ({ ...p, prefix: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('prefix')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Next Invoice Number</label>
-                      <input value={invoiceSettings.nextNumber} onChange={e => setInvoiceSettings(p => ({ ...p, nextNumber: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('nextNumber')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Invoice Template</label>
-                    <select value={invoiceSettings.template} onChange={e => setInvoiceSettings(p => ({ ...p, template: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                    <select {...registerInvoice('template')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                       <option value="standard">Standard</option>
                       <option value="minimal">Minimal</option>
                       <option value="detailed">Detailed</option>
@@ -651,7 +670,7 @@ export default function PaymentMethodsPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Download Format</label>
-                    <select value={invoiceSettings.downloadFormat} onChange={e => setInvoiceSettings(p => ({ ...p, downloadFormat: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
+                    <select {...registerInvoice('downloadFormat')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', background: '#fff' }}>
                       <option>PDF</option>
                       <option>HTML</option>
                       <option>Both</option>
@@ -675,18 +694,18 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Include Tax on Invoice</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Show tax breakdown on invoices</div>
                     </div>
-                    <button onClick={() => setInvoiceSettings(p => ({ ...p, includeTax: !p.includeTax }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.includeTax ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setInvoiceValue('includeTax', !invoiceSettings.includeTax)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.includeTax ? 'var(--primary)' : '#D1D5DB' }}>
                       {invoiceSettings.includeTax ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Tax Rate (%)</label>
-                      <input value={invoiceSettings.taxRate} onChange={e => setInvoiceSettings(p => ({ ...p, taxRate: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('taxRate')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Tax Label</label>
-                      <input value={invoiceSettings.taxLabel} onChange={e => setInvoiceSettings(p => ({ ...p, taxLabel: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('taxLabel')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
@@ -694,7 +713,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Include Logo</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Show property logo on invoices</div>
                     </div>
-                    <button onClick={() => setInvoiceSettings(p => ({ ...p, includeLogo: !p.includeLogo }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.includeLogo ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setInvoiceValue('includeLogo', !invoiceSettings.includeLogo)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.includeLogo ? 'var(--primary)' : '#D1D5DB' }}>
                       {invoiceSettings.includeLogo ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -703,7 +722,7 @@ export default function PaymentMethodsPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Show Payment Method</div>
                       <div style={{ fontSize: 13, color: '#6B7280' }}>Display payment method used on invoice</div>
                     </div>
-                    <button onClick={() => setInvoiceSettings(p => ({ ...p, showPaymentMethod: !p.showPaymentMethod }))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.showPaymentMethod ? 'var(--primary)' : '#D1D5DB' }}>
+                    <button onClick={() => setInvoiceValue('showPaymentMethod', !invoiceSettings.showPaymentMethod)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: invoiceSettings.showPaymentMethod ? 'var(--primary)' : '#D1D5DB' }}>
                       {invoiceSettings.showPaymentMethod ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                     </button>
                   </div>
@@ -722,20 +741,20 @@ export default function PaymentMethodsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Company Name</label>
-                    <input value={invoiceSettings.company_name} onChange={e => setInvoiceSettings(p => ({ ...p, company_name: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerInvoice('company_name')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Address</label>
-                    <input value={invoiceSettings.company_address} onChange={e => setInvoiceSettings(p => ({ ...p, company_address: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                    <input {...registerInvoice('company_address')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Phone</label>
-                      <input value={invoiceSettings.company_phone} onChange={e => setInvoiceSettings(p => ({ ...p, company_phone: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('company_phone')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Email</label>
-                      <input value={invoiceSettings.company_email} onChange={e => setInvoiceSettings(p => ({ ...p, company_email: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
+                      <input {...registerInvoice('company_email')} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none' }} />
                     </div>
                   </div>
                 </div>
@@ -752,13 +771,13 @@ export default function PaymentMethodsPage() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Footer Note</label>
-                  <textarea value={invoiceSettings.footerNote} onChange={e => setInvoiceSettings(p => ({ ...p, footerNote: e.target.value }))} rows={4} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+                  <textarea {...registerInvoice('footerNote')} rows={4} style={{ width: '100%', padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
                 </div>
               </div>
 
               {/* Save */}
               <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                <button onClick={submitInvoice(onSaveInvoiceSettings)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
                   <Save size={16} /> Save Invoice Settings
                 </button>
               </div>

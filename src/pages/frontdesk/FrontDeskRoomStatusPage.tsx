@@ -9,39 +9,13 @@ import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "@/
 import { RoomStatusCalendarSkeleton } from "@/components/frontdesk/RoomStatusCalendarSkeleton"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { getRooms } from "@/api/pms/pmsApi"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import api from "@/api/axiosInstance"
+import { useRoomCalendarQuery, useRoomsWithRatesQuery } from "@/services/queries/frontdesk/frontdeskRoomStatusQueries"
+import type { CalendarRoom } from "@/services/queries/frontdesk/frontdeskRoomStatusQueries"
+import { useCreateWalkInBookingMutation } from "@/services/mutations/frontdesk/frontdeskWalkInMutations"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { FormField } from "@/components/frontdesk/FormField"
 import { walkInBookingSchema } from "@/schemas/frontdesk/bookingSchema"
 import type { WalkInBookingFormData } from "@/schemas/frontdesk/bookingSchema"
-
-interface CalendarDay {
-  date: string
-  status: string
-  booking_ref: string | null
-  guest_name: string | null
-}
-
-interface CalendarRoom {
-  room_id: string
-  room_name: string
-  room_type: string
-  bed_type: string
-  floor_number: number
-  base_rate?: number
-  days: CalendarDay[]
-}
-
-interface CalendarResponse {
-  success: boolean
-  data: {
-    start_date: string
-    end_date: string
-    rooms: CalendarRoom[]
-  }
-}
 
 interface RoomDayStatus {
   status: "available" | "occupied" | "reserved" | "turn" | "maintenance" | "blocked" | "checkout"
@@ -106,7 +80,6 @@ function mapApiStatus(status: string): RoomDayStatus["status"] {
 export default function FrontDeskRoomStatusPage() {
   const navigate = useNavigate()
   const { currentPropertyId } = usePropertyStore()
-  const queryClient = useQueryClient()
   const { formatAmount, currency } = usePropertyCurrency()
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
@@ -133,6 +106,7 @@ export default function FrontDeskRoomStatusPage() {
     resolver: zodResolver(walkInBookingSchema) as Resolver<WalkInBookingFormData>,
     defaultValues: {
       guestName: "",
+      guestEmail: "",
       phone: "",
       nationality: "",
       adults: 1,
@@ -161,34 +135,14 @@ export default function FrontDeskRoomStatusPage() {
   const endDate = useMemo(() => addDays(startDate, daysCount - 1), [startDate, daysCount])
   const apiEndDate = useMemo(() => addDays(endDate, 1), [endDate])
 
-  const { data: calendarRooms = [], isLoading: calendarLoading, isError: calendarError } = useQuery({
-    queryKey: ["room-calendar", currentPropertyId, formatDateForAPI(startDate), formatDateForAPI(apiEndDate), roomStatusFilter],
-    queryFn: async (): Promise<CalendarRoom[]> => {
-      if (!currentPropertyId) return []
-      const params: Record<string, string> = {
-        start_date: formatDateForAPI(startDate),
-        end_date: formatDateForAPI(apiEndDate),
-      }
-      if (roomStatusFilter) params.room_status = roomStatusFilter
-      const { data: result } = await api.get(
-        `/staff/properties/${currentPropertyId}/room-calendar`,
-        { params }
-      )
-      const response = result as CalendarResponse
-      return response?.data?.rooms || []
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: calendarRooms = [], isLoading: calendarLoading, isError: calendarError } = useRoomCalendarQuery(
+    currentPropertyId,
+    formatDateForAPI(startDate),
+    formatDateForAPI(apiEndDate),
+    roomStatusFilter
+  )
 
-  const { data: roomsWithRates = [] } = useQuery({
-    queryKey: ["rooms-rates", currentPropertyId],
-    queryFn: async (): Promise<{ room_id: string; base_rate: number }[]> => {
-      if (!currentPropertyId) return []
-      const rooms = await getRooms(currentPropertyId)
-      return rooms.map((r) => ({ room_id: r.id, base_rate: Number(r.base_rate) || 0 }))
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: roomsWithRates = [] } = useRoomsWithRatesQuery(currentPropertyId)
 
   const rateMap = useMemo(() => {
     return Object.fromEntries(roomsWithRates.map((r) => [r.room_id, r.base_rate]))
@@ -257,6 +211,7 @@ export default function FrontDeskRoomStatusPage() {
   const resetBookingForm = () => {
     reset({
       guestName: "",
+      guestEmail: "",
       phone: "",
       nationality: "",
       adults: 1,
@@ -331,51 +286,7 @@ export default function FrontDeskRoomStatusPage() {
     setIdPreviewBack(null)
   }
 
-  const createBookingMutation = useMutation({
-    mutationFn: async (payload: {
-      bookingData: Record<string, unknown>
-      idDocumentFront?: File
-      idDocumentBack?: File
-    }) => {
-      const fd = new FormData()
-
-      Object.entries(payload.bookingData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          fd.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value))
-        }
-      })
-
-      if (payload.idDocumentFront) {
-        fd.append("front", payload.idDocumentFront)
-      }
-      if (payload.idDocumentBack) {
-        fd.append("back", payload.idDocumentBack)
-      }
-
-      const TOKEN_KEY = 'token'
-      const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
-      const baseURL = (api.defaults.baseURL || '').replace(/\/+$/, '')
-      const response = await fetch(`${baseURL}/staff/create-walkin-booking`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      })
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err?.error || `Request failed with status ${response.status}`)
-      }
-      return response.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["room-calendar"] })
-      setShowBookingModal(false)
-      resetBookingForm()
-      notify("Booking created successfully")
-    },
-    onError: () => {
-      notify("Failed to create booking", true)
-    },
-  })
+  const createBookingMutation = useCreateWalkInBookingMutation(currentPropertyId)
 
   const handleCreateBooking = handleSubmit((data) => {
     if (!selectedRoom || !currentPropertyId) return
@@ -388,28 +299,40 @@ export default function FrontDeskRoomStatusPage() {
       return
     }
 
-    createBookingMutation.mutate({
-      bookingData: {
-        idempotency_key: crypto.randomUUID(),
-        property_id: currentPropertyId,
-        room_ids: [selectedRoom.room_id],
-        check_in: checkIn,
-        check_out: checkOut,
-        adults: data.adults,
-        children: data.children,
-        guest_full_name: data.guestName,
-        guest_phone: data.phone,
-        guest_nationality: data.nationality,
-        coupon_code: data.couponCode || undefined,
-        payment_method: data.paymentMethod,
-        payment_gateway: data.paymentGateway || undefined,
-        amount_paid: Number(data.amountPaid) || 0,
-        advance_amount: Number(data.advanceAmount || data.amountPaid) || 0,
-        special_requests: data.specialRequests || undefined,
+    createBookingMutation.mutate(
+      {
+        bookingData: {
+          idempotency_key: crypto.randomUUID(),
+          property_id: currentPropertyId,
+          room_ids: [selectedRoom.room_id],
+          check_in: checkIn,
+          check_out: checkOut,
+          adults: data.adults,
+          children: data.children,
+          guest_full_name: data.guestName,
+          guest_email: data.guestEmail,
+          guest_phone: data.phone,
+          guest_nationality: data.nationality,
+          coupon_code: data.couponCode || undefined,
+          payment_method: data.paymentMethod,
+          payment_gateway: data.paymentGateway || undefined,
+          amount_paid: Number(data.amountPaid) || 0,
+          special_requests: data.specialRequests || undefined,
+        },
+        idDocumentFront: idDocument || undefined,
+        idDocumentBack: idDocumentBack || undefined,
       },
-      idDocumentFront: idDocument || undefined,
-      idDocumentBack: idDocumentBack || undefined,
-    })
+      {
+        onSuccess: () => {
+          setShowBookingModal(false)
+          resetBookingForm()
+          notify("Booking created successfully")
+        },
+        onError: () => {
+          notify("Failed to create booking", true)
+        },
+      }
+    )
   })
 
   const getRoomDayStatus = (room: CalendarRoom, dateKey: string): RoomDayStatus => {
@@ -797,6 +720,14 @@ export default function FrontDeskRoomStatusPage() {
                       {...register("guestName")}
                       type="text"
                       placeholder="e.g. John Smith"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </FormField>
+                  <FormField label="Email" required error={errors.guestEmail?.message}>
+                    <input
+                      {...register("guestEmail")}
+                      type="email"
+                      placeholder="e.g. john@example.com"
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </FormField>

@@ -86,7 +86,8 @@ function redirectToLogin() {
   const role = storageGet(ROLE_KEY)
   // Staff log in through the host section — /staff/login is guest-mode and
   // can never authenticate staff (users-table) credentials.
-  const loginPath = role === 'host' || role === 'staff' ? '/host/login' : '/login'
+  const loginPath =
+    role === 'host' || role === 'staff' ? '/host/login' : role === 'manager' ? '/manager/login' : '/login'
 
   // Clear the dead session BEFORE redirecting, or the next load can
   // ping-pong between the dashboard and the login page.

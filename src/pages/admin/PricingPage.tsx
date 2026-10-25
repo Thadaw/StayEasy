@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '@/store/ui/uiStore'
 import { usePropertyStore } from '@/store/properties/propertyStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
@@ -8,21 +7,18 @@ import PricingOverview from '@/components/admin/pricing/PricingOverview'
 import SeasonalPricingView from '@/components/admin/pricing/SeasonalPricingView'
 import DiscountsOffersView from '@/components/admin/pricing/DiscountsOffersView'
 import PackagesView from '@/components/admin/pricing/PackagesView'
-import { getAllProperties, getDiscountCodes } from '@/api/pms/pmsApi'
-import { propertyKeys, discountCodeKeys } from '@/lib/queryKeys'
+import { usePricingPropertiesQuery, useSpecialOffersQuery } from '@/services/queries/admin/pricingQueries'
 import type {
   PricingOverviewStat, PricingFeatureCard, PricingActivity, UpcomingPromotion,
   SeasonTimeline, SeasonalPricingEntry,
-  DiscountOffer, OfferDetail,
   Package, PackageDetail,
 } from '@/types/pricing'
-import type { GeneralInfoResponse } from '@/types/pms'
 
 const OVERVIEW_STATS: PricingOverviewStat[] = [
-  { id: 1, label: 'Average Room Rate', value: 'NPR 12,500', subtitle: 'Per night average', icon: 'TrendingUp', iconBg: '#FEF3C7', iconColor: '#D97706', linkText: 'Manage Seasonal Pricing' },
-  { id: 2, label: 'Active Discounts', value: '8', subtitle: 'Currently running', icon: 'Tag', iconBg: '#D1FAE5', iconColor: '#059669', linkText: 'Manage Discounts' },
-  { id: 3, label: 'Seasonal Adjustments', value: '12', subtitle: 'Applied this month', icon: 'Calendar', iconBg: '#FCE7F3', iconColor: '#DB2777', linkText: 'Manage Packages' },
-  { id: 4, label: 'Revenue Impact', value: '+18.6%', subtitle: 'From pricing changes', icon: 'Gift', iconBg: '#F3E8FF', iconColor: 'var(--primary)', linkText: 'Manage Discounts' },
+  { id: 1, label: 'Average Room Rate', value: 'NPR 12,500', subtitle: 'Per night average', icon: 'TrendingUp', iconBg: '#FEF3C7', iconColor: '#D97706', linkText: 'Manage Seasonal Pricing', viewKey: 'seasonal' },
+  { id: 2, label: 'Active Discounts', value: '8', subtitle: 'Currently running', icon: 'Tag', iconBg: '#D1FAE5', iconColor: '#059669', linkText: 'Manage Discounts', viewKey: 'discounts' },
+  { id: 3, label: 'Seasonal Adjustments', value: '12', subtitle: 'Applied this month', icon: 'Calendar', iconBg: '#FCE7F3', iconColor: '#DB2777', linkText: 'Manage Packages', viewKey: 'packages' },
+  { id: 4, label: 'Revenue Impact', value: '+18.6%', subtitle: 'From pricing changes', icon: 'Gift', iconBg: '#F3E8FF', iconColor: 'var(--primary)', linkText: 'Manage Discounts', viewKey: 'discounts' },
 ]
 
 const FEATURE_CARDS: PricingFeatureCard[] = [
@@ -55,10 +51,6 @@ const MOCK_SEASON_TIMELINE: SeasonTimeline[] = [
 ]
 
 const MOCK_SEASONAL_ENTRIES: SeasonalPricingEntry[] = []
-
-const MOCK_DISCOUNT_OFFERS: DiscountOffer[] = []
-
-const MOCK_OFFER_DETAILS: OfferDetail[] = []
 
 const MOCK_PACKAGES: Package[] = [
   { id: 1, name: 'Honeymoon Package', description: 'Romantic getaway with special amenities', type: 'Romantic', typeColor: '#DB2777', applicableTo: 'Couples', price: 45000, validity: '3 Days / 2 Nights', status: 'Active', bookings: 24, image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=300&h=120&fit=crop' },
@@ -98,54 +90,12 @@ export default function PricingPage() {
   const activeView = VIEW_MAP[location.pathname] || 'overview'
   const viewInfo = VIEW_TITLES[activeView] || VIEW_TITLES.overview
 
-  const { data: properties = [] } = useQuery<GeneralInfoResponse[]>({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-  })
+  const { data: properties = [] } = usePricingPropertiesQuery()
 
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const propertyId = properties.find((p) => p.id === currentPropertyId)?.id ?? properties[0]?.id
 
-  const { data: discountCodes = [] } = useQuery({
-    queryKey: discountCodeKeys.byProperty(propertyId ?? ''),
-    queryFn: () => getDiscountCodes(propertyId!),
-    enabled: !!propertyId,
-  })
-
-  const liveDiscountOffers: DiscountOffer[] = discountCodes.map((dc, i) => ({
-    id: i + 1,
-    name: dc.code,
-    description: '',
-    code: dc.code,
-    type: dc.type === 'PERCENTAGE' ? '% (Percentage)' : 'Flat Amount',
-    applicableTo: 'All Room Types',
-    discount: dc.type === 'PERCENTAGE' ? `${dc.discount_value}%` : `NPR ${dc.discount_value}`,
-    validity: `${dc.valid_from || 'N/A'} – ${dc.valid_to || 'N/A'}`,
-    status: 'Active',
-    usage: dc.used_count || 0,
-    iconBg: '#D1FAE5',
-    iconColor: '#059669',
-    icon: 'Tag',
-  }))
-
-  const liveOfferDetails: OfferDetail[] = discountCodes.map((dc, i) => ({
-    id: i + 1,
-    name: dc.code,
-    status: 'Active',
-    code: dc.code,
-    type: dc.type === 'PERCENTAGE' ? '% (Percentage)' : 'Flat Amount',
-    discount: dc.type === 'PERCENTAGE' ? `${dc.discount_value}%` : `NPR ${dc.discount_value}`,
-    applicableTo: 'All Room Types',
-    minimumStay: dc.min_amount ? `NPR ${dc.min_amount}` : 'No Minimum',
-    maximumDiscount: `NPR ${dc.max_uses}`,
-    validityPeriod: `${dc.valid_from || 'N/A'} – ${dc.valid_to || 'N/A'}`,
-    usageLimit: 'Unlimited',
-    used: String(dc.used_count || 0),
-    description: '',
-  }))
-
-  const finalDiscountOffers = liveDiscountOffers.length > 0 ? liveDiscountOffers : MOCK_DISCOUNT_OFFERS
-  const finalOfferDetails = liveOfferDetails.length > 0 ? liveOfferDetails : MOCK_OFFER_DETAILS
+  const { data: specialOffers = [], isLoading: offersLoading, isError: offersError } = useSpecialOffersQuery(propertyId)
 
   const handleNavigate = (viewKey: string) => {
     const pathMap: Record<string, string> = {
@@ -182,8 +132,10 @@ export default function PricingPage() {
 
           {activeView === 'discounts' && (
             <DiscountsOffersView
-              offers={finalDiscountOffers}
-              offerDetails={finalOfferDetails}
+              propertyId={propertyId}
+              offers={specialOffers}
+              isLoading={offersLoading}
+              isError={offersError}
             />
           )}
 

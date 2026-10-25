@@ -5,9 +5,9 @@ interface StatCardProps {
   iconBg: string
   label: string
   value: string
-  change: string
+  change?: string
   changeLabel?: string
-  positive: boolean
+  positive?: boolean
   path?: string
 }
 
@@ -52,6 +52,7 @@ export default function StatCard({ icon, iconBg, label, value, change, changeLab
         </div>
       </div>
       <div style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>{value}</div>
+      {change && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
         <span style={{
           display: 'inline-flex',
@@ -69,6 +70,7 @@ export default function StatCard({ icon, iconBg, label, value, change, changeLab
           <span style={{ color: '#9ca3af' }}>{changeLabel}</span>
         )}
       </div>
+      )}
     </div>
   )
 }

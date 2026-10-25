@@ -3,7 +3,7 @@ import { MapPin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SearchBar } from "@/components/search/SearchBar";
 import { heroHotels } from "@/data/static/heroHotels";
-import { useNearbyProperties } from "@/services/queries/propertyQueries";
+import { useNearbyProperties } from "@/services/queries/property/propertyQueries";
 import { useLocation } from "@/context/LocationContext";
 import { HeroCard } from "@/components/home/HeroCard";
 

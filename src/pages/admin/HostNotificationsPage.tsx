@@ -1,53 +1,8 @@
-import { useState } from 'react'
 import { useUIStore } from '@/store/ui/uiStore'
 import { Search, Bell } from 'lucide-react'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
-
-interface HostNotification {
-  id: string
-  icon: string
-  title: string
-  subtitle: string
-  description: string
-  time: string
-  type: 'booking' | 'payment' | 'checkin' | 'housekeeping' | 'restaurant' | 'warning' | 'system'
-  priority: 'High' | 'Medium' | 'Low'
-  status: 'Unread' | 'Read'
-  created: string
-  module: string
-  actionLabel: string
-  actionModule: string
-  color: string
-  bg: string
-}
-
-const initialNotifications: HostNotification[] = [
-  {
-    id: '1', icon: '🔴', title: 'New Booking', subtitle: 'John Smith booked Deluxe Room 204.', description: 'John Smith booked Deluxe Room 204 for 3 nights.', time: '2 minutes ago', type: 'booking', priority: 'High', status: 'Unread', created: 'Today, 10:25 AM', module: 'Bookings', actionLabel: 'View Booking', actionModule: '/host/bookings', color: '#ef4444', bg: 'rgba(239,68,68,0.1)',
-  },
-  {
-    id: '2', icon: '🟢', title: 'Payment Received', subtitle: 'NPR 12,500 received via eSewa.', description: 'NPR 12,500 received via eSewa for booking #BK-1025.', time: '15 minutes ago', type: 'payment', priority: 'Medium', status: 'Unread', created: 'Today, 10:12 AM', module: 'Payments', actionLabel: 'View Payment', actionModule: '/host/payments', color: '#22c55e', bg: 'rgba(34,197,94,0.1)',
-  },
-  {
-    id: '3', icon: '🟠', title: 'Check-in Reminder', subtitle: '5 guests are arriving today.', description: '5 guests are scheduled to check in today. Please prepare rooms.', time: '30 minutes ago', type: 'checkin', priority: 'High', status: 'Unread', created: 'Today, 09:57 AM', module: 'Guests', actionLabel: 'View Guests', actionModule: '/host/guests', color: '#f97316', bg: 'rgba(249,115,22,0.1)',
-  },
-  {
-    id: '4', icon: '🔵', title: 'Housekeeping Completed', subtitle: 'Room 305 is ready for check-in.', description: 'Housekeeping has completed cleaning Room 305. It is ready for new guests.', time: '1 hour ago', type: 'housekeeping', priority: 'Medium', status: 'Unread', created: 'Today, 09:30 AM', module: 'Housekeeping', actionLabel: 'View Room', actionModule: '/host/housekeeping', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',
-  },
-  {
-    id: '5', icon: '🟣', title: 'Restaurant Order Ready', subtitle: 'Order #R-208 for Table 7 is ready.', description: 'Order #R-208 for Table 7 has been prepared and is ready for serving.', time: '1 hour ago', type: 'restaurant', priority: 'Medium', status: 'Unread', created: 'Today, 09:15 AM', module: 'Restaurant POS', actionLabel: 'View Order', actionModule: '/host/restaurant', color: '#a855f7', bg: 'rgba(168,85,247,0.1)',
-  },
-  {
-    id: '6', icon: '⚠️', title: 'Low Room Availability', subtitle: 'Only 2 Deluxe Rooms available.', description: 'Only 2 Deluxe Rooms are available for upcoming dates. Consider adjusting pricing.', time: '2 hours ago', type: 'warning', priority: 'Low', status: 'Unread', created: 'Today, 08:30 AM', module: 'Pricing', actionLabel: '', actionModule: '', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',
-  },
-  {
-    id: '7', icon: '⚙️', title: 'System Backup Completed', subtitle: 'Daily backup completed successfully.', description: 'Daily system backup has been completed successfully. All data is secured.', time: 'Yesterday', type: 'system', priority: 'Low', status: 'Read', created: 'Yesterday, 02:00 AM', module: 'System', actionLabel: '', actionModule: '', color: '#6b7280', bg: 'rgba(107,114,128,0.1)',
-  },
-  {
-    id: '8', icon: '🔴', title: 'New Booking', subtitle: 'Emily Johnson booked Suite 501.', description: 'Emily Johnson booked Suite 501 for 2 nights (Aug 12 - Aug 14).', time: 'Yesterday', type: 'booking', priority: 'High', status: 'Read', created: 'Yesterday, 04:15 PM', module: 'Bookings', actionLabel: 'View Booking', actionModule: '/host/bookings', color: '#ef4444', bg: 'rgba(239,68,68,0.1)',
-  },
-]
+import { useNotificationsStore } from '@/store/admin/notificationsStore'
 
 const typeConfig: Record<string, { label: string; icon: string }> = {
   booking: { label: 'Booking', icon: '🔴' },
@@ -62,11 +17,18 @@ const typeConfig: Record<string, { label: string; icon: string }> = {
 export default function HostNotificationsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState('All')
-  const [filterRead, setFilterRead] = useState('All')
-  const [selectedId, setSelectedId] = useState<string>('')
-  const [notifications, setNotifications] = useState<HostNotification[]>(initialNotifications)
+  const searchQuery = useNotificationsStore((s) => s.searchQuery)
+  const setSearchQuery = useNotificationsStore((s) => s.setSearchQuery)
+  const filterType = useNotificationsStore((s) => s.filterType)
+  const setFilterType = useNotificationsStore((s) => s.setFilterType)
+  const filterRead = useNotificationsStore((s) => s.filterRead)
+  const setFilterRead = useNotificationsStore((s) => s.setFilterRead)
+  const selectedId = useNotificationsStore((s) => s.selectedId)
+  const setSelectedId = useNotificationsStore((s) => s.setSelectedId)
+  const notifications = useNotificationsStore((s) => s.notifications)
+  const markAsRead = useNotificationsStore((s) => s.markAsRead)
+  const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead)
+  const deleteNotification = useNotificationsStore((s) => s.deleteNotification)
 
   const unreadCount = notifications.filter((n) => n.status === 'Unread').length
   const highPriorityCount = notifications.filter((n) => n.priority === 'High').length
@@ -85,23 +47,6 @@ export default function HostNotificationsPage() {
   })
 
   const selectedNotification = notifications.find((n) => n.id === selectedId) || null
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: 'Read' as const } : n))
-    )
-  }
-
-  const markAllAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, status: 'Read' as const }))
-    )
-  }
-
-  const deleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-    if (selectedId === id) setSelectedId('')
-  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>

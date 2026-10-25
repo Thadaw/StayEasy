@@ -7,66 +7,20 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useBookingCheckOutStore } from "@/store/frontdesk/bookingCheckOutStore"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { checkOutGuest } from "@/api/pms/pmsApi"
-import api from "@/api/axiosInstance"
+import { useCheckoutBookingQuery } from "@/services/queries/frontdesk/frontdeskBookingQueries"
+import type { CheckoutBooking } from "@/services/queries/frontdesk/frontdeskBookingQueries"
+import { useFolioDetailQuery } from "@/services/queries/frontdesk/frontdeskFolioQueries"
+import { useCheckOutGuestMutation } from "@/services/mutations/frontdesk/frontdeskCheckOutMutations"
 import { checkoutPaymentSchema } from "@/schemas/frontdesk/paymentSchema"
 import type { CheckoutPaymentFormData } from "@/schemas/frontdesk/paymentSchema"
 import { FormField } from "@/components/frontdesk/FormField"
 import { CheckoutPageSkeleton } from "@/components/frontdesk/CheckoutPageSkeleton"
 
-interface BookingRoom {
-  room_id: string
-  room_name: string
-  room_type: string
-  bed_type: string
-  base_rate: number
-}
-
-interface BookingFolio {
-  folio_id: string
-  status: string
-  subtotal: number
-  tax: number
-  discount: number
-  total: number
-  amount_paid: number
-  remaining_balance: number
-  charges_count: number
-  settled_at: string | null
-  charges?: Array<{
-    charge_id: string
-    description: string
-    amount: number
-    category?: string
-    posted_by_name?: string
-    created_at: string
-  }>
-}
-
-interface Booking {
-  booking_id: string
-  guest_name: string
-  guest_email: string
-  guest_phone: string
-  guest_nationality: string
-  ref_number: string
-  status: string
-  checkin_date: string
-  checkout_date: string
-  total_amount: number
-  amount_paid: number
-  amount_due: number
-  rooms: BookingRoom[]
-  folio: BookingFolio | null
-  payment_method?: string
-}
-
 function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
-function getNights(booking: Booking): number {
+function getNights(booking: CheckoutBooking): number {
   const checkin = new Date(booking.checkin_date)
   const checkout = new Date(booking.checkout_date)
   return Math.max(1, Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)))
@@ -78,7 +32,6 @@ export default function CheckoutPage() {
   const { formatAmount, currency } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
   const { checkOut, isCheckedOut: isGuestCheckedOut } = useBookingCheckOutStore()
-  const queryClient = useQueryClient()
 
   const handleBackToDashboard = () => { navigate("/frontdesk") }
 
@@ -105,100 +58,18 @@ export default function CheckoutPage() {
   const watchedPaymentAmount = watch("paymentAmount")
   const watchedRoomStatus = watch("roomStatus")
 
-  const { data: booking, isLoading, isError } = useQuery({
-    queryKey: ["checkout-booking", currentPropertyId, id],
-    queryFn: async (): Promise<Booking | null> => {
-      if (!currentPropertyId || !id) return null
-      const { data: result } = await api.get(
-        `/staff/properties/${currentPropertyId}/bookings/${id}/guest-folio`
-      )
-      const wrapped = result as { data?: Booking }
-      return (wrapped?.data ?? result) as Booking
-    },
-    enabled: !!currentPropertyId && !!id,
-  })
+  const { data: booking, isLoading, isError } = useCheckoutBookingQuery(currentPropertyId, id)
 
   const folioId = booking?.folio?.folio_id
 
-  const { data: folioData } = useQuery({
-    queryKey: ["folio-detail", folioId],
-    queryFn: async () => {
-      if (!folioId) return null
-      const { data: result } = await api.get(`/staff/folios/${folioId}`)
-      const wrapped = result as { success?: boolean; data?: {
-        id: string
-        subtotal: number
-        tax: number
-        discount: number
-        total: number
-        charges: Array<{ id: string; folio_id: string; description: string; amount: number; category: string; posted_by: string; posted_by_name: string; posted_at: string }>
-      } }
-      if (wrapped?.success && wrapped.data) {
-        const d = wrapped.data
-        return {
-          ...d,
-          subtotal: Number(d.subtotal) || 0,
-          tax: Number(d.tax) || 0,
-          discount: Number(d.discount) || 0,
-          total: Number(d.total) || 0,
-          charges: (d.charges || []).map((c) => ({
-            ...c,
-            amount: Number(c.amount) || 0,
-          })),
-        }
-      }
-      return null
-    },
-    enabled: !!folioId,
-  })
+  const { data: folioData } = useFolioDetailQuery(folioId)
 
   const alreadyCheckedOut = isGuestCheckedOut(id || "")
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
-  const checkOutMutation = useMutation({
-    mutationFn: async ({ refNumber, paymentAmount, paymentGateway }: { refNumber: string; paymentAmount: number; paymentGateway: string }) => {
-      await checkOutGuest(refNumber, paymentAmount, paymentGateway)
-      return { refNumber, paymentAmount, paymentGateway }
-    },
-    onSuccess: async (_data, { refNumber, paymentAmount, paymentGateway }) => {
-      checkOut(id || "")
-      setIsCheckedOut(true)
-      setCheckoutError(null)
-
-      queryClient.invalidateQueries({ queryKey: ["checkout-booking", currentPropertyId, id] })
-      queryClient.invalidateQueries({ queryKey: ["checkout-bookings", currentPropertyId] })
-      queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
-
-      if (currentPropertyId && refNumber && paymentAmount > 0) {
-        try {
-          await api.post(
-            `/staff/properties/${currentPropertyId}/bookings/${refNumber}/folio`,
-            {
-              tax: "0.00",
-              discount: "0.00",
-              payment_amount: String(paymentAmount),
-              payment_method: paymentGateway || "CASH",
-              idempotency_key: crypto.randomUUID(),
-            }
-          )
-          queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
-        } catch (error: unknown) {
-          const err = error as { response?: { data?: { message?: string } } }
-          const msg = err.response?.data?.message || "Failed to create folio after checkout."
-          setFolioError(msg)
-        }
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["frontdesk-folios", currentPropertyId] })
-      }
-    },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { detail?: string; message?: string; error?: string } } }
-      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error || "Checkout failed. Please try again."
-      console.error("Checkout error:", error)
-      setCheckoutError(msg)
-      setIsCheckedOut(false)
-    },
+  const checkOutMutation = useCheckOutGuestMutation(currentPropertyId, {
+    onFolioError: (message) => setFolioError(message),
   })
 
   useEffect(() => {
@@ -282,11 +153,26 @@ export default function CheckoutPage() {
   const onFormSubmit = (data: CheckoutPaymentFormData) => {
     const paymentAmount = Number(data.paymentAmount) || 0
     const amount = paymentAmount > 0 ? paymentAmount : Math.max(0, remainingBalance)
-    checkOutMutation.mutate({
-      refNumber: booking.ref_number,
-      paymentAmount: amount,
-      paymentGateway: data.paymentGateway,
-    })
+    checkOutMutation.mutate(
+      {
+        refNumber: booking.ref_number,
+        paymentAmount: amount,
+        paymentGateway: data.paymentGateway,
+      },
+      {
+        onSuccess: () => {
+          checkOut(id || "")
+          setIsCheckedOut(true)
+          setCheckoutError(null)
+        },
+        onError: (error: unknown) => {
+          const err = error as { response?: { data?: { detail?: string; message?: string; error?: string } } }
+          const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error || "Checkout failed. Please try again."
+          setCheckoutError(msg)
+          setIsCheckedOut(false)
+        },
+      }
+    )
   }
 
   return (

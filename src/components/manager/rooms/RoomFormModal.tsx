@@ -33,8 +33,10 @@ const bedOptions = ['1 Queen Bed', '1 King Bed', '2 Single Beds', '1 King + 1 Si
 const floorOptions = ['Floor 1', 'Floor 2', 'Floor 3', 'Floor 4']
 
 export default function RoomFormModal({ room, roomTypes, existingNumbers, onClose, onSave }: RoomFormModalProps) {
+  const types = roomTypes.filter((t) => t !== 'All Types')
+  const typeOptions = types.length > 0 ? types : ['Standard Room', 'Deluxe Room', 'Family Room', 'Suite Room']
   const [number, setNumber] = useState(room?.number ?? '')
-  const [type, setType] = useState(room?.type ?? roomTypes[0] ?? 'Standard Room')
+  const [type, setType] = useState(room?.type ?? typeOptions[0])
   const [bedInfo, setBedInfo] = useState(room?.bedInfo ?? bedOptions[0])
   const [floor, setFloor] = useState(room?.floor ?? floorOptions[0])
   const [status, setStatus] = useState(room?.status ?? 'Available')
@@ -71,8 +73,6 @@ export default function RoomFormModal({ room, roomTypes, existingNumbers, onClos
     }, room?.id ?? null)
   }
 
-  const types = roomTypes.length > 0 ? roomTypes.filter((t) => t !== 'All Types') : ['Standard Room', 'Deluxe Room', 'Family Room', 'Suite Room']
-
   return (
     <div
       onClick={onClose}
@@ -104,7 +104,7 @@ export default function RoomFormModal({ room, roomTypes, existingNumbers, onClos
             <div>
               <label style={labelStyle}>Room Type</label>
               <select style={{ ...inputStyle, cursor: 'pointer' }} value={type} onChange={(e) => setType(e.target.value)}>
-                {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>

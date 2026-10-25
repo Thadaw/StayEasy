@@ -9,14 +9,12 @@ interface ImageGalleryProps {
 export function ImageGallery({ hotel }: ImageGalleryProps) {
   const [currentImg, setCurrentImg] = useState(0);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
-  const [showPrevBtn, setShowPrevBtn] = useState(false);
 
   function prevImg() {
     setCurrentImg((v) => (v === 0 ? hotel.images.length - 1 : v - 1));
   }
   function nextImg() {
     setCurrentImg((v) => (v === hotel.images.length - 1 ? 0 : v + 1));
-    setShowPrevBtn(true);
   }
 
   if (showAllPhotos) {
@@ -38,7 +36,7 @@ export function ImageGallery({ hotel }: ImageGalleryProps) {
     <div className="relative mb-8 rounded-2xl overflow-hidden bg-muted">
       <div className="md:hidden relative aspect-[4/3]">
         <img src={hotel.images[currentImg]} alt={hotel.name} className="w-full h-full object-cover" />
-        {showPrevBtn && (
+        {hotel.images.length > 1 && (
           <button onClick={prevImg} className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors z-10"><ChevronLeft size={20} className="text-gray-700" /></button>
         )}
         <button onClick={nextImg} className="absolute right-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:shadow-lg"><ChevronRight size={16} /></button>

@@ -15,9 +15,12 @@ type TabType = 'thisWeek' | 'lastMonth' | 'thisMonth'
 
 interface RevenueChartProps {
   data?: { day: string; thisMonth: number; lastMonth: number; thisWeek: number }[]
+  /** Real analytics data (from /analytics/revenue-trend). When provided,
+      the fake period tabs are hidden and a single revenue line is shown. */
+  revenueTrend?: { day: string; revenue: number }[]
 }
 
-export default function RevenueChart({ data: chartData }: RevenueChartProps) {
+export default function RevenueChart({ data: chartData, revenueTrend }: RevenueChartProps) {
   const [activeTab, setActiveTab] = useState<TabType>('thisMonth')
 
   const tabs: { key: TabType; label: string }[] = [
@@ -26,45 +29,62 @@ export default function RevenueChart({ data: chartData }: RevenueChartProps) {
     { key: 'thisMonth', label: 'This Month' },
   ]
 
+  const useRealData = !!revenueTrend && revenueTrend.length > 0
+
+  const series: {
+    day: string
+    thisMonth?: number
+    lastMonth?: number
+    thisWeek?: number
+    revenue?: number
+  }[] = useRealData ? revenueTrend ?? [] : (chartData ?? data)
+
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', padding: 20, flex: 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827' }}>Revenue Overview</h3>
-        <div style={{ display: 'flex', gap: 8, background: '#f3f4f6', borderRadius: 8, padding: 4 }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                border: 'none',
-                background: activeTab === tab.key ? '#fff' : 'transparent',
-                color: activeTab === tab.key ? '#111827' : '#6b7280',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontWeight: activeTab === tab.key ? 600 : 400,
-                boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {!useRealData && (
+          <div style={{ display: 'flex', gap: 8, background: '#f3f4f6', borderRadius: 8, padding: 4 }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: activeTab === tab.key ? '#fff' : 'transparent',
+                  color: activeTab === tab.key ? '#111827' : '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: activeTab === tab.key ? 600 : 400,
+                  boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {useRealData && (
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>Last 30 days</span>
+        )}
+      </div>
+      {!useRealData && (
+        <div style={{ display: 'flex', gap: 20, marginBottom: 16 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
+            <span style={{ width: 12, height: 3, borderRadius: 2, background: '#2563eb', display: 'inline-block' }} />
+            This Month
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
+            <span style={{ width: 12, height: 0, borderBottom: '2px dashed #d1d5db', display: 'inline-block' }} />
+            Last Month
+          </span>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: 20, marginBottom: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
-          <span style={{ width: 12, height: 3, borderRadius: 2, background: '#2563eb', display: 'inline-block' }} />
-          This Month
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
-          <span style={{ width: 12, height: 0, borderBottom: '2px dashed #d1d5db', display: 'inline-block' }} />
-          Last Month
-        </span>
-      </div>
+      )}
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={chartData ?? data}>
+        <LineChart data={series}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
           <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" tickFormatter={(v) => `${v/1000}K`} />
@@ -72,22 +92,35 @@ export default function RevenueChart({ data: chartData }: RevenueChartProps) {
             formatter={(value: string | number | readonly (string | number)[] | undefined) => `NPR ${Number(value ?? 0).toLocaleString()}`}
             contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
           />
-          <Line
-            type="monotone"
-            dataKey={activeTab}
-            stroke="#2563eb"
-            strokeWidth={2.5}
-            dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="lastMonth"
-            stroke="#d1d5db"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={false}
-          />
+          {useRealData ? (
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="#2563eb"
+              strokeWidth={2.5}
+              dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          ) : (
+            <>
+              <Line
+                type="monotone"
+                dataKey={activeTab}
+                stroke="#2563eb"
+                strokeWidth={2.5}
+                dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="lastMonth"
+                stroke="#d1d5db"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+            </>
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

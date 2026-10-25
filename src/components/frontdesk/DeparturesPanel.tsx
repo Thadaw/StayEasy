@@ -4,8 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { useBookingCheckOutStore } from "@/store/frontdesk/bookingCheckOutStore"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery } from "@tanstack/react-query"
-import { getTodayDepartures } from "@/api/pms/pmsApi"
+import { useTodayDeparturesQuery } from "@/services/queries/frontdesk/frontdeskArrivalQueries"
 import type { ArrivalGuest } from "@/types/pms"
 
 interface DeparturesPanelProps {
@@ -59,14 +58,7 @@ export function DeparturesPanel({ onClose }: DeparturesPanelProps) {
   const { formatAmount } = usePropertyCurrency()
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: departures = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["today-departures", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return []
-      return getTodayDepartures(currentPropertyId)
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: departures = [], isLoading, isError, refetch } = useTodayDeparturesQuery(currentPropertyId, { refetchInterval: 0 })
 
   const handleCheckout = (refNumber: string) => {
     navigate(`/frontdesk/checkout/${refNumber}`)

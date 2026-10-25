@@ -17,9 +17,8 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery } from "@tanstack/react-query"
-import api from "@/api/axiosInstance"
-import { getUnreadNotificationCount } from "@/api/pms/pmsApi"
+import { usePropertyQuery } from "@/services/queries/property/propertyDetailQueries"
+import { useUnreadNotificationCountQuery } from "@/services/queries/frontdesk/frontdeskNotificationQueries"
 
 interface SidebarContextType {
   isMobileOpen: boolean
@@ -123,26 +122,9 @@ function SidebarContent() {
   const { currentPropertyId } = usePropertyStore()
   const { setIsMobileOpen } = useFrontDeskSidebar()
 
-  const { data: property } = useQuery({
-    queryKey: ["property", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return null
-      try {
-        const { data } = await api.get(`/properties/${currentPropertyId}`)
-        return data?.data || data
-      } catch {
-        return null
-      }
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: property } = usePropertyQuery(currentPropertyId)
 
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ["unread-notifications-count", currentPropertyId],
-    queryFn: () => getUnreadNotificationCount(currentPropertyId!),
-    enabled: !!currentPropertyId,
-    refetchInterval: 30000,
-  })
+  const { data: unreadCount = 0 } = useUnreadNotificationCountQuery(currentPropertyId)
 
   const hotelName = property?.name || "ServeIQ"
   const brandColor = property?.brand_color || "#1e3a5f"
@@ -181,7 +163,7 @@ function SidebarContent() {
   }
 
   return (
-    <aside className="w-64 text-white flex flex-col h-full" style={{ backgroundColor: brandColor }}>
+    <aside className="w-56 sm:w-64 text-white flex flex-col h-full" style={{ backgroundColor: brandColor }}>
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
           {property?.brand_logo_url ? (
@@ -219,7 +201,7 @@ function SidebarContent() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 overflow-y-auto">
+      <nav className="flex-1 p-3 sm:p-4 overflow-y-auto">
         {navSections.map((section, sectionIdx) => (
           <div key={sectionIdx} className={sectionIdx > 0 ? "mt-6" : ""}>
             {section.title && (

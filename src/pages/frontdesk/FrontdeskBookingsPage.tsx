@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import * as XLSX from "xlsx"
 import {
@@ -377,7 +377,7 @@ export default function FrontdeskBookingsPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async (data: { refNumber: string; reason: string }) => {
-      const response = await api.post(`/staff/cancel-booking/${data.refNumber}`, { reason: data.reason, idempotency_key: crypto.randomUUID() })
+      const response = await api.post(`/staff/cancel-booking/${data.refNumber}`, { reason: data.reason })
       return response.data
     },
     onSuccess: () => {
@@ -395,7 +395,7 @@ export default function FrontdeskBookingsPage() {
     },
   })
 
-  const startEditing = () => {
+  const startEditing = useCallback(() => {
     if (!bookingDetail) return
     const rooms = bookingDetail.rooms
     const roomUnitIds = Array.isArray(rooms)
@@ -412,7 +412,7 @@ export default function FrontdeskBookingsPage() {
       reason: "",
     })
     setIsEditing(true)
-  }
+  }, [bookingDetail])
 
   // Auto-populate edit form when opening in edit mode
   useEffect(() => {

@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useRestaurantStore } from '@/store/admin/restaurantStore'
 
 const items = [
   { image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=60&h=60&fit=crop', name: 'Chicken Pizza', category: 'Pizza', sold: 48, revenue: 'NPR 33,600' },
@@ -10,7 +10,7 @@ const items = [
 ]
 
 export default function TopSellingItems() {
-  const [period] = useState('This Week')
+  const period = useRestaurantStore((s) => s.period)
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: 20 }}>

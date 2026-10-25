@@ -1,7 +1,7 @@
 export interface KpiCardData {
   label: string
   value: string
-  growth: number
+  growth?: number
   iconBg: string
   iconColor: string
   iconType: 'currency' | 'dollar' | 'barChart' | 'building' | 'bell'
@@ -19,9 +19,8 @@ export interface RoomTypeRevenue {
 
 export interface RevenueInRoomTypeRow {
   roomType: string
-  roomNights: number
-  adr: number
-  roomRevenue: number
+  bookings: number
+  revenue: number
   percentOfTotal: number
 }
 

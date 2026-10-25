@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Download } from 'lucide-react'
 import type { ShiftCoverageFilters, DayShiftGroup } from '@/types/shiftCoverage'
 import { mockShifts, mockDepartments } from '@/data/demo/mockShiftCoverage'
+import { useShiftCoverageStore } from '@/store/admin/shiftCoverageStore'
 
 interface FilterBarProps {
   filters: ShiftCoverageFilters
@@ -11,8 +12,10 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onFiltersChange, onWeekChange, data }: FilterBarProps) {
-  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false)
-  const [showShiftDropdown, setShowShiftDropdown] = useState(false)
+  const showDepartmentDropdown = useShiftCoverageStore((s) => s.showDepartmentDropdown)
+  const showShiftDropdown = useShiftCoverageStore((s) => s.showShiftDropdown)
+  const setShowDepartmentDropdown = useShiftCoverageStore((s) => s.setShowDepartmentDropdown)
+  const setShowShiftDropdown = useShiftCoverageStore((s) => s.setShowShiftDropdown)
   const departmentDropdownRef = useRef<HTMLDivElement>(null)
   const shiftDropdownRef = useRef<HTMLDivElement>(null)
 

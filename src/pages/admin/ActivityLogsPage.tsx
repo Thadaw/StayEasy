@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { useUIStore } from '@/store/ui/uiStore'
+import { useActivityStore } from '@/store/admin/activityStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import ActivityStats from '@/components/admin/activity/ActivityStats'
@@ -135,12 +135,18 @@ const OVERVIEW_BREAKDOWN = [
 export default function ActivityLogsPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
-  const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null)
-  const [search, setSearch] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [moduleFilter, setModuleFilter] = useState('')
-  const [actionFilter, setActionFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const selectedActivity = useActivityStore((s) => s.selectedActivity)
+  const setSelectedActivity = useActivityStore((s) => s.setSelectedActivity)
+  const search = useActivityStore((s) => s.search)
+  const setSearch = useActivityStore((s) => s.setSearch)
+  const userFilter = useActivityStore((s) => s.userFilter)
+  const setUserFilter = useActivityStore((s) => s.setUserFilter)
+  const moduleFilter = useActivityStore((s) => s.moduleFilter)
+  const setModuleFilter = useActivityStore((s) => s.setModuleFilter)
+  const actionFilter = useActivityStore((s) => s.actionFilter)
+  const setActionFilter = useActivityStore((s) => s.setActionFilter)
+  const statusFilter = useActivityStore((s) => s.statusFilter)
+  const setStatusFilter = useActivityStore((s) => s.setStatusFilter)
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>

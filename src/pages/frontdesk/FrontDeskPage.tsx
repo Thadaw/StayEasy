@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { 
   CalendarCheck, 
   CalendarX, 
@@ -25,15 +25,11 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "@/components/frontdesk/FrontDeskSidebar"
 import { usePropertyCurrency } from "@/hooks/frontdesk/usePropertyCurrency"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import {
-  getFrontDeskSummary,
-  getTodayDepartures,
-  getNotifications,
-  getUnreadNotificationCount,
-  markNotificationRead,
-  markAllNotificationsRead,
-} from "@/api/pms/pmsApi"
-import api from "@/api/axiosInstance"
+import { frontdeskKeys } from "@/lib/queryKeys"
+import { useFrontDeskSummaryQuery, useRevenueBookingsQuery } from "@/services/queries/frontdesk/frontdeskSummaryQueries"
+import { useTodayDeparturesQuery } from "@/services/queries/frontdesk/frontdeskArrivalQueries"
+import { useNotificationsDropdownQuery, useUnreadNotificationCountQuery } from "@/services/queries/frontdesk/frontdeskNotificationQueries"
+import { useMarkAllNotificationsReadMutation, useMarkNotificationReadMutation } from "@/services/mutations/frontdesk/frontdeskNotificationMutations"
 import { StatCard } from "@/components/frontdesk/StatCard"
 import { OccupancyChart } from "@/components/frontdesk/OccupancyChart"
 import { RevenueChart } from "@/components/frontdesk/RevenueChart"
@@ -93,19 +89,9 @@ export function FrontDeskPage() {
   const departuresRef = useRef<HTMLDivElement>(null)
   const roomsRef = useRef<HTMLDivElement>(null)
 
-  const { data: summary } = useQuery({
-    queryKey: ["front-desk-summary", currentPropertyId],
-    queryFn: () => getFrontDeskSummary(currentPropertyId!),
-    enabled: !!currentPropertyId,
-    refetchInterval: 30000,
-  })
+  const { data: summary } = useFrontDeskSummaryQuery(currentPropertyId)
 
-  useQuery({
-    queryKey: ["today-departures", currentPropertyId],
-    queryFn: () => getTodayDepartures(currentPropertyId!),
-    enabled: !!currentPropertyId,
-    refetchInterval: 60000,
-  })
+  useTodayDeparturesQuery(currentPropertyId)
 
   useEffect(() => {
     if (showNewBooking) {
@@ -168,47 +154,13 @@ export function FrontDeskPage() {
     navigate('/host/login')
   }
 
-  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
-    queryKey: ["staff-notifications-dropdown", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return []
-      const res = await getNotifications({ property_id: currentPropertyId, limit: 10 })
-      return res?.notifications ?? []
-    },
-    enabled: !!currentPropertyId,
-    refetchInterval: 30000,
-  })
+  const { data: notifications = [], refetch: refetchNotifications } = useNotificationsDropdownQuery(currentPropertyId)
 
-  const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
-    queryKey: ["unread-notifications-count", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return 0
-      const count = await getUnreadNotificationCount(currentPropertyId)
-      return count
-    },
-    enabled: !!currentPropertyId,
-    refetchInterval: 30000,
-  })
+  const { data: unreadCount = 0, refetch: refetchUnreadCount } = useUnreadNotificationCountQuery(currentPropertyId)
 
-  const markAllReadMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentPropertyId) return
-      return markAllNotificationsRead(currentPropertyId)
-    },
-    onSuccess: () => {
-      refetchNotifications()
-      refetchUnreadCount()
-    },
-  })
+  const markAllReadMutation = useMarkAllNotificationsReadMutation(currentPropertyId)
 
-  const markReadMutation = useMutation({
-    mutationFn: ({ notificationId }: { notificationId: string }) =>
-      markNotificationRead({ notificationId, propertyId: currentPropertyId! }),
-    onSuccess: () => {
-      refetchNotifications()
-      refetchUnreadCount()
-    },
-  })
+  const markReadMutation = useMarkNotificationReadMutation(currentPropertyId)
 
   const handleWebSocketMessage = useCallback(
     (event: MessageEvent) => {
@@ -219,26 +171,26 @@ export function FrontDeskPage() {
         if (!eventType || eventType === "connected" || eventType === "ping" || eventType === "pong") return
 
         if (eventType === "booking_update" || eventType === "new_booking" || eventType === "booking") {
-          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
-          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
-          queryClient.invalidateQueries({ queryKey: ["revenue-bookings", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.summary(currentPropertyId || "") })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.departures(currentPropertyId || "") })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.revenueBookings(currentPropertyId || "") })
           refetchNotifications()
           refetchUnreadCount()
         } else if (eventType === "check_in" || eventType === "check_out") {
-          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
-          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.summary(currentPropertyId || "") })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.departures(currentPropertyId || "") })
           refetchNotifications()
           refetchUnreadCount()
         } else if (eventType === "room_status" || eventType === "housekeeping") {
-          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.summary(currentPropertyId || "") })
           refetchNotifications()
           refetchUnreadCount()
         } else if (eventType === "notification") {
           refetchNotifications()
           refetchUnreadCount()
         } else {
-          queryClient.invalidateQueries({ queryKey: ["front-desk-summary", currentPropertyId] })
-          queryClient.invalidateQueries({ queryKey: ["today-departures", currentPropertyId] })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.summary(currentPropertyId || "") })
+          queryClient.invalidateQueries({ queryKey: frontdeskKeys.departures(currentPropertyId || "") })
           refetchNotifications()
           refetchUnreadCount()
         }
@@ -315,20 +267,7 @@ export function FrontDeskPage() {
     maintenance: 0
   }
 
-  const { data: bookingsRevenue = [] } = useQuery({
-    queryKey: ["revenue-bookings", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return []
-      try {
-        const { data: result } = await api.get(`/properties/${currentPropertyId}/bookings`, { params: { limit: "50", skip: "0" } })
-        const wrapped = result as { data?: Array<{ created_at: string; total_amount: string }> }
-        return (wrapped?.data ?? result) as Array<{ created_at: string; total_amount: string }>
-      } catch {
-        return []
-      }
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: bookingsRevenue = [] } = useRevenueBookingsQuery(currentPropertyId)
 
   const { revenueData, currentRevenue, lastWeekRevenue, growth } = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -398,10 +337,10 @@ export function FrontDeskPage() {
       
       <main className="flex-1 overflow-auto">
         <MobileMenuButton />
-        <div className="p-4 lg:p-6 pt-14 lg:pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Front Desk</h1>
-            <div className="flex items-center gap-2 sm:gap-4">
+        <div className="p-3 sm:p-4 lg:p-6 pt-12 sm:pt-14 lg:pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Front Desk</h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
                 <CalendarCheck size={16} />
                 <span>{formattedDate}</span>
@@ -426,8 +365,8 @@ export function FrontDeskPage() {
                       onClick={() => setShowNotifications(false)} 
                       className="fixed inset-0 z-40"
                     />
-                    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
-                      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
                         <button 
                           onClick={() => {
@@ -440,9 +379,9 @@ export function FrontDeskPage() {
                         </button>
                       </div>
                       
-                      <div className="max-h-96 overflow-y-auto">
+                      <div className="max-h-72 sm:max-h-96 overflow-y-auto">
                         {notifications.length === 0 ? (
-                          <div className="text-center py-8 text-gray-400 text-sm">No notifications</div>
+                          <div className="text-center py-6 sm:py-8 text-gray-400 text-sm">No notifications</div>
                         ) : (
                           notifications.map((notification) => {
                             const display = getNotifDisplay(notification.type)
@@ -455,12 +394,12 @@ export function FrontDeskPage() {
                                     markReadMutation.mutate({ notificationId: notification.id })
                                   }
                                 }}
-                                className={`flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 ${
+                                className={`flex items-start gap-3 p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 ${
                                   !notification.is_read ? "bg-blue-50/50" : ""
                                 }`}
                               >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${display.bg}`}>
-                                  <IconComp size={16} className={display.color} />
+                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${display.bg}`}>
+                                  <IconComp size={14} className={display.color} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
@@ -468,11 +407,11 @@ export function FrontDeskPage() {
                                       {notification.title}
                                     </p>
                                     {!notification.is_read && (
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
+                                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full shrink-0" />
                                     )}
                                   </div>
-                                  <p className="text-sm text-gray-500 mt-0.5">{notification.message}</p>
-                                  <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(notification.created_at)}</p>
+                                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{notification.message}</p>
+                                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{formatTimeAgo(notification.created_at)}</p>
                                 </div>
                               </div>
                             )
@@ -480,7 +419,7 @@ export function FrontDeskPage() {
                         )}
                       </div>
 
-                      <div className="p-3 border-t border-gray-100">
+                      <div className="p-2 sm:p-3 border-t border-gray-100">
                         <button
                           onClick={() => {
                             navigate("/frontdesk/notifications")
@@ -501,7 +440,7 @@ export function FrontDeskPage() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <span className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm text-white font-semibold uppercase">
+                  <span className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold uppercase">
                     {initials}
                   </span>
                 </button>
@@ -512,32 +451,32 @@ export function FrontDeskPage() {
                       onClick={() => setShowUserMenu(false)} 
                       className="fixed inset-0 z-40"
                     />
-                    <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
-                      <div className="p-4 border-b border-gray-100">
+                    <div className="absolute right-0 top-full mt-2 w-44 sm:w-56 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                      <div className="p-3 sm:p-4 border-b border-gray-100">
                         <p className="font-semibold text-gray-900">{displayName}</p>
-                        <p className="text-sm text-gray-500 capitalize">{user?.role?.replace('_', ' ') || 'Staff'}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 capitalize">{user?.role?.replace('_', ' ') || 'Staff'}</p>
                       </div>
-                      <div className="py-2">
+                      <div className="py-1.5">
                         <button
                           onClick={() => {
                             navigate("/frontdesk/account")
                             setShowUserMenu(false)
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          className="w-full flex items-center gap-2.5 px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
-                          <User size={16} />
+                          <User size={14} className="shrink-0" />
                           Account Settings
                         </button>
                       </div>
-                      <div className="border-t border-gray-100 py-2">
+                      <div className="border-t border-gray-100 py-1.5">
                         <button
                           onClick={() => {
                             handleSignOut()
                             setShowUserMenu(false)
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          className="w-full flex items-center gap-2.5 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <LogOut size={16} />
+                          <LogOut size={14} className="shrink-0" />
                           Sign Out
                         </button>
                       </div>
@@ -548,30 +487,30 @@ export function FrontDeskPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mb-6">
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3 mb-4 sm:mb-6">
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-gray-700 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              <LogOut size={16} />
+              <LogOut size={14} />
               <span>Handover</span>
             </button>
             <button
               onClick={() => setShowNewBooking(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <Plus size={16} />
+              <Plus size={14} />
               <span>New Booking</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4 mb-4 sm:mb-6">
             {stats.map((stat, index) => (
               <StatCard key={index} {...stat} />
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <OccupancyChart 
               data={occupancyData}
               totalRooms={summary?.total_rooms ?? 0}
@@ -587,7 +526,7 @@ export function FrontDeskPage() {
             />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <QuickActions onAction={handleQuickAction} />
           </div>
 

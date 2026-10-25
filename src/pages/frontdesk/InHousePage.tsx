@@ -6,20 +6,7 @@ import { FrontDeskPagination } from "@/components/frontdesk/FrontDeskPagination"
 import { FrontdeskTableSkeleton } from "@/components/frontdesk/FrontdeskTableSkeleton"
 import { usePropertyStore } from "@/store/properties/propertyStore"
 import { useBookingCheckOutStore } from "@/store/frontdesk/bookingCheckOutStore"
-import { useQuery } from "@tanstack/react-query"
-import api from "@/api/axiosInstance"
-
-interface InHouseGuest {
-  guest_id: string | null
-  booking_guest_id: string | null
-  full_name: string
-  email: string
-  phone: string
-  nationality: string
-  ref_number: string
-  checkin_date: string
-  checkout_date: string
-}
+import { useInHouseGuestsQuery } from "@/services/queries/frontdesk/frontdeskGuestQueries"
 
 function getInitials(name: string): string {
   return name
@@ -47,23 +34,7 @@ export default function InHousePage() {
     navigate(`/frontdesk/checkout/${refNumber}`)
   }
 
-  const { data: inHouseGuests = [], isLoading } = useQuery({
-    queryKey: ["in-house-guests", currentPropertyId],
-    queryFn: async (): Promise<InHouseGuest[]> => {
-      if (!currentPropertyId) return []
-      try {
-        const { data: result } = await api.get(`/staff/properties/${currentPropertyId}/booking-guests`, {
-          params: { skip: 0, limit: 100 },
-        })
-        const wrapped = result as { data?: InHouseGuest[] }
-        return wrapped?.data || []
-      } catch {
-        return []
-      }
-    },
-    enabled: !!currentPropertyId,
-    refetchOnMount: true,
-  })
+  const { data: inHouseGuests = [], isLoading } = useInHouseGuestsQuery(currentPropertyId, { refetchOnMount: true })
 
   const filtered = inHouseGuests.filter((g) => {
     if (!searchQuery) return true

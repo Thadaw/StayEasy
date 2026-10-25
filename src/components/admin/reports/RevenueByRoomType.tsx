@@ -1,15 +1,15 @@
-import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import type { RoomTypeRevenue } from '@/types/reports'
 
 interface RevenueByRoomTypeProps {
   data: RoomTypeRevenue[]
+  period: string
+  onPeriodChange: (period: string) => void
 }
 
 const BAR_COLORS = ['#1A3C5E', '#2E86AB', '#3BA0CA', '#6BC0D8', '#A8D8EA']
 
-export default function RevenueByRoomType({ data }: RevenueByRoomTypeProps) {
-  const [period, setPeriod] = useState('This Month')
+export default function RevenueByRoomType({ data, period, onPeriodChange }: RevenueByRoomTypeProps) {
 
   return (
     <div
@@ -27,13 +27,13 @@ export default function RevenueByRoomType({ data }: RevenueByRoomTypeProps) {
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>Revenue by Room Type</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A3C5E' }} />
-            <span style={{ fontSize: 11, color: '#64748B' }}>Revenue (USD)</span>
+            <span style={{ fontSize: 11, color: '#64748B' }}>Revenue (NPR)</span>
           </div>
         </div>
         <div>
           <select
             value={period}
-            onChange={e => setPeriod(e.target.value)}
+            onChange={e => onPeriodChange(e.target.value)}
             style={{
               appearance: 'none',
               WebkitAppearance: 'none',
@@ -52,9 +52,8 @@ export default function RevenueByRoomType({ data }: RevenueByRoomTypeProps) {
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%2394A3B8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E")`,
             }}
           >
-            <option>This Month</option>
-            <option>Last Month</option>
-            <option>This Quarter</option>
+            <option>Last 7 Days</option>
+            <option>Last 30 Days</option>
           </select>
         </div>
       </div>
@@ -72,7 +71,7 @@ export default function RevenueByRoomType({ data }: RevenueByRoomTypeProps) {
             tick={{ fontSize: 11, fill: '#94A3B8' }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={v => `$${v / 1000}k`}
+            tickFormatter={v => `${v / 1000}K`}
           />
           <Tooltip
             contentStyle={{
@@ -82,7 +81,7 @@ export default function RevenueByRoomType({ data }: RevenueByRoomTypeProps) {
               fontSize: 12,
               color: '#334155',
             }}
-            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`$${Number(value ?? 0).toLocaleString()}`, 'Revenue']}
+            formatter={(value: string | number | readonly (string | number)[] | undefined) => [`NPR ${Number(value ?? 0).toLocaleString()}`, 'Revenue']}
             cursor={{ fill: 'rgba(0,0,0,0.02)' }}
           />
           <Bar dataKey="revenue" radius={[4, 4, 0, 0]} barSize={40}>

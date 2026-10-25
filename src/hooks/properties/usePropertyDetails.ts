@@ -6,7 +6,8 @@ import type { AuthRequestConfig } from "@/api/axiosInstance"
 import { mapPropertyToHotel } from "@/utils/propertyMapper"
 import { getDefaultDates } from "@/utils/date"
 import { calculateNights } from "@/utils/time"
-import { usePropertyQuery, useAvailableRoomsQuery } from "@/services/queries/bookingQueries"
+import { usePropertyQuery } from "@/services/queries/property/propertyDetailQueries"
+import { useAvailableRoomsQuery } from "@/services/queries/booking/availableRoomsQueries"
 
 interface GuestCounts {
   adults: number

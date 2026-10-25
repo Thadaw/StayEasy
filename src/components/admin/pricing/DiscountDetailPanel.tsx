@@ -1,30 +1,32 @@
 import { X, Tag } from 'lucide-react'
-import type { OfferDetail } from '@/types/pricing'
+import type { DiscountOffer, OfferStatus } from '@/types/pricing'
 
 interface DiscountDetailPanelProps {
-  offer: OfferDetail
+  offer: DiscountOffer
   onClose: () => void
+  onEdit: () => void
+  onToggleActive: () => void
+  onDelete: () => void
+  isMutating?: boolean
 }
 
-const statusColors: Record<string, { bg: string; text: string }> = {
+const statusColors: Record<OfferStatus, { bg: string; text: string }> = {
   Active: { bg: '#D1FAE5', text: '#065F46' },
   Upcoming: { bg: '#DBEAFE', text: '#1E40AF' },
   Expired: { bg: '#F3F4F6', text: '#6B7280' },
+  Inactive: { bg: '#FEF3C7', text: '#92400E' },
 }
 
-export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPanelProps) {
+export default function DiscountDetailPanel({ offer, onClose, onEdit, onToggleActive, onDelete, isMutating }: DiscountDetailPanelProps) {
   const sc = statusColors[offer.status] || statusColors.Active
 
   const details = [
-    { label: 'Offer Code', value: offer.code, mono: true },
     { label: 'Offer Type', value: offer.type },
     { label: 'Discount', value: offer.discount, highlight: true },
     { label: 'Applicable To', value: offer.applicableTo },
-    { label: 'Minimum Stay', value: offer.minimumStay },
-    { label: 'Maximum Discount', value: offer.maximumDiscount },
-    { label: 'Validity Period', value: offer.validityPeriod },
-    { label: 'Usage Limit', value: offer.usageLimit },
-    { label: 'Used', value: offer.used },
+    { label: 'Valid From', value: offer.startDate },
+    { label: 'Valid To', value: offer.endDate },
+    { label: 'Currently Active', value: offer.isActive ? 'Yes' : 'No' },
   ]
 
   return (
@@ -80,8 +82,7 @@ export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPa
               </span>
               <span style={{
                 fontSize: 13, fontWeight: d.highlight ? 600 : 500,
-                color: d.highlight ? '#059669' : d.mono ? 'var(--primary)' : '#111827',
-                fontFamily: d.mono ? 'monospace' : 'inherit',
+                color: d.highlight ? '#059669' : '#111827',
               }}>
                 {d.value}
               </span>
@@ -95,28 +96,50 @@ export default function DiscountDetailPanel({ offer, onClose }: DiscountDetailPa
             <span style={{ fontSize: 12, color: '#6B7280' }}>📄</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Description</span>
           </div>
-          <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6, margin: 0 }}>{offer.description}</p>
+          <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6, margin: 0 }}>{offer.description || 'No description provided.'}</p>
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 10 }}>
-        <button style={{
-          flex: 1, padding: '10px 16px', borderRadius: 8,
-          border: '1px solid var(--primary)', background: '#fff',
-          color: 'var(--primary)', fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
+      <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button
+          onClick={onEdit}
+          disabled={isMutating}
+          style={{
+            width: '100%', padding: '10px 16px', borderRadius: 8,
+            border: '1px solid var(--primary)', background: '#fff',
+            color: 'var(--primary)', fontSize: 13, fontWeight: 600,
+            cursor: isMutating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
           ✏️ Edit Offer
         </button>
-        <button style={{
-          flex: 1, padding: '10px 16px', borderRadius: 8,
-          border: '1px solid #DC2626', background: '#fff',
-          color: '#DC2626', fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
-          ⏻ Deactivate
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onToggleActive}
+            disabled={isMutating}
+            style={{
+              flex: 1, padding: '10px 16px', borderRadius: 8,
+              border: '1px solid #D97706', background: '#fff',
+              color: '#D97706', fontSize: 13, fontWeight: 600,
+              cursor: isMutating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            {offer.isActive ? '⏸ Deactivate' : '▶ Activate'}
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={isMutating}
+            style={{
+              flex: 1, padding: '10px 16px', borderRadius: 8,
+              border: '1px solid #DC2626', background: '#fff',
+              color: '#DC2626', fontSize: 13, fontWeight: 600,
+              cursor: isMutating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            🗑 Delete
+          </button>
+        </div>
       </div>
     </div>
   )

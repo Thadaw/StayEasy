@@ -46,7 +46,7 @@ export default function ForgotPassword() {
     }
     setLoading(true)
     try {
-      await api.post('/auth/forgot-password', { email })
+      await api.post('/auth/forgot-password', { email, role: isHost ? 'USER' : 'GUEST' })
       setSent(true)
     } catch (err) {
       setError(extractError(err, 'Could not send reset link. Please check your email and try again.'))
@@ -117,7 +117,7 @@ export default function ForgotPassword() {
                 Forgot password?
               </div>
               <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>
-                Enter your email and we'll send you a reset link.
+                Enter your email and we'll send you a temporary password.
               </div>
 
               <div style={{ position: 'relative', marginBottom: 13 }}>
@@ -157,7 +157,7 @@ export default function ForgotPassword() {
                   marginTop: 2, opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? 'Sending link...' : 'Send Reset Link'}
+                {loading ? 'Sending...' : 'Send Temporary Password'}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: '#aaa' }}>
@@ -178,10 +178,10 @@ export default function ForgotPassword() {
                   Check your email
                 </div>
                 <p style={{ fontSize: 13, color: '#1E8449', fontWeight: 600 }}>
-                  We emailed a reset link to <strong>{email}</strong>
+                  We emailed a temporary password to <strong>{email}</strong>
                 </p>
                 <p style={{ fontSize: 12, color: '#999', marginTop: 10 }}>
-                  Open the link in the email to set a new password. If you don't see it, check your spam folder.
+                  Log in with this temporary password, then set a new password when prompted. If you don't see the email, check your spam folder.
                 </p>
               </div>
 

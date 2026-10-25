@@ -3,12 +3,12 @@ import type { RevenueInRoomTypeRow } from '@/types/reports'
 
 interface RevenueInRoomTypeTableProps {
   data: RevenueInRoomTypeRow[]
-  totalNights: number
-  totalAdr: number
+  totalBookings: number
   totalRevenue: number
 }
 
-export default function RevenueInRoomTypeTable({ data, totalNights, totalAdr, totalRevenue }: RevenueInRoomTypeTableProps) {
+export default function RevenueInRoomTypeTable({ data, totalBookings, totalRevenue }: RevenueInRoomTypeTableProps) {
+  const money = (v: number) => `NPR ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   return (
     <div
       style={{
@@ -43,27 +43,32 @@ export default function RevenueInRoomTypeTable({ data, totalNights, totalAdr, to
         <thead>
           <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
             <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Room Type</th>
-            <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Room Nights</th>
-            <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>ADR (Avg.)</th>
+            <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Bookings</th>
             <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Room Revenue</th>
             <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>% of Total</th>
           </tr>
         </thead>
         <tbody>
-          {data.map(row => (
-            <tr key={row.roomType} style={{ borderBottom: '1px solid #F1F5F9' }}>
-              <td style={{ padding: '12px', fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{row.roomType}</td>
-              <td style={{ padding: '12px', fontSize: 13, color: '#334155' }}>{row.roomNights}</td>
-              <td style={{ padding: '12px', fontSize: 13, color: '#334155' }}>${row.adr.toFixed(2)}</td>
-              <td style={{ padding: '12px', fontSize: 13, color: '#334155' }}>${row.roomRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td style={{ padding: '12px', fontSize: 13, color: '#334155', textAlign: 'right' }}>{row.percentOfTotal}%</td>
+          {data.length === 0 ? (
+            <tr>
+              <td colSpan={4} style={{ padding: '24px 12px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>
+                No revenue data available.
+              </td>
             </tr>
-          ))}
+          ) : (
+            data.map(row => (
+              <tr key={row.roomType} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                <td style={{ padding: '12px', fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{row.roomType}</td>
+                <td style={{ padding: '12px', fontSize: 13, color: '#334155' }}>{row.bookings}</td>
+                <td style={{ padding: '12px', fontSize: 13, color: '#334155' }}>{money(row.revenue)}</td>
+                <td style={{ padding: '12px', fontSize: 13, color: '#334155', textAlign: 'right' }}>{row.percentOfTotal}%</td>
+              </tr>
+            ))
+          )}
           <tr style={{ fontWeight: 700, borderTop: '2px solid #E2E8F0' }}>
             <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>Total</td>
-            <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>{totalNights}</td>
-            <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>${totalAdr.toFixed(2)}</td>
-            <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>{totalBookings}</td>
+            <td style={{ padding: '12px', fontSize: 13, color: '#0F172A' }}>{money(totalRevenue)}</td>
             <td style={{ padding: '12px', fontSize: 13, color: '#0F172A', textAlign: 'right' }}>100%</td>
           </tr>
         </tbody>

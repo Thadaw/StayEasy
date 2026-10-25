@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useRestaurantStore } from '@/store/admin/restaurantStore'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 
 const orderTypes = [
@@ -10,7 +10,7 @@ const orderTypes = [
 ]
 
 export default function OrdersByTypeChart() {
-  const [period] = useState('This Week')
+  const period = useRestaurantStore((s) => s.period)
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', padding: 20 }}>

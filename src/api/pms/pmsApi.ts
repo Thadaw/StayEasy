@@ -11,8 +11,9 @@ import type {
   RoomCalendarRoom,
   SpecialOfferPayload,
   SpecialOfferResponse,
+  SpecialOfferUpdatePayload,
   DiscountCodePayload,
-  DiscountCodeResponse,
+   DiscountCodeResponse,
   AmenityOption,
   TenantResponse,
   PropertyBooking,
@@ -24,8 +25,15 @@ import type {
   NotificationsResponse,
 } from '@/types/pms'
 import type {
+  DashboardOverview,
+  RevenueTrendPoint,
+  RevenueByRoomType,
+  BookingTrendPoint,
+} from '@/types/analytics'
+import type {
   ApiStaff,
   CreateStaffPayload,
+  StaffSummary,
   UpdateStaffPayload,
 } from '@/types/staff'
 
@@ -200,15 +208,43 @@ export const getSystemBedTypes = async (): Promise<SystemBedTypeItem[]> => {
 // ─── Special Offers ──────────────────────────────────────────
 
 export const createSpecialOffers = async (propertyId: string, offers: SpecialOfferPayload[]): Promise<SpecialOfferResponse[]> => {
-  const { data: result } = await api.post(`/properties/${propertyId}/special-offers/`, { offers })
+  // No trailing slash: the backend registers this route as `.../special-offers`
+  // and a trailing slash triggers a 307 redirect (a duplicate request per call).
+  const { data: result } = await api.post(`/properties/${propertyId}/special-offers`, { offers })
   const data = unwrapBody<SpecialOfferResponse[]>(result)
   return Array.isArray(data) ? data : []
 }
 
 export const getSpecialOffers = async (propertyId: string): Promise<SpecialOfferResponse[]> => {
-  const { data: result } = await api.get(`/properties/${propertyId}/special-offers/`)
-  const data = unwrapBody<SpecialOfferResponse[]>(result)
-  return Array.isArray(data) ? data : []
+  const limit = 50
+  const all: SpecialOfferResponse[] = []
+  const seen = new Set<string>()
+  let skip = 0
+
+  // The list endpoint is paginated (limit <= 50). Only walk extra pages when the
+  // response actually reports more (`meta`), and stop if a page adds nothing new
+  // so a backend that ignores `skip` can never trigger an endless request loop.
+  for (let page = 0; page < 20; page += 1) {
+    const { data: result } = await api.get(`/properties/${propertyId}/special-offers`, { params: { skip, limit } })
+    const envelope = result as { data?: SpecialOfferResponse[]; meta?: { total?: number; has_more?: boolean } }
+    const batch = Array.isArray(envelope.data) ? envelope.data : []
+
+    const before = all.length
+    for (const offer of batch) {
+      if (!seen.has(offer.id)) {
+        seen.add(offer.id)
+        all.push(offer)
+      }
+    }
+
+    const total = envelope.meta?.total
+    const hasMore = envelope.meta?.has_more === true || (typeof total === 'number' && all.length < total)
+    if (!hasMore || batch.length === 0 || all.length === before) break
+
+    skip += limit
+  }
+
+  return all
 }
 
 export const getSpecialOffer = async (propertyId: string, offerId: string): Promise<SpecialOfferResponse> => {
@@ -216,7 +252,7 @@ export const getSpecialOffer = async (propertyId: string, offerId: string): Prom
   return unwrapBody<SpecialOfferResponse>(result)
 }
 
-export const updateSpecialOffer = async (propertyId: string, offerId: string, data: Partial<SpecialOfferPayload>): Promise<SpecialOfferResponse> => {
+export const updateSpecialOffer = async (propertyId: string, offerId: string, data: SpecialOfferUpdatePayload): Promise<SpecialOfferResponse> => {
   const { data: result } = await api.patch(`/properties/${propertyId}/special-offers/${offerId}`, data)
   return unwrapBody<SpecialOfferResponse>(result)
 }
@@ -250,6 +286,37 @@ export const updateDiscountCode = async (propertyId: string, discountId: string,
 
 export const deleteDiscountCode = async (propertyId: string, discountId: string): Promise<void> => {
   await api.delete(`/properties/${propertyId}/discount-codes/${discountId}`)
+}
+
+// ─── Analytics ──────────────────────────────────────────────
+
+export const getPropertyAnalytics = async (propertyId: string): Promise<DashboardOverview> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/analytics`)
+  return unwrapBody<DashboardOverview>(result)
+}
+
+export const getRevenueTrend = async (propertyId: string, days = 7): Promise<RevenueTrendPoint[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/analytics/revenue-trend`, {
+    params: { days },
+  })
+  const data = unwrapBody<RevenueTrendPoint[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getRevenueByRoomType = async (propertyId: string, days = 7): Promise<RevenueByRoomType[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/analytics/revenue-by-room-type`, {
+    params: { days },
+  })
+  const data = unwrapBody<RevenueByRoomType[]>(result)
+  return Array.isArray(data) ? data : []
+}
+
+export const getBookingTrend = async (propertyId: string, days = 7): Promise<BookingTrendPoint[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/analytics/booking-trend`, {
+    params: { days },
+  })
+  const data = unwrapBody<BookingTrendPoint[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 // ─── Tenant ─────────────────────────────────────────────────
@@ -342,23 +409,25 @@ export const bulkAssignTasks = async (
 // ─── Housekeeping Dropdowns ────────────────────────────────
 
 export const getHousekeepingStaffOptions = async (propertyId: string): Promise<import('@/types/housekeeping').ApiStaffOption[]> => {
-  const { data: result } = await api.get(`/properties/${propertyId}/tasks/housekeeping-staff`)
-  const wrapped = unwrapBody<unknown>(result)
-  const rawList = Array.isArray(wrapped)
-    ? wrapped
-    : (wrapped as { staff?: unknown[] })?.staff
-      ?? (wrapped as { items?: unknown[] })?.items
-      ?? (wrapped as { housekeeping_staff?: unknown[] })?.housekeeping_staff
-      ?? []
-  return rawList.map(item => {
-    const s = item as Record<string, unknown>
-    const photos = s.photos as Record<string, unknown> | undefined
-    return {
-      id: String(s.id ?? ''),
-      name: String(s.name ?? s.full_name ?? ''),
-      cover_photo: (s.cover_photo as string | null | undefined) ?? (photos?.profile as string | null | undefined) ?? null,
-    }
-  })
+  const staff = await getAllHousekeepingStaff(propertyId)
+  return staff.map(s => ({
+    id: String(s.id ?? ''),
+    name: String(s.full_name ?? ''),
+    cover_photo: s.photos?.profile ?? null,
+  }))
+}
+
+async function getAllHousekeepingStaff(propertyId: string): Promise<ApiStaff[]> {
+  const all: ApiStaff[] = []
+  let skip = 0
+  const pageSize = 100
+  for (;;) {
+    const batch = await getHousekeepingStaffList(propertyId, { skip, limit: pageSize })
+    all.push(...batch)
+    if (batch.length < pageSize) break
+    skip += pageSize
+  }
+  return all
 }
 
 export const getTaskRoomOptions = async (propertyId: string): Promise<import('@/types/housekeeping').ApiRoomOption[]> => {
@@ -417,9 +486,24 @@ export const getStaffList = async (
   return Array.isArray(data) ? data : []
 }
 
-export const getStaffSummary = async (propertyId: string): Promise<unknown> => {
+export const getStaffSummary = async (propertyId: string): Promise<StaffSummary> => {
   const { data: result } = await api.get(`/properties/${propertyId}/staffs/staffs-summary`)
-  return unwrapBody<unknown>(result)
+  const summary = unwrapBody<Partial<StaffSummary>>(result) ?? {}
+  return {
+    total: summary.total ?? 0,
+    active: summary.active ?? 0,
+    inactive: summary.inactive ?? 0,
+    on_leave: summary.on_leave ?? 0,
+  }
+}
+
+export const getHousekeepingStaffList = async (
+  propertyId: string,
+  params?: { search?: string; skip?: number; limit?: number }
+): Promise<ApiStaff[]> => {
+  const { data: result } = await api.get(`/properties/${propertyId}/staffs/housekeeping-staffs`, { params })
+  const data = unwrapBody<ApiStaff[]>(result)
+  return Array.isArray(data) ? data : []
 }
 
 export const getStaff = async (propertyId: string, staffId: string): Promise<ApiStaff> => {

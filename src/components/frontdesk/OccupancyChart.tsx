@@ -20,7 +20,7 @@ export function OccupancyChart({
 }: OccupancyChartProps) {
   const total = data.occupied + data.available + data.cleaning + data.maintenance
   
-  const getPercentage = (value: number) => ((value / total) * 100).toFixed(1)
+  const getPercentage = (value: number) => total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
   
   const segments = [
     { label: "Occupied", value: data.occupied, color: "var(--chart-1, #3b82f6)", percentage: getPercentage(data.occupied) },

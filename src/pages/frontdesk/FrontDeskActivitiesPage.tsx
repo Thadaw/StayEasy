@@ -12,19 +12,8 @@ import { ExportButton } from "@/components/frontdesk/ExportButton"
 import { FrontdeskGridSkeleton } from "@/components/frontdesk/FrontdeskTableSkeleton"
 
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery } from "@tanstack/react-query"
-import api from "@/api/axiosInstance"
-
-interface Activity {
-  id: string
-  staff_name: string
-  activity_type: string
-  description: string
-  booking_id: string
-  room_id: string
-  extra_data: Record<string, unknown>
-  created_at: string
-}
+import { useBookingActivitiesQuery } from "@/services/queries/frontdesk/frontdeskActivityQueries"
+import type { Activity } from "@/services/queries/frontdesk/frontdeskActivityQueries"
 
 type StatusTab = "active" | "completed"
 
@@ -90,8 +79,6 @@ function formatTime(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
 }
 
-const EMPTY_ACTIVITIES: Activity[] = []
-
 export default function FrontDeskActivitiesPage() {
   const { currentPropertyId } = usePropertyStore()
   const [activeTab] = useState<StatusTab>("active")
@@ -100,26 +87,7 @@ export default function FrontDeskActivitiesPage() {
   const [activeExpanded, setActiveExpanded] = useState(true)
   const [completedExpanded, setCompletedExpanded] = useState(true)
 
-  const { data: activitiesData, isLoading, isError } = useQuery({
-    queryKey: ["frontdesk-booking-activities", currentPropertyId, searchQuery],
-    queryFn: async () => {
-      if (!currentPropertyId) return EMPTY_ACTIVITIES
-      const params: Record<string, string> = { limit: "100", skip: "0" }
-      const { data: result } = await api.get(
-        `/staff/properties/${currentPropertyId}/activities/booking`,
-        { params }
-      )
-      
-      const apiResult = result as { success?: boolean; data?: Activity[] }
-      if (apiResult.success === false) {
-        throw new Error("Failed to fetch booking activities")
-      }
-      
-      const apiData = apiResult.data ?? []
-      return apiData
-    },
-    enabled: !!currentPropertyId,
-  })
+  const { data: activitiesData, isLoading, isError } = useBookingActivitiesQuery(currentPropertyId)
 
   const filteredActivities = useMemo(() => {
     let activities = activitiesData ?? []
@@ -230,10 +198,10 @@ export default function FrontDeskActivitiesPage() {
             <>
               {/* Active Tasks Section */}
               {activeTab === "active" && (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-3 sm:mb-4">
                   <button
                     onClick={() => setActiveExpanded(!activeExpanded)}
-                    className="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    className="w-full px-3 sm:px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {activeExpanded ? <ChevronDown size={18} className="text-gray-400 shrink-0" /> : <ChevronRight size={18} className="text-gray-400 shrink-0" />}

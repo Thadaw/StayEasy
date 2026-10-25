@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '@/store/ui/uiStore'
 import { useAuth } from '@/context/AuthContext'
+import { hostProfileSchema, type HostProfileFormData } from '@/schemas/admin/profileSchemas'
+import { useUpdateProfileMutation } from '@/services/mutations/admin/profileMutations'
+import { useProfileStore } from '@/store/admin/profileStore'
 import logo1 from '@/assets/images/logo1.png'
 import {
   ArrowLeft,
@@ -22,7 +27,10 @@ const sidebarItems = [
 export default function HostProfilePage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [showAvatarMenu, setShowAvatarMenu] = useState(false)
+  const showAvatarMenu = useProfileStore((s) => s.showAvatarMenu)
+  const setShowAvatarMenu = useProfileStore((s) => s.setShowAvatarMenu)
+  const isEditing = useProfileStore((s) => s.isEditing)
+  const setIsEditing = useProfileStore((s) => s.setIsEditing)
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
 
@@ -31,34 +39,58 @@ export default function HostProfilePage() {
   const initials = (firstName?.[0] || '') + (lastName?.[0] || '')
   const displayInitials = initials.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'
 
-  const [formData, setFormData] = useState({
-    firstName: firstName,
-    lastName: lastName,
-    email: user?.email || '',
-    phone: user?.phone || '',
-    timezone: '(UTC+00:00) London',
-    dateOfBirth: '07/13/1998',
-    role: user?.role || 'Host',
-    hostId: 'h147-99118822',
-  })
+  const role = user?.role || 'Host'
+  const hostId = 'h147-99118822'
 
-  const [isEditing, setIsEditing] = useState(false)
+  const updateProfileMutation = useUpdateProfileMutation()
 
-  const handleSave = () => {
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setFormData({
-      firstName: firstName,
-      lastName: lastName,
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+  } = useForm<HostProfileFormData>({
+    resolver: zodResolver(hostProfileSchema),
+    defaultValues: {
+      firstName,
+      lastName,
       email: user?.email || '',
       phone: user?.phone || '',
       timezone: '(UTC+00:00) London',
       dateOfBirth: '07/13/1998',
-      role: user?.role || 'Host',
-      hostId: 'h147-99118822',
-    })
+    },
+  })
+
+  const email = watch('email')
+  const phone = watch('phone')
+  const timezone = watch('timezone')
+
+  const onSave = (data: HostProfileFormData) => {
+    updateProfileMutation.mutate(
+      {
+        fullName: `${data.firstName} ${data.lastName}`.trim(),
+        username: data.firstName.toLowerCase(),
+        email: data.email,
+        altEmail: '',
+        phoneCode: '',
+        phoneNumber: data.phone,
+        timezone: data.timezone,
+        role,
+        dateFormat: '',
+        language: '',
+        timeFormat: '',
+      },
+      {
+        onSuccess: () => {
+          toast.success('Profile updated successfully')
+          setIsEditing(false)
+        },
+      }
+    )
+  }
+
+  const handleCancel = () => {
+    reset()
     setIsEditing(false)
   }
 
@@ -358,26 +390,26 @@ export default function HostProfilePage() {
                 {firstName} {lastName}
               </h2>
               <p style={{ fontSize: 14, color: 'var(--muted-foreground, #5D6D7E)', margin: '4px 0 0' }}>
-                {formData.role}
+                {role}
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px', marginTop: 20 }}>
                 <div>
                   <span style={{ fontSize: 12, color: 'var(--muted-foreground, #5D6D7E)' }}>Email Address</span>
                   <p style={{ fontSize: 14, margin: '2px 0 0', fontWeight: 500, color: 'var(--foreground, #1C2833)' }}>
-                    {formData.email || '—'}
+                    {email || '—'}
                   </p>
                 </div>
                 <div>
                   <span style={{ fontSize: 12, color: 'var(--muted-foreground, #5D6D7E)' }}>Phone Number</span>
                   <p style={{ fontSize: 14, margin: '2px 0 0', fontWeight: 500, color: 'var(--foreground, #1C2833)' }}>
-                    {formData.phone || '—'}
+                    {phone || '—'}
                   </p>
                 </div>
                 <div>
                   <span style={{ fontSize: 12, color: 'var(--muted-foreground, #5D6D7E)' }}>Timezone</span>
                   <p style={{ fontSize: 14, margin: '2px 0 0', fontWeight: 500, color: 'var(--foreground, #1C2833)' }}>
-                    {formData.timezone}
+                    {timezone}
                   </p>
                 </div>
               </div>
@@ -426,7 +458,7 @@ export default function HostProfilePage() {
                   </button>
                 )}
                 <button
-                  onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+                  onClick={() => (isEditing ? handleSubmit(onSave)() : setIsEditing(true))}
                   style={{
                     padding: '8px 20px',
                     borderRadius: 8,
@@ -451,8 +483,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    {...register('firstName')}
                     disabled={!isEditing}
                     style={{
                       width: '100%',
@@ -475,8 +506,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    {...register('lastName')}
                     disabled={!isEditing}
                     style={{
                       width: '100%',
@@ -499,8 +529,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    {...register('email')}
                     disabled={!isEditing}
                     style={{
                       width: '100%',
@@ -523,8 +552,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    {...register('phone')}
                     disabled={!isEditing}
                     placeholder="+1 (555) 000-0000"
                     style={{
@@ -548,8 +576,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.timezone}
-                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                    {...register('timezone')}
                     disabled={!isEditing}
                     style={{
                       width: '100%',
@@ -572,8 +599,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    {...register('dateOfBirth')}
                     disabled={!isEditing}
                     placeholder="MM/DD/YYYY"
                     style={{
@@ -625,7 +651,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.role}
+                    value={role}
                     disabled
                     style={{
                       width: '100%',
@@ -648,7 +674,7 @@ export default function HostProfilePage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.hostId}
+                    value={hostId}
                     disabled
                     style={{
                       width: '100%',

@@ -1,18 +1,18 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUIStore } from '@/store/ui/uiStore'
 import { usePropertyStore } from '@/store/properties/propertyStore'
+import { useStaffStore } from '@/store/admin/staffStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import StaffStats from '@/components/admin/staff/StaffStats'
 import StaffFilters from '@/components/admin/staff/StaffFilters'
 import StaffTable from '@/components/admin/staff/StaffTable'
 import StaffPagination from '@/components/admin/staff/StaffPagination'
-import { getAllProperties, getStaffList, deleteStaff, updateStaff } from '@/api/pms/pmsApi'
-import { propertyKeys, staffKeys } from '@/lib/queryKeys'
-import { mapApiStaffToStaffMember, toApiStatus } from '@/types/staff'
+import { mapApiStaffToStaffMember } from '@/types/staff'
 import type { StaffMember } from '@/types/staff'
+import { useAdminPropertiesQuery, useStaffListQuery, useStaffSummaryQuery } from '@/services/queries/admin/staffQueries'
+import { useDeleteStaff, useUpdateStaffStatus } from '@/services/mutations/admin/staffMutations'
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   Active: { bg: '#D1FAE5', text: '#065F46' },
@@ -30,62 +30,39 @@ export default function StaffPage() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
   const [overallMode, setOverallMode] = useState(() => currentPropertyId === null)
-  const [search, setSearch] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const {
+    search,
+    departmentFilter,
+    roleFilter,
+    statusFilter,
+    currentPage,
+    itemsPerPage,
+    setSearch,
+    setDepartmentFilter,
+    setRoleFilter,
+    setStatusFilter,
+    setCurrentPage,
+    setItemsPerPage,
+  } = useStaffStore()
   const [viewingStaff, setViewingStaff] = useState<StaffMember | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null)
 
-  const { data: properties = [] } = useQuery({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-  })
+  const { data: properties = [] } = useAdminPropertiesQuery()
 
   const property = properties.find((p) => p.id === currentPropertyId) ?? properties[0] ?? null
   const effectivePropertyId = property?.id ?? ''
 
-  const { data: apiStaff = [], isLoading } = useQuery({
-    queryKey: staffKeys.list(effectivePropertyId),
-    queryFn: async () => {
-      const all: import('@/types/staff').ApiStaff[] = []
-      let skip = 0
-      const pageSize = 50
-      for (;;) {
-        const batch = await getStaffList(effectivePropertyId, { skip, limit: pageSize })
-        all.push(...batch)
-        if (batch.length < pageSize) break
-        skip += pageSize
-      }
-      return all
-    },
-    enabled: !!effectivePropertyId,
-  })
+  const { data: apiStaff = [], isLoading } = useStaffListQuery(effectivePropertyId)
+  const { data: staffSummary } = useStaffSummaryQuery(effectivePropertyId)
 
   const staffList = useMemo(() => {
     return apiStaff.map(mapApiStaffToStaffMember)
   }, [apiStaff])
 
-  const deleteMutation = useMutation({
-    mutationFn: (staffId: string) => deleteStaff(effectivePropertyId, staffId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list(effectivePropertyId) })
-      setConfirmDelete(null)
-    },
-  })
-
-  const statusMutation = useMutation({
-    mutationFn: ({ staffId, status }: { staffId: string; status: StaffMember['status'] }) =>
-      updateStaff(effectivePropertyId, staffId, { status: toApiStatus(status) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list(effectivePropertyId) })
-    },
-  })
+  const { deleteStaff, isDeleting } = useDeleteStaff(effectivePropertyId)
+  const { updateStaffStatus } = useUpdateStaffStatus(effectivePropertyId)
 
   const filteredStaff = useMemo(() => {
     return staffList.filter(member => {
@@ -98,13 +75,22 @@ export default function StaffPage() {
   }, [staffList, search, departmentFilter, roleFilter, statusFilter])
 
   const stats = useMemo(() => {
+    const departments = new Set(staffList.map(s => s.department)).size
+    if (staffSummary) {
+      return {
+        total: staffSummary.total,
+        active: staffSummary.active,
+        onLeave: staffSummary.on_leave,
+        inactive: staffSummary.inactive,
+        departments,
+      }
+    }
     const total = staffList.length
     const active = staffList.filter(s => s.status === 'Active').length
     const onLeave = staffList.filter(s => s.status === 'On Leave').length
     const inactive = staffList.filter(s => s.status === 'Inactive').length
-    const departments = new Set(staffList.map(s => s.department)).size
     return { total, active, onLeave, inactive, departments }
-  }, [staffList])
+  }, [staffList, staffSummary])
 
   const totalPages = Math.ceil(filteredStaff.length / itemsPerPage)
   const paginatedStaff = filteredStaff.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -121,14 +107,15 @@ export default function StaffPage() {
     setConfirmDelete(member)
   }
 
-  const confirmDeleteStaff = () => {
+  const confirmDeleteStaff = async () => {
     if (confirmDelete) {
-      deleteMutation.mutate(confirmDelete.id)
+      await deleteStaff(confirmDelete.id)
+      setConfirmDelete(null)
     }
   }
 
   const handleChangeStatus = (member: StaffMember, newStatus: StaffMember['status']) => {
-    statusMutation.mutate({ staffId: member.id, status: newStatus })
+    updateStaffStatus(member.id, newStatus)
   }
 
   return (
@@ -232,9 +219,9 @@ export default function StaffPage() {
             <p style={{ fontSize: 14, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>Are you sure you want to delete <strong>{confirmDelete.name}</strong>? This action cannot be undone.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#374151' }}>Cancel</button>
-              <button onClick={confirmDeleteStaff} disabled={deleteMutation.isPending} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: deleteMutation.isPending ? 0.6 : 1 }}>
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
+               <button onClick={confirmDeleteStaff} disabled={isDeleting} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: isDeleting ? 0.6 : 1 }}>
+                 {isDeleting ? 'Deleting...' : 'Delete'}
+               </button>
             </div>
           </div>
         </div>

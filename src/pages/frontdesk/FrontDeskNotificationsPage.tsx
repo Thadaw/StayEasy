@@ -17,12 +17,8 @@ import {
 import { FrontDeskSidebar, FrontDeskSidebarProvider, MobileMenuButton } from "@/components/frontdesk/FrontDeskSidebar"
 import { FrontdeskItemSkeleton } from "@/components/frontdesk/FrontdeskTableSkeleton"
 import { usePropertyStore } from "@/store/properties/propertyStore"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import {
-  getNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
-} from "@/api/pms/pmsApi"
+import { useNotificationsQuery } from "@/services/queries/frontdesk/frontdeskNotificationQueries"
+import { useMarkNotificationReadMutation, useMarkAllNotificationsReadMutation } from "@/services/mutations/frontdesk/frontdeskNotificationMutations"
 import type { StaffNotification } from "@/types/pms"
 
 type TabKey = "all" | "guest_requests" | "housekeeping" | "payments" | "staff_handoff"
@@ -83,40 +79,19 @@ const TABS: { key: TabKey; label: string }[] = [
 export default function FrontDeskNotificationsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all")
   const [selectedNotification, setSelectedNotification] = useState<StaffNotification | null>(null)
-  const queryClient = useQueryClient()
   const { currentPropertyId } = usePropertyStore()
 
-  const { data: notificationsData, isLoading, isError } = useQuery({
-    queryKey: ["staff-notifications", currentPropertyId],
-    queryFn: async () => {
-      if (!currentPropertyId) return null
-      return getNotifications({ property_id: currentPropertyId, limit: 50 })
-    },
-    enabled: !!currentPropertyId,
-    refetchInterval: 30000,
-  })
+  const { data: notificationsData, isLoading, isError } = useNotificationsQuery(
+    currentPropertyId,
+    { limit: 50 },
+    { refetchInterval: 30000 }
+  )
 
   const notifications = notificationsData?.notifications ?? []
 
-  const markReadMutation = useMutation({
-    mutationFn: ({ notificationId }: { notificationId: string }) =>
-      markNotificationRead({ notificationId, propertyId: currentPropertyId! }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["staff-notifications", currentPropertyId] })
-      queryClient.invalidateQueries({ queryKey: ["unread-notifications-count", currentPropertyId] })
-    },
-  })
+  const markReadMutation = useMarkNotificationReadMutation(currentPropertyId)
 
-  const markAllReadMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentPropertyId) return
-      return markAllNotificationsRead(currentPropertyId)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["staff-notifications", currentPropertyId] })
-      queryClient.invalidateQueries({ queryKey: ["unread-notifications-count", currentPropertyId] })
-    },
-  })
+  const markAllReadMutation = useMarkAllNotificationsReadMutation(currentPropertyId)
 
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") return notifications

@@ -1,40 +1,28 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useDashboardStore } from '@/store/admin/dashboardStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import PropertyCard from '@/components/admin/dashboard/PropertyCard'
 import ExpandPortfolio from '@/components/admin/dashboard/ExpandPortfolio'
 import { Plus, Loader2 } from 'lucide-react'
-import { getAllProperties, updatePropertyActivation } from '@/api/pms/pmsApi'
 import '@/styles/portal.css'
-import { propertyKeys } from '@/lib/queryKeys'
-import type { GeneralInfoResponse } from '@/types/pms'
+import { useAdminPropertiesQuery } from '@/services/queries/admin/dashboardQueries'
+import { useUpdatePropertyActivationMutation } from '@/services/mutations/admin/dashboardMutations'
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&h=400&fit=crop'
 
 export default function DashboardPage() {
-  const [activeFilter, setActiveFilter] = useState('all')
-  const queryClient = useQueryClient()
+  const { activeFilter, setActiveFilter } = useDashboardStore()
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const { data: properties = [], isLoading: loading } = useQuery<GeneralInfoResponse[]>({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-    select: (data) => Array.isArray(data) ? data : [],
-  })
+  const { data: properties = [], isLoading: loading } = useAdminPropertiesQuery()
 
-  const toggleActivationMutation = useMutation({
-    mutationFn: (propertyId: string) => updatePropertyActivation(propertyId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all })
-    },
-  })
+  const { mutate: toggleActivationMutation } = useUpdatePropertyActivationMutation()
 
   const handleToggleActivation = (propertyId: string) => {
-    toggleActivationMutation.mutate(propertyId)
+    toggleActivationMutation(propertyId)
   }
 
   return (

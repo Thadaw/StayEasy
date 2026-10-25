@@ -1,36 +1,64 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { isAxiosError } from 'axios'
 import { usePropertyStore } from '@/store/properties/propertyStore'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
-import { Camera, Upload } from 'lucide-react'
-import { createStaff, uploadStaffImage } from '@/api/pms/pmsApi'
-import { staffKeys } from '@/lib/queryKeys'
+import { Camera, Upload, Building2, AlertTriangle } from 'lucide-react'
 import { mapStaffMemberToCreatePayload } from '@/types/staff'
+import { useAdminPropertiesQuery } from '@/services/queries/admin/staffQueries'
+import { useCreateStaff } from '@/services/mutations/admin/staffMutations'
+import { staffFormSchema, type StaffFormData, roles, statuses, shifts } from '@/schemas/admin/staffSchema'
 
-const roles = ['MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'WAITER', 'KITCHEN', 'MAINTENANCE']
-const statuses = ['ACTIVE', 'ON LEAVE', 'INACTIVE'] as const
-const shifts = ['MORNING', 'EVENING', 'NIGHT'] as const
+function getApiErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as { error?: string; message?: string } | undefined
+    return data?.error || data?.message || error.message
+  }
+  return error instanceof Error ? error.message : 'Unknown error'
+}
+
+function isSubscriptionError(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 403 &&
+    /subscription/i.test(getApiErrorMessage(error))
+}
 
 export default function AddStaffPage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const currentPropertyId = usePropertyStore((s) => s.currentPropertyId)
+  const setCurrentPropertyId = usePropertyStore((s) => s.setCurrentPropertyId)
   const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const { data: allProperties = [] } = useAdminPropertiesQuery()
+  const properties = allProperties.filter((p) => p.is_active !== false)
+
+  const selectedProperty = properties.find((p) => p.id === currentPropertyId) ?? null
   const citizenshipFrontRef = useRef<HTMLInputElement>(null)
   const citizenshipBackRef = useRef<HTMLInputElement>(null)
 
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    contactNumber: '',
-    jobRole: 'MANAGER',
-    monthlySalary: '',
-    joiningDate: new Date().toISOString().split('T')[0],
-    status: 'ACTIVE' as typeof statuses[number],
-    shift: 'MORNING' as typeof shifts[number],
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<StaffFormData>({
+    resolver: zodResolver(staffFormSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      contactNumber: '',
+      jobRole: 'MANAGER',
+      monthlySalary: '',
+      joiningDate: new Date().toISOString().split('T')[0],
+      status: 'ACTIVE',
+      shift: 'MORNING',
+    },
   })
+
+  const formValues = watch()
 
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [citizenshipFrontFile, setCitizenshipFrontFile] = useState<File | null>(null)
@@ -39,6 +67,8 @@ export default function AddStaffPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [citizenshipFrontPreview, setCitizenshipFrontPreview] = useState<string | null>(null)
   const [citizenshipBackPreview, setCitizenshipBackPreview] = useState<string | null>(null)
+  const [subscriptionError, setSubscriptionError] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -48,44 +78,10 @@ export default function AddStaffPage() {
     }
   }, [photoPreview, citizenshipFrontPreview, citizenshipBackPreview])
 
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentPropertyId) throw new Error('No property selected')
+  const { createStaff, isCreating } = useCreateStaff(currentPropertyId)
 
-      let profileUrl = null
-      let frontUrl = null
-      let backUrl = null
-
-      if (photoFile) profileUrl = await uploadStaffImage(currentPropertyId, photoFile)
-      if (citizenshipFrontFile) frontUrl = await uploadStaffImage(currentPropertyId, citizenshipFrontFile)
-      if (citizenshipBackFile) backUrl = await uploadStaffImage(currentPropertyId, citizenshipBackFile)
-
-      const payload = mapStaffMemberToCreatePayload({
-        name: form.fullName,
-        email: form.email,
-        contact: form.contactNumber,
-        role: form.jobRole,
-        monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : 0,
-        joiningDate: form.joiningDate,
-        status: form.status === 'ACTIVE' ? 'Active' : form.status === 'ON LEAVE' ? 'On Leave' : 'Inactive',
-        shift: form.shift,
-        photo: profileUrl ?? undefined,
-        citizenshipFront: frontUrl ?? undefined,
-        citizenshipBack: backUrl ?? undefined,
-      })
-      return createStaff(currentPropertyId, payload)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.all })
-      navigate('/host/staff')
-    },
-    onError: (error: Error) => {
-      alert(`Failed to create staff: ${error.message}`)
-    },
-  })
-
-  const handleChange = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
+  const handleChange = (field: keyof StaffFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true })
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setFile: (f: File | null) => void, setPreview: (p: string | null) => void, oldPreview: string | null) => {
@@ -176,6 +172,85 @@ export default function AddStaffPage() {
             </button>
           </div>
 
+          {/* Subscription Required Banner */}
+          {subscriptionError && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px',
+              borderRadius: 10, border: '1px solid #FDE68A', background: '#FFFBEB', marginBottom: 24,
+            }}>
+              <AlertTriangle size={20} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#92400E' }}>
+                  No active subscription found
+                </p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#A16207' }}>
+                  Please subscribe to a plan to add staff members.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/host/pricing')}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D97706',
+                  color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                View Plans
+              </button>
+            </div>
+          )}
+
+          {/* Generic Create Error */}
+          {createError && !subscriptionError && (
+            <div style={{
+              padding: '12px 18px', borderRadius: 10, border: '1px solid #FECACA',
+              background: '#FEF2F2', marginBottom: 24, fontSize: 13, color: '#B91C1C',
+            }}>
+              Failed to create staff: {createError}
+            </div>
+          )}
+
+          {/* Select Property Section */}
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 24, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Building2 size={18} color="#2563EB" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: 0 }}>Select Property</h3>
+                <p style={{ fontSize: 12, color: '#6B7280', margin: '2px 0 0' }}>Choose the property this staff member will be assigned to</p>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+              <div>
+                <label style={labelStyle}>Property</label>
+                <select
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                  value={currentPropertyId ?? ''}
+                  onChange={e => setCurrentPropertyId(e.target.value || null)}
+                >
+                  <option value="" disabled>Select a property</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.city ? ` — ${p.city}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Property Location</label>
+                <input
+                  style={{ ...inputStyle, background: '#F9FAFB', color: '#6B7280' }}
+                  value={selectedProperty?.city ?? '—'}
+                  readOnly
+                  tabIndex={-1}
+                />
+              </div>
+            </div>
+            {properties.length === 0 && (
+              <p style={{ fontSize: 12, color: '#DC2626', marginTop: 10 }}>No active properties found. Please add a property first.</p>
+            )}
+          </div>
+
           {/* Main Form Card */}
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: 32, marginBottom: 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
@@ -185,9 +260,9 @@ export default function AddStaffPage() {
                 <input
                   style={inputStyle}
                   placeholder="e.g. Ram Tamang"
-                  value={form.fullName}
-                  onChange={e => handleChange('fullName', e.target.value)}
+                  {...register('fullName')}
                 />
+                {errors.fullName && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.fullName.message}</p>}
               </div>
 
               {/* Email Address */}
@@ -197,9 +272,9 @@ export default function AddStaffPage() {
                   style={inputStyle}
                   type="email"
                   placeholder="john.doe@email.com"
-                  value={form.email}
-                  onChange={e => handleChange('email', e.target.value)}
+                  {...register('email')}
                 />
+                {errors.email && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.email.message}</p>}
               </div>
 
               {/* Contact Number */}
@@ -208,9 +283,9 @@ export default function AddStaffPage() {
                 <input
                   style={inputStyle}
                   placeholder="9848908675"
-                  value={form.contactNumber}
-                  onChange={e => handleChange('contactNumber', e.target.value)}
+                  {...register('contactNumber')}
                 />
+                {errors.contactNumber && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.contactNumber.message}</p>}
               </div>
 
               {/* Job Role */}
@@ -218,11 +293,12 @@ export default function AddStaffPage() {
                 <label style={labelStyle}>Job Role</label>
                 <select
                   style={{ ...inputStyle, cursor: 'pointer' }}
-                  value={form.jobRole}
+                  value={formValues.jobRole}
                   onChange={e => handleChange('jobRole', e.target.value)}
                 >
                   {roles.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+                {errors.jobRole && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.jobRole.message}</p>}
               </div>
 
               {/* Monthly Salary */}
@@ -232,9 +308,9 @@ export default function AddStaffPage() {
                   style={inputStyle}
                   type="number"
                   placeholder="3200"
-                  value={form.monthlySalary}
-                  onChange={e => handleChange('monthlySalary', e.target.value)}
+                  {...register('monthlySalary')}
                 />
+                {errors.monthlySalary && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.monthlySalary.message}</p>}
               </div>
 
               {/* Joining Date */}
@@ -243,9 +319,10 @@ export default function AddStaffPage() {
                 <input
                   style={inputStyle}
                   type="date"
-                  value={form.joiningDate}
+                  value={formValues.joiningDate}
                   onChange={e => handleChange('joiningDate', e.target.value)}
                 />
+                {errors.joiningDate && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.joiningDate.message}</p>}
               </div>
 
               {/* Status */}
@@ -253,11 +330,12 @@ export default function AddStaffPage() {
                 <label style={labelStyle}>Status</label>
                 <select
                   style={{ ...inputStyle, cursor: 'pointer' }}
-                  value={form.status}
+                  value={formValues.status}
                   onChange={e => handleChange('status', e.target.value)}
                 >
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {errors.status && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.status.message}</p>}
               </div>
 
               {/* Shift */}
@@ -265,11 +343,12 @@ export default function AddStaffPage() {
                 <label style={labelStyle}>Shift</label>
                 <select
                   style={{ ...inputStyle, cursor: 'pointer' }}
-                  value={form.shift}
+                  value={formValues.shift}
                   onChange={e => handleChange('shift', e.target.value)}
                 >
                   {shifts.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {errors.shift && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.shift.message}</p>}
               </div>
             </div>
           </div>
@@ -417,18 +496,44 @@ export default function AddStaffPage() {
               Discard Changes
             </button>
             <button
-              onClick={() => {
-                if (!form.fullName || !form.email) {
-                  alert('Please fill in Full Name and Email Address')
-                  return
-                }
+              onClick={handleSubmit(async (data) => {
                 if (!currentPropertyId) {
                   alert('No property selected')
                   return
                 }
-                createMutation.mutate()
-              }}
-              disabled={createMutation.isPending}
+                setSubscriptionError(false)
+                setCreateError(null)
+                try {
+                  const payload = mapStaffMemberToCreatePayload({
+                    name: data.fullName,
+                    email: data.email,
+                    contact: data.contactNumber,
+                    role: data.jobRole,
+                    monthlySalary: data.monthlySalary ? Number(data.monthlySalary) : 0,
+                    joiningDate: data.joiningDate,
+                    status: data.status === 'ACTIVE' ? 'Active' : data.status === 'ON LEAVE' ? 'On Leave' : 'Inactive',
+                    shift: data.shift,
+                    photo: undefined,
+                    citizenshipFront: undefined,
+                    citizenshipBack: undefined,
+                  })
+                  await createStaff(payload, {
+                    photo: photoFile,
+                    front: citizenshipFrontFile,
+                    back: citizenshipBackFile,
+                  })
+                  navigate('/host/staff')
+                } catch (error: unknown) {
+                  if (isSubscriptionError(error)) {
+                    setSubscriptionError(true)
+                    setCreateError(null)
+                    return
+                  }
+                  setCreateError(getApiErrorMessage(error))
+                  setSubscriptionError(false)
+                }
+              })}
+              disabled={isCreating}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -441,10 +546,10 @@ export default function AddStaffPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
-                opacity: createMutation.isPending ? 0.6 : 1,
+                opacity: isCreating ? 0.6 : 1,
               }}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create New Staff'}
+              {isCreating ? 'Creating...' : 'Create New Staff'}
             </button>
           </div>
         </main>

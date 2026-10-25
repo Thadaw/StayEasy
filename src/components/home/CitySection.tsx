@@ -1,4 +1,4 @@
-import { useSearchProperties } from "@/services/queries/propertyQueries";
+import { useSearchProperties } from "@/services/queries/property/propertyQueries";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { PropertySection } from "@/components/home/PropertySection";
 

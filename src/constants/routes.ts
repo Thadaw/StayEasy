@@ -8,4 +8,6 @@ export const ROUTES = {
   managerDashboard: '/manager/dashboard',
   hostOverallDashboard: '/host/overall-dashboard',
   staffChangePassword: '/frontdesk/change-password',
+  hostChangePassword: '/host/change-password',
+  hostTenantSetup: '/host/tenant-setup',
 } as const

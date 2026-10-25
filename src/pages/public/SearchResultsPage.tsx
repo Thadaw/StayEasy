@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/search/SearchBar"
 import { StickySearchHeader } from "@/components/search/StickySearchHeader"
 import { Footer } from "@/components/layout/Footer"
 import { useFavorites } from "@/context/FavoritesContext"
-import { useSearchResults, PAGE_SIZE } from "@/services/queries/propertyQueries"
+import { useSearchResults, PAGE_SIZE } from "@/services/queries/property/propertyQueries"
 import { parseSearchParams, buildFilterQueryString } from "@/schemas/search/searchParams"
 
 import { FilterSidebar } from "@/components/search/FilterSidebar"

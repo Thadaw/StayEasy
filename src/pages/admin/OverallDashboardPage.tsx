@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery, useQueries } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '@/components/admin/dashboard/Sidebar'
 import DashboardHeader from '@/components/admin/dashboard/DashboardHeader'
 import StatCard from '@/components/admin/dashboard/StatCard'
@@ -9,25 +9,27 @@ import RecentBookings from '@/components/admin/dashboard/RecentBookings'
 import RoomsStatus from '@/components/admin/dashboard/RoomsStatus'
 import QuickActions from '@/components/admin/dashboard/QuickActions'
 import ArrivalsDepartures from '@/components/admin/dashboard/ArrivalsDepartures'
-import { getAllProperties, getRooms, getPropertyBookings } from '@/api/pms/pmsApi'
-import { propertyKeys, roomKeys, bookingKeys } from '@/lib/queryKeys'
+import {
+  useAdminActivePropertiesQuery,
+  useOverallRoomsQuery,
+  useOverallPropertyBookingsQuery,
+} from '@/services/queries/admin/dashboardQueries'
 import { useDateRangeStore, isWithinRange } from '@/store/bookings/dateRangeStore'
 import { Wallet, Bed, Calendar, TrendingUp, BarChart } from 'lucide-react'
-import type { RoomResponse, PropertyBooking, GeneralInfoResponse } from '@/types/pms'
+import type { RoomResponse, PropertyBooking } from '@/types/pms'
 
 export default function OverallDashboardPage() {
+  const navigate = useNavigate()
   const dateFrom = useDateRangeStore((s) => s.from)
   const dateTo = useDateRangeStore((s) => s.to)
 
   // Fetch all properties
-  const { data: allProperties = [], isLoading: loadingProperties } = useQuery<GeneralInfoResponse[]>({
-    queryKey: propertyKeys.all,
-    queryFn: getAllProperties,
-    select: (data) => {
-      const list = Array.isArray(data) ? data : []
-      return list.filter((p) => p.is_active !== false)
-    },
-  })
+  const {
+    data: allProperties = [],
+    isLoading: loadingProperties,
+    isError: propertiesFailed,
+    refetch: refetchProperties,
+  } = useAdminActivePropertiesQuery()
 
   const activePropertyIds = useMemo(
     () => allProperties.map((p) => p.id),
@@ -35,24 +37,10 @@ export default function OverallDashboardPage() {
   )
 
   // Fetch rooms for all active properties in parallel
-  const roomQueries = useQueries({
-    queries: activePropertyIds.map((id: string) => ({
-      queryKey: roomKeys.byProperty(id),
-      queryFn: () => getRooms(id),
-      select: (data: unknown) => (Array.isArray(data) ? data : []),
-      enabled: activePropertyIds.length > 0,
-    })),
-  })
+  const roomQueries = useOverallRoomsQuery(activePropertyIds, activePropertyIds.length > 0)
 
   // Fetch bookings for all active properties in parallel
-  const bookingQueries = useQueries({
-    queries: activePropertyIds.map((id: string) => ({
-      queryKey: bookingKeys.byProperty(id),
-      queryFn: () => getPropertyBookings(id),
-      select: (data: unknown) => (Array.isArray(data) ? data : []),
-      enabled: activePropertyIds.length > 0,
-    })),
-  })
+  const bookingQueries = useOverallPropertyBookingsQuery(activePropertyIds, activePropertyIds.length > 0)
 
   const loading = loadingProperties || roomQueries.some((q) => q.isLoading) || bookingQueries.some((q) => q.isLoading)
 
@@ -119,7 +107,8 @@ export default function OverallDashboardPage() {
       const date = new Date(b.created_at)
       const day = date.getDate()
       const month = date.getMonth()
-      const key = `Jun ${day}`
+      const monthLabel = date.toLocaleString('en-US', { month: 'short' })
+      const key = `${monthLabel} ${day}`
       const amount = Number(b.total_amount) || 0
 
       if (!grouped[key]) {
@@ -144,6 +133,48 @@ export default function OverallDashboardPage() {
       .sort((a, b) => parseInt(a.day.replace(/\D/g, '')) - parseInt(b.day.replace(/\D/g, '')))
       .slice(0, 7)
   }, [allBookings])
+
+  // A failed properties fetch must never leave the page on an endless
+  // "Loading portfolio data..." spinner — surface the failure instead.
+  if (propertiesFailed) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fb', fontFamily: "'Inter', sans-serif" }}>
+        <Sidebar />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', maxWidth: 380, padding: 24 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
+              We couldn&rsquo;t load your portfolio
+            </h2>
+            <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 20px', lineHeight: 1.5 }}>
+              Your account may still be setting up, or the server is temporarily unavailable.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => refetchProperties()}
+                style={{
+                  padding: '10px 20px', borderRadius: 8, border: 'none',
+                  background: '#2563eb', color: '#fff', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 600,
+                }}
+              >
+                Try again
+              </button>
+              <button
+                onClick={() => navigate('/host/tenant-setup')}
+                style={{
+                  padding: '10px 20px', borderRadius: 8, border: '1px solid #e5e7eb',
+                  background: '#fff', color: '#374151', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 600,
+                }}
+              >
+                Finish account setup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

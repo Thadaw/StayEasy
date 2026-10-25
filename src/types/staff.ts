@@ -23,6 +23,13 @@ export interface StaffStats {
   departments: number
 }
 
+export interface StaffSummary {
+  total: number
+  active: number
+  inactive: number
+  on_leave: number
+}
+
 // ─── API Types ─────────────────────────────────────────────
 
 export interface ApiStaff {
@@ -34,7 +41,7 @@ export interface ApiStaff {
   job_role: string
   monthly_salary: number
   joining_date: string
-  status: 'ACTIVE' | 'ON LEAVE' | 'INACTIVE'
+  status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE'
   shift: string
   photos: {
     profile: string
@@ -50,7 +57,7 @@ export interface CreateStaffPayload {
   job_role: string
   monthly_salary: number
   joining_date: string
-  status: 'ACTIVE' | 'ON LEAVE' | 'INACTIVE'
+  status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE'
   shift: string
   photos?: {
     profile: string | null
@@ -86,7 +93,7 @@ function formatJobRole(apiRole: string): string {
 function formatStatus(apiStatus: string): StaffMember['status'] {
   switch (apiStatus) {
     case 'ACTIVE': return 'Active'
-    case 'ON LEAVE': return 'On Leave'
+    case 'ON_LEAVE': return 'On Leave'
     case 'INACTIVE': return 'Inactive'
     default: return 'Active'
   }
@@ -123,7 +130,7 @@ export function toApiJobRole(role: string): string {
 export function toApiStatus(status: StaffMember['status']): CreateStaffPayload['status'] {
   switch (status) {
     case 'Active': return 'ACTIVE'
-    case 'On Leave': return 'ON LEAVE'
+    case 'On Leave': return 'ON_LEAVE'
     case 'Inactive': return 'INACTIVE'
   }
 }
